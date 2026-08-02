@@ -1,0 +1,164 @@
+/**
+ * The Lab registry — one entry per invented component.
+ * Adding a component: drop the source in client/src/components/<name>,
+ * build a stage in client/src/stages, then register it here. Routes,
+ * navigation, the landing page, and the code viewer all derive from this file.
+ */
+import type { ComponentType } from "react";
+import NavigationBarStage from "@/stages/NavigationBarStage";
+import PressAndSlidePickerStage from "@/stages/PressAndSlidePickerStage";
+import navigationBarSource from "@/components/navigation-bar/NavigationBar.tsx?raw";
+import pressAndSlidePickerSource from "@/components/press-and-slide-picker/PressAndSlidePicker.tsx?raw";
+
+export const LAB_NAME = "Rishi's UI Lab";
+export const LAB_TAGLINE =
+  "Original interaction components, built for real products. Live demos on the left, source on the right — take what you like.";
+export const GITHUB_URL = "https://github.com/rishidean/ui-lab";
+export const AUTHOR_URL = "https://rishidean.com";
+
+export type LabComponent = {
+  slug: string;
+  name: string;
+  tagline: string;
+  description: string;
+  tags: string[];
+  status: "stable" | "experimental";
+  accent: string; // CSS gradient for the card artwork
+  Stage: ComponentType;
+  source: string;
+  sourceFile: string;
+  dependencies: string[];
+  usage: string;
+  tryIt: string[];
+  aliases?: string[];
+};
+
+const navigationBarUsage = `import { NavigationBar } from "@/components/navigation-bar";
+import { Home, Activity, Settings, Search, Filter, Sparkles } from "lucide-react";
+
+const tabs = [
+  { id: "home", label: "Home", Icon: Home },
+  { id: "activity", label: "Activity", Icon: Activity },
+  { id: "settings", label: "Settings", Icon: Settings },
+];
+
+const tabActions = {
+  home: [
+    { Icon: Search, label: "Search" },
+    { Icon: Filter, label: "Filter" }, // "Filter" is special-cased: expands in place
+  ],
+};
+
+const filterOptions = [
+  { id: "today", label: "Today" },
+  { id: "week", label: "7 days" },
+];
+
+<NavigationBar
+  tabs={tabs}
+  tabActions={tabActions}
+  filterOptions={filterOptions}
+  rightButton={{ Icon: Sparkles, label: "Ask AI" }}
+  isCollapsed={isCollapsed}          // drive from your scroll direction
+  activeTab={activeTab}
+  activeFilter={activeFilter}
+  onTabChange={setActiveTab}
+  onFilterChange={setActiveFilter}
+  onActionClick={(label, tab) => console.log(label, tab)}
+  onRightButtonClick={() => console.log("right button")}
+  onLogoClick={() => setIsCollapsed(false)}
+/>
+
+/*
+ * Styling contract: the component reads CSS custom properties
+ * (--iris-700, --gradient-aurora, --surface-overlay, shadows, radii, text
+ * scale) plus three utility classes: .glass-nav, .glass-overlay, and
+ * .nav-action-chip. Copy the token block from client/src/index.css in this
+ * repo, or remap the variables to your own design system.
+ */`;
+
+const pressAndSlidePickerUsage = `import { PressAndSlidePicker } from "@/components/press-and-slide-picker";
+
+const options = [
+  { key: "todo",        label: "To Do",       color: "#3B82F6", bg: "#DBEAFE" },
+  { key: "in-progress", label: "In Progress", color: "#F59E0B", bg: "#FEF3C7" },
+  { key: "done",        label: "Done",        color: "#22C55E", bg: "#DCFCE7" },
+  { key: "blocked",     label: "Blocked",     color: "#EF4444", bg: "#FEE2E2" },
+];
+
+const [status, setStatus] = useState("todo");
+
+<PressAndSlidePicker
+  options={options}
+  value={status}
+  onChange={setStatus}
+  itemWidth={92}            // px per option zone in the strip
+  longPressDuration={275}   // ms before the gesture activates
+  // renderChip={(option, isActive) => <YourChip ... />}
+/>
+
+/*
+ * Interaction model: long-press (touch or mouse) opens the strip; slide to an
+ * option and release to commit. A plain click opens an accessible fallback
+ * listbox with full keyboard support. Haptics fire on supported devices.
+ * Styling reads --surface-overlay, --border-subtle, --shadow-lg, and the text
+ * scale variables — scope them per-page to restyle (see the demo's CSS).
+ */`;
+
+export const labComponents: LabComponent[] = [
+  {
+    slug: "navigation-bar",
+    name: "Navigation Bar",
+    tagline:
+      "A glass bottom bar where navigation, actions, and filters share one surface.",
+    description:
+      "A mobile-first bottom bar that collapses navigation into a single morphing cluster: a tab switcher that blooms into a menu, a center pill carrying per-tab contextual actions, an in-place filter expansion, and one aurora accent button. Scroll down and it folds to a logo; scroll up and it returns. Every transition is choreographed — nothing pops.",
+    tags: ["navigation", "mobile", "motion", "glassmorphism"],
+    status: "stable",
+    accent: "linear-gradient(135deg, #c4b5fd 0%, #f0abfc 46%, #a5b4fc 100%)",
+    Stage: NavigationBarStage,
+    source: navigationBarSource,
+    sourceFile: "NavigationBar.tsx",
+    dependencies: [
+      "react",
+      "motion",
+      "lucide-react",
+      "clsx + tailwind-merge (cn)",
+    ],
+    usage: navigationBarUsage,
+    tryIt: [
+      "Scroll the canvas down to collapse the bar, up to expand it",
+      "Tap the left circle to open the tab menu",
+      "Switch tabs — the center actions change with the tab",
+      "Tap Filter to expand filter options in place",
+    ],
+    aliases: ["action-bar"],
+  },
+  {
+    slug: "press-and-slide-picker",
+    name: "Press & Slide Picker",
+    tagline: "Facebook-Reactions-style selection: long-press, slide, release.",
+    description:
+      "A one-gesture picker for small option sets. Long-press the chip and a strip of options springs out; slide to the one you want and release to commit — with haptic ticks along the way. A plain click opens an accessible fallback listbox with full keyboard navigation, so the fast path never excludes anyone. Viewport-aware positioning keeps the strip on screen anywhere you mount it.",
+    tags: ["gesture", "input", "touch", "a11y"],
+    status: "stable",
+    accent:
+      "linear-gradient(135deg, #93c5fd 0%, #fcd34d 40%, #86efac 75%, #fca5a5 100%)",
+    Stage: PressAndSlidePickerStage,
+    source: pressAndSlidePickerSource,
+    sourceFile: "PressAndSlidePicker.tsx",
+    dependencies: ["react", "clsx + tailwind-merge (cn)"],
+    usage: pressAndSlidePickerUsage,
+    tryIt: [
+      "Long-press the chip, keep holding, slide across the strip, release",
+      "Plain-click the chip for the keyboard-friendly fallback picker",
+      "Try it on a phone — haptics fire as you cross options",
+      "Press Escape mid-gesture to bail out without committing",
+    ],
+    aliases: ["picker"],
+  },
+];
+
+export function getComponent(slug: string): LabComponent | undefined {
+  return labComponents.find(c => c.slug === slug || c.aliases?.includes(slug));
+}
