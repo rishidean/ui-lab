@@ -35,21 +35,24 @@ export const navigationTabs: TabDef[] = [
   { id: "transactions", label: "Transactions", Icon: ReceiptText },
 ];
 
+// Center-pill actions are text-only by design (showIcon: false) — icons
+// belong to the left/right circular buttons. The Icon still feeds a11y
+// and any consumer that opts icons back on.
 export const navigationActions: Record<string, ActionDef[]> = {
   home: [
-    { Icon: ArrowDownToLine, label: "Deposit" },
-    { Icon: ArrowUpFromLine, label: "Withdraw" },
+    { Icon: ArrowDownToLine, label: "Deposit", showIcon: false },
+    { Icon: ArrowUpFromLine, label: "Withdraw", showIcon: false },
   ],
   spend: [
-    { Icon: Send, label: "Pay" },
-    { Icon: HandCoins, label: "Request" },
+    { Icon: Send, label: "Pay", showIcon: false },
+    { Icon: HandCoins, label: "Request", showIcon: false },
   ],
   trade: [
-    { Icon: ArrowDownLeft, label: "Buy" },
-    { Icon: ArrowUpRight, label: "Sell" },
-    { Icon: ArrowLeftRight, label: "Swap" },
+    { Icon: ArrowDownLeft, label: "Buy", showIcon: false },
+    { Icon: ArrowUpRight, label: "Sell", showIcon: false },
+    { Icon: ArrowLeftRight, label: "Swap", showIcon: false },
   ],
-  transactions: [{ Icon: Filter, label: "Filter" }],
+  transactions: [{ Icon: Filter, label: "Filter", showIcon: false }],
 };
 
 export const navigationFilters: FilterOption[] = [

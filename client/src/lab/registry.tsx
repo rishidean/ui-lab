@@ -49,23 +49,25 @@ const tabs = [
 ];
 
 // Each tab carries its own contextual actions in the center pill.
+// Design rule: pill chips are text-only (showIcon: false) — icons belong
+// to the circular left/right buttons. Icon still feeds accessibility.
 const tabActions = {
   home: [
-    { Icon: ArrowDownToLine, label: "Deposit" },
-    { Icon: ArrowUpFromLine, label: "Withdraw" },
+    { Icon: ArrowDownToLine, label: "Deposit", showIcon: false },
+    { Icon: ArrowUpFromLine, label: "Withdraw", showIcon: false },
   ],
   spend: [
-    { Icon: Send, label: "Pay" },
-    { Icon: HandCoins, label: "Request" },
+    { Icon: Send, label: "Pay", showIcon: false },
+    { Icon: HandCoins, label: "Request", showIcon: false },
   ],
   trade: [
-    { Icon: ArrowDownLeft, label: "Buy" },
-    { Icon: ArrowUpRight, label: "Sell" },
-    { Icon: ArrowLeftRight, label: "Swap" },
+    { Icon: ArrowDownLeft, label: "Buy", showIcon: false },
+    { Icon: ArrowUpRight, label: "Sell", showIcon: false },
+    { Icon: ArrowLeftRight, label: "Swap", showIcon: false },
   ],
   // "Filter" is special-cased: it expands filterOptions in place
   // and the chip shows the currently selected option.
-  transactions: [{ Icon: Filter, label: "Filter" }],
+  transactions: [{ Icon: Filter, label: "Filter", showIcon: false }],
 };
 
 const filterOptions = [
