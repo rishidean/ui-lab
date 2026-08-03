@@ -6,8 +6,9 @@
  * Playground states shown here: expanded, navigation open, filter menu,
  * workflow sheet (tap any action), collapsed (scroll down), and the four
  * right-button utilities — Search (bar morph), Export (compact sheet),
- * AI (large draggable sheet), Scan (full-screen takeover). Every utility
- * grows out of the right button and contracts back into it.
+ * AI (large draggable sheet), Scan (modal takeover). Sheets and modals
+ * share one clear-out grammar: nav circle out, bar sweeps into the
+ * button, button fades — then the surface takes over its footprint.
  */
 import { NavigationBar } from "@/components/navigation-bar";
 import {
@@ -44,11 +45,11 @@ const TOGGLE_COOLDOWN_MS = 350;
 const ALWAYS_EXPANDED_ABOVE = 20;
 
 // ── Right-button utility surfaces ────────────────────────────────────────
-// Full-screen takeovers (Scan) use a circle reveal from the button's exact
-// bounds. Bottom-sheet utilities (Export, Assistant) instead use the bar
-// grammar: the nav circle fades, the action bar sweeps into the button,
-// and the sheet widens out of the button's footprint before stretching
-// vertically — see UtilitySheetMorph below.
+// Both kinds run the same clear-out first (nav circle out, bar sweeps into
+// the button, button fades — sequenced by isUtilitySheetOpen inside the
+// NavigationBar). Then: modal takeovers (Scan) expand as a circle from the
+// button's center point; bottom sheets (Export, Assistant) widen out of
+// its footprint and stretch vertically — see UtilitySheetMorph below.
 type UtilityKind = "export" | "assistant" | "scan";
 
 const UTILITY_GROW: Record<UtilityKind, number> = {
@@ -728,20 +729,28 @@ export default function NavigationBarStage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [utilSheet, closeUtilitySheet]);
 
+  // Modal takeovers (Scan): the SAME clear-out beats as the bottom sheets
+  // — pressed feedback, nav circle out, bar sweeps into the button, button
+  // fades — then the modal expands from the button's center point.
   const openUtility = useCallback(
     (kind: UtilityKind) => {
-      // The right button is disabled the moment a transition begins; only
-      // one surface can exist at a time.
-      if (utility || utilityClosing) return;
+      // Locked the moment any utility transition begins; only one surface
+      // can exist at a time.
+      if (utility || utilityClosing || utilSheet || utilSheetPrep) return;
       const rect = rightButtonRef.current?.getBoundingClientRect();
       setUtilityOrigin(
         rect
           ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
           : { x: window.innerWidth - 46, y: window.innerHeight - 52 }
       );
-      setUtility(kind);
+      setUtilSheetPrep(true);
+      if (utilPrepTimer.current) clearTimeout(utilPrepTimer.current);
+      utilPrepTimer.current = setTimeout(
+        () => setUtility(kind),
+        prefersReducedMotion ? 0 : 500
+      );
     },
-    [utility, utilityClosing]
+    [utility, utilityClosing, utilSheet, utilSheetPrep, prefersReducedMotion]
   );
 
   const closeUtility = useCallback(() => {
@@ -904,10 +913,10 @@ export default function NavigationBarStage() {
             setLastAction(query ? `Searched ${query}` : "Search closed")
           }
           searchPlaceholder="Search markets…"
-          // Bar controls absorb toward the right button while a utility is
-          // open, and restore only after the surface has contracted.
-          isUtilityOpen={utility !== null || utilityClosing}
           isActionSheetOpen={sheetPrep}
+          // One clear-out grammar for the right-button surfaces: bottom
+          // sheets (Export, Assistant) AND modal takeovers (Scan) — nav
+          // circle out, bar sweeps into the button, button fades last.
           isUtilitySheetOpen={utilSheetPrep}
           onTabChange={tab => {
             setActiveTab(tab);
@@ -975,11 +984,13 @@ export default function NavigationBarStage() {
         />
       </div>
 
-      {/* Right-button utility surfaces — shared-origin grow/contract. */}
+      {/* Modal takeovers (Scan) — expand from the button's center point
+          after the clear-out; contraction hands back to the bar restore. */}
       <AnimatePresence
         onExitComplete={() => {
           setUtilityClosing(false);
           setUtilityOrigin(null);
+          setUtilSheetPrep(false); // button, bar, and circle fade back in
           // Focus returns to the origin control.
           rightButtonRef.current?.focus();
         }}
