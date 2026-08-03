@@ -143,7 +143,9 @@ const CLOSE_DELAYS = {
   menuFade: 0.0,
   pillGrow: 0.08,
   actionsFadeIn: 0.16,
-  rightButtonFadeIn: 0.2,
+  // The bar finishes expanding at pillGrow + expand ≈ 0.28; the right
+  // utility arrives just after — the dot on a horizontal "i".
+  rightButtonFadeIn: 0.3,
   tabIconSwap: 0.1, // left icon updates as the menu clears it
 };
 
@@ -544,11 +546,20 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       ease: navCollapsing ? EASE_IN : EASE_OUT,
       delay: del(navExpanding ? SCROLL_EXPAND_DELAYS.rightReveal : 0),
     },
-    scale: {
-      duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
-      ease: navCollapsing ? EASE_IN : EASE_OUT,
-      delay: del(navExpanding ? SCROLL_EXPAND_DELAYS.rightReveal : 0),
-    },
+    scale: menuOpening
+      ? { duration: dur(DUR.label), ease: EASE_IN }
+      : menuClosing
+        ? // Arrives with the opacity beat — a crisp pop, not a drift.
+          {
+            duration: dur(0.14),
+            ease: EASE_OUT,
+            delay: del(CLOSE_DELAYS.rightButtonFadeIn),
+          }
+        : {
+            duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
+            ease: navCollapsing ? EASE_IN : EASE_OUT,
+            delay: del(navExpanding ? SCROLL_EXPAND_DELAYS.rightReveal : 0),
+          },
     opacity: navCollapsing
       ? { duration: dur(0.14), ease: EASE_IN, delay: del(0.1) }
       : navExpanding
@@ -1042,7 +1053,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 // Collapse: travel toward the left control along the same
                 // path the center bar shrinks on, scaling down slightly.
                 x: isCollapsed ? -pillTravel : 0,
-                scale: isCollapsed || isSearchOpen ? 0.8 : 1,
+                // Menu open shrinks it slightly as it fades, so the return
+                // reads as a pop-in — dotting the horizontal "i".
+                scale:
+                  isCollapsed || isSearchOpen ? 0.8 : isTabMenuOpen ? 0.7 : 1,
                 opacity:
                   // Menu open hides the right utility entirely (first out,
                   // last back); filter expansion only dims it.
