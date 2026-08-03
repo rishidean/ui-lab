@@ -24,6 +24,51 @@ const DefaultLogo = () => (
   />
 );
 
+// Edge-fade affordance for horizontal scroll rows: fades content at an edge
+// only while more content exists in that direction, and clears when the row
+// fits or the user reaches the end.
+const EDGE_FADE_PX = 28;
+
+function useScrollEdgeFade(deps: React.DependencyList) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+
+  const update = () => {
+    const el = ref.current;
+    if (!el) return;
+    const left = el.scrollLeft > 2;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    setEdges(prev =>
+      prev.left === left && prev.right === right ? prev : { left, right }
+    );
+  };
+
+  useEffect(() => {
+    update();
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  const maskImage =
+    edges.left && edges.right
+      ? `linear-gradient(to right, transparent 0, black ${EDGE_FADE_PX}px, black calc(100% - ${EDGE_FADE_PX}px), transparent 100%)`
+      : edges.right
+        ? `linear-gradient(to right, black calc(100% - ${EDGE_FADE_PX}px), transparent 100%)`
+        : edges.left
+          ? `linear-gradient(to right, transparent 0, black ${EDGE_FADE_PX}px)`
+          : undefined;
+
+  return {
+    ref,
+    onScroll: update,
+    style: { maskImage, WebkitMaskImage: maskImage },
+  };
+}
+
 export type NavTabId = string;
 
 export type TabDef<T extends NavTabId = NavTabId> = {
@@ -311,6 +356,17 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const actionsForTab = tabActions[activeTab] ?? [];
   const hasActions = actionsForTab.length > 0;
   const hasFilterAction = actionsForTab.some(a => a.label === "Filter");
+
+  const actionsRowFade = useScrollEdgeFade([
+    activeTab,
+    actionsForTab.length,
+    isSearchOpen,
+    isFilterExpanded,
+  ]);
+  const filterRowFade = useScrollEdgeFade([
+    filterOptions.length,
+    isFilterExpanded,
+  ]);
   const currentFilterOption = filterOptions.find(f => f.id === activeFilter);
 
   // Transition helpers
@@ -645,10 +701,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: dur(0.15), ease: EASE }}
+                    ref={filterRowFade.ref}
+                    onScroll={filterRowFade.onScroll}
                     className="flex items-center gap-1.5 w-full h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
                     style={{
                       touchAction: "pan-x",
                       overscrollBehaviorX: "contain",
+                      ...filterRowFade.style,
                     }}
                   >
                     {filterOptions.map((option, index) => {
@@ -704,10 +763,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={centerIconsTransition}
+                    ref={actionsRowFade.ref}
+                    onScroll={actionsRowFade.onScroll}
                     className="flex items-center gap-1.5 h-full w-full overflow-x-auto overflow-y-hidden scrollbar-hide"
                     style={{
                       touchAction: "pan-x",
                       overscrollBehaviorX: "contain",
+                      ...actionsRowFade.style,
                     }}
                   >
                     {actionsForTab.map((action, actionIndex) => {
