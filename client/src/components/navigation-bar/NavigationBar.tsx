@@ -136,17 +136,22 @@ const OPEN_DELAYS = {
   menuGrow: 0.26, //   3. menu grows as the bar finishes
 };
 
-// ── Navigation close/selection: reverse, slightly faster. The menu
-//    collapses back into the button; hidden controls swap while invisible;
-//    the bar regrows left-to-right; right utility returns last.
+// ── Navigation close/selection — strictly serial beats. On selection the
+//    pressed row confirms first (SELECT_CONFIRM_S hold, handled in
+//    handleSelectTab), THEN the close sequence runs; plain dismissal skips
+//    the confirm and starts here directly:
+//    1. menu collapses into the left button while the left icon swaps to
+//       the new tab (simultaneous),
+//    2. beat, the action bar regrows left-to-right,
+//    3. beat, the right utility fades in — beats 2+3 dot a horizontal "i".
+const SELECT_CONFIRM_S = 0.16; // pressed-row confirmation hold
 const CLOSE_DELAYS = {
-  menuFade: 0.0,
-  pillGrow: 0.08,
-  actionsFadeIn: 0.16,
-  // The bar finishes expanding at pillGrow + expand ≈ 0.28; the right
-  // utility arrives just after — the dot on a horizontal "i".
-  rightButtonFadeIn: 0.3,
-  tabIconSwap: 0.1, // left icon updates as the menu clears it
+  menuFade: 0.0, // collapse runs 0 → menuClose (0.16)
+  tabIconSwap: 0.02, // left icon transitions with the collapse, not after
+  pillGrow: 0.22, // bar regrows after the menu has landed + a beat
+  actionsFadeIn: 0.3, // labels arrive in the regrow's final third
+  // Bar finishes at pillGrow + expand ≈ 0.42; the utility dots the i.
+  rightButtonFadeIn: 0.46,
 };
 
 // Scroll collapse/expand use the same absorb/regrow grammar as the menu:
@@ -412,12 +417,43 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTabMenuOpen]);
 
+  // Selection sequence, beat one: the pressed row visibly takes the
+  // selection (highlight moves to it) and holds for a beat BEFORE the menu
+  // collapses — the choice is confirmed while the menu is still up. The
+  // tab itself commits when the collapse starts, so the left icon swaps
+  // with the collapse rather than during the hold.
+  const [pendingTab, setPendingTab] = useState<string | null>(null);
+  const selectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (selectTimer.current) clearTimeout(selectTimer.current);
+    },
+    []
+  );
+  // Menu closed by any other path (Escape, toggle, outside click) while a
+  // confirmation was pending: abandon the pending selection cleanly.
+  useEffect(() => {
+    if (!isTabMenuOpen && pendingTab !== null) {
+      if (selectTimer.current) clearTimeout(selectTimer.current);
+      setPendingTab(null);
+    }
+  }, [isTabMenuOpen, pendingTab]);
+
   const handleSelectTab = (id: string) => {
-    setActiveTab(id);
-    setIsTabMenuOpen(false);
-    setIsFilterExpanded(false);
-    navButtonRef.current?.focus();
-    onTabChange?.(id);
+    if (pendingTab !== null) return; // one selection at a time
+    setPendingTab(id);
+    if (selectTimer.current) clearTimeout(selectTimer.current);
+    selectTimer.current = setTimeout(
+      () => {
+        setPendingTab(null);
+        setActiveTab(id);
+        setIsTabMenuOpen(false);
+        setIsFilterExpanded(false);
+        navButtonRef.current?.focus();
+        onTabChange?.(id);
+      },
+      Math.round(dur(SELECT_CONFIRM_S) * 1000)
+    );
   };
 
   const handleFilterClick = () => {
@@ -785,6 +821,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   <div>
                     {menuTabs.map((tab, rowIndex) => {
                       const isActive = tab.id === activeTab;
+                      // During the confirmation hold the highlight belongs
+                      // to the pressed row; the divider stays put (it
+                      // follows the committed tab) so rows never reflow.
+                      const isHighlighted =
+                        tab.id === (pendingTab ?? activeTab);
                       const Icon = tab.Icon;
                       return (
                         <React.Fragment key={tab.id}>
@@ -812,7 +853,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                             }
                             className={cn(
                               "flex items-center gap-3 px-3 py-2 rounded-[var(--radius-md)] text-sm w-full text-left transition-colors duration-200",
-                              isActive
+                              isHighlighted
                                 ? "font-semibold bg-[var(--select-bg)] text-[var(--select-fg)]"
                                 : "text-[var(--text-secondary)] hover:bg-[var(--action-ghost-bg-hover)] hover:text-[var(--text-primary)]"
                             )}
