@@ -386,7 +386,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           <motion.div
             ref={tabMenuContainerRef}
             className="relative h-14 flex items-center"
-            animate={{ width: 56, opacity: 1 }}
+            animate={{ width: 56, opacity: isFilterExpanded ? 0.45 : 1 }}
             transition={{ duration: dur(0.25), ease: EASE }}
           >
             <motion.div
@@ -422,11 +422,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 onClick={handleTabButtonClick}
                 className="absolute inset-[2px] rounded-full flex items-center justify-center transition-colors"
                 style={{ color: "var(--iris-700)" }}
+                aria-label={isCollapsed ? "Open controls" : undefined}
+                title={isCollapsed ? "Open controls" : undefined}
               >
                 <AnimatePresence mode="wait" initial={false}>
                   {!isTabMenuOpen && !menuClosing && (
                     <motion.div
-                      key={isCollapsed ? "logo" : (activeTabDef?.id ?? "tab")}
+                      key={activeTabDef?.id ?? "logo"}
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
@@ -443,9 +445,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                       }}
                       className="flex items-center justify-center"
                     >
-                      {isCollapsed ? (
-                        (logo ?? <DefaultLogo />)
-                      ) : activeTabDef ? (
+                      {/* Collapsed and expanded show the SAME current-tab
+                          icon — the collapsed circle is the left control,
+                          not a different button. Logo is the no-tab
+                          fallback only. */}
+                      {activeTabDef ? (
                         <NavIcon
                           Icon={activeTabDef.Icon}
                           className="w-6 h-6"
@@ -559,10 +563,15 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 "glass-nav",
                 "px-2.5 py-[5px]"
               )}
-              style={{ transformOrigin: "left center" }}
+              style={{
+                transformOrigin: "left center",
+                // Dim (don't remove) while the nav menu is open — background
+                // controls stay present but clearly inactive.
+                pointerEvents: isTabMenuOpen || isCollapsed ? "none" : "auto",
+              }}
               animate={{
-                opacity: isTabMenuOpen || isCollapsed ? 0 : 1,
-                scaleX: isTabMenuOpen || isCollapsed ? 0 : 1,
+                opacity: isCollapsed ? 0 : isTabMenuOpen ? 0.35 : 1,
+                scaleX: isCollapsed ? 0 : 1,
               }}
               transition={centerPillTransition}
             >
@@ -706,9 +715,16 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           {showRightButton && rightButton && (
             <motion.div
               className="relative h-14 flex items-center"
+              style={{
+                pointerEvents: isTabMenuOpen || isCollapsed ? "none" : "auto",
+              }}
               animate={{
-                width: isTabMenuOpen || isCollapsed ? 0 : 56,
-                opacity: isTabMenuOpen || isCollapsed ? 0 : 1,
+                width: isCollapsed ? 0 : 56,
+                opacity: isCollapsed
+                  ? 0
+                  : isTabMenuOpen || isFilterExpanded
+                    ? 0.35
+                    : 1,
               }}
               transition={rightButtonTransition}
             >

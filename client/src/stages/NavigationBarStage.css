@@ -158,3 +158,92 @@
     scroll-behavior: auto;
   }
 }
+
+/* ── Workflow bottom sheet (demo "workflow open" state) ─────────────── */
+
+.navigation-demo__sheet-scrim {
+  /* Fixed + above the bar (z 50): background controls dim behind the scrim
+     while a workflow sheet is open. */
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  border: 0;
+  padding: 0;
+  background: rgb(24 18 34 / 0.22);
+  cursor: pointer;
+}
+
+.navigation-demo__sheet {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 60;
+  margin-inline: auto;
+  width: min(100%, 32rem);
+  border-radius: 1.75rem 1.75rem 0 0;
+  border: 1px solid rgb(255 255 255 / 0.8);
+  border-bottom: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.96),
+    rgb(250 248 255 / 0.9)
+  );
+  box-shadow:
+    0 -14px 40px rgb(48 36 72 / 0.16),
+    inset 0 1px 0 rgb(255 255 255 / 0.9);
+  backdrop-filter: saturate(1.45) blur(18px);
+  -webkit-backdrop-filter: saturate(1.45) blur(18px);
+  padding: 0.5rem 1.25rem 2.25rem;
+}
+
+.navigation-demo__sheet-grabber {
+  width: 2.25rem;
+  height: 0.3rem;
+  margin: 0.4rem auto 0.9rem;
+  border-radius: 999px;
+  background: rgb(53 42 75 / 0.16);
+}
+
+.navigation-demo__sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.navigation-demo__sheet-header h2 {
+  margin: 0;
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.navigation-demo__sheet-header button {
+  border: 0;
+  background: var(--select-bg);
+  color: var(--select-fg);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.navigation-demo__sheet-body {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.navigation-demo__sheet-row {
+  height: 3.1rem;
+  border-radius: 0.9rem;
+  background: rgb(109 40 217 / 0.05);
+  border: 1px solid rgb(53 42 75 / 0.07);
+}
+
+.navigation-demo__sheet-row--short {
+  width: 62%;
+}

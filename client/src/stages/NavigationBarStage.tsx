@@ -2,6 +2,9 @@
  * Dstil source-stage reminder: the uploaded NavigationBar is the focal object.
  * The restrained ghost content exists only to provide real scrolling for its
  * built-in collapse choreography; it must never compete with the bottom bar.
+ *
+ * Playground states shown here: expanded, navigation open, filter menu,
+ * workflow sheet (tap any action), collapsed (scroll down).
  */
 import { NavigationBar } from "@/components/navigation-bar";
 import {
@@ -10,41 +13,69 @@ import {
   navigationRightButtons,
   navigationTabs,
 } from "@/demos/navigationBarDemo";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { type UIEvent, useCallback, useRef, useState } from "react";
 import "./NavigationBarStage.css";
 
 const ghostCards = [72, 48, 84, 60, 94, 56, 78, 66];
+const EASE = [0.2, 0, 0, 1] as const;
+
+// Scroll hysteresis: collapsing requires a decisive downward pull; expanding
+// only a small upward nudge. Asymmetric thresholds prevent flicker when the
+// scroll position hovers around a boundary.
+const COLLAPSE_AFTER_PX = 28;
+const EXPAND_AFTER_PX = 10;
+const ALWAYS_EXPANDED_ABOVE = 20;
 
 export default function NavigationBarStage() {
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
-  const lastScrollDecisionRef = useRef(0);
+  const anchorScrollRef = useRef(0);
+  const collapsedRef = useRef(false);
   const [activeTab, setActiveTab] = useState("home");
   const [activeFilter, setActiveFilter] = useState("pending");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeAction, setActiveAction] = useState<string | null>(null);
+  const [openSheet, setOpenSheet] = useState<string | null>(null);
   const [lastAction, setLastAction] = useState("Navigation Bar ready");
+  const prefersReducedMotion = useReducedMotion();
 
-  const handleScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
-    const scrollTop = event.currentTarget.scrollTop;
-
-    if (scrollTop < 20) {
-      setIsCollapsed(false);
-      lastScrollDecisionRef.current = scrollTop;
-      return;
-    }
-
-    const delta = scrollTop - lastScrollDecisionRef.current;
-    if (Math.abs(delta) < 18) {
-      return;
-    }
-
-    setIsCollapsed(delta > 0);
-    lastScrollDecisionRef.current = scrollTop;
+  const setCollapsed = useCallback((next: boolean, anchor: number) => {
+    collapsedRef.current = next;
+    anchorScrollRef.current = anchor;
+    setIsCollapsed(next);
   }, []);
 
+  const handleScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
+      const scrollTop = event.currentTarget.scrollTop;
+
+      if (scrollTop < ALWAYS_EXPANDED_ABOVE) {
+        if (collapsedRef.current) setCollapsed(false, scrollTop);
+        anchorScrollRef.current = scrollTop;
+        return;
+      }
+
+      const delta = scrollTop - anchorScrollRef.current;
+
+      if (!collapsedRef.current) {
+        if (delta > COLLAPSE_AFTER_PX) setCollapsed(true, scrollTop);
+        else if (delta < 0) anchorScrollRef.current = scrollTop; // ratchet up
+      } else {
+        if (delta < -EXPAND_AFTER_PX) setCollapsed(false, scrollTop);
+        else if (delta > 0) anchorScrollRef.current = scrollTop; // ratchet down
+      }
+    },
+    [setCollapsed]
+  );
+
   const expandFromLogo = useCallback(() => {
-    setIsCollapsed(false);
+    setCollapsed(false, scrollAreaRef.current?.scrollTop ?? 0);
     scrollAreaRef.current?.scrollBy({ top: -140, behavior: "smooth" });
+  }, [setCollapsed]);
+
+  const closeSheet = useCallback(() => {
+    setOpenSheet(null);
+    setActiveAction(null);
   }, []);
 
   const rightButton = navigationRightButtons[activeTab] ?? null;
@@ -98,6 +129,7 @@ export default function NavigationBarStage() {
           onTabChange={tab => {
             setActiveTab(tab);
             setActiveAction(null);
+            setOpenSheet(null);
             setLastAction(`${tab} tab selected`);
           }}
           onFilterChange={filter => {
@@ -105,7 +137,8 @@ export default function NavigationBarStage() {
             setLastAction(`${filter} filter selected`);
           }}
           onActionClick={(label, tab) => {
-            setActiveAction(prev => (prev === label ? null : label));
+            setActiveAction(label);
+            setOpenSheet(label);
             setLastAction(`${label} selected in ${tab}`);
           }}
           onRightButtonClick={() =>
@@ -113,6 +146,60 @@ export default function NavigationBarStage() {
           }
         />
       </div>
+
+      {/* Workflow bottom sheet — the "workflow open" playground state.
+          The scrim dims everything behind it, including the bar; the sheet
+          rises from directly beneath the engaged action. */}
+      <AnimatePresence>
+        {openSheet && (
+          <>
+            <motion.button
+              key="sheet-scrim"
+              type="button"
+              aria-label="Close sheet"
+              className="navigation-demo__sheet-scrim"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{
+                duration: prefersReducedMotion ? 0 : 0.18,
+                ease: EASE,
+              }}
+              onClick={closeSheet}
+            />
+            <motion.div
+              key="sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${openSheet} workflow`}
+              className="navigation-demo__sheet"
+              initial={{ y: prefersReducedMotion ? 0 : "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: prefersReducedMotion ? 0 : "100%" }}
+              transition={{
+                duration: prefersReducedMotion ? 0 : 0.28,
+                ease: EASE,
+              }}
+            >
+              <div
+                className="navigation-demo__sheet-grabber"
+                aria-hidden="true"
+              />
+              <div className="navigation-demo__sheet-header">
+                <h2>{openSheet}</h2>
+                <button type="button" onClick={closeSheet}>
+                  Done
+                </button>
+              </div>
+              <div className="navigation-demo__sheet-body" aria-hidden="true">
+                <div className="navigation-demo__sheet-row" />
+                <div className="navigation-demo__sheet-row" />
+                <div className="navigation-demo__sheet-row navigation-demo__sheet-row--short" />
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <p className="sr-only" aria-live="polite">
         {lastAction}
