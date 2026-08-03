@@ -15,12 +15,14 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   ArrowLeftRight,
+  Coins,
   CreditCard,
   Download,
   Filter,
   HandCoins,
   Home,
   ReceiptText,
+  Repeat,
   ScanLine,
   Search,
   Send,
@@ -47,10 +49,14 @@ export const navigationActions: Record<string, ActionDef[]> = {
     { Icon: Send, label: "Pay", showIcon: false },
     { Icon: HandCoins, label: "Request", showIcon: false },
   ],
+  // Five actions on Trade deliberately overflow the pill on phones —
+  // the row scrolls horizontally instead of squishing labels.
   trade: [
     { Icon: ArrowDownLeft, label: "Buy", showIcon: false },
     { Icon: ArrowUpRight, label: "Sell", showIcon: false },
     { Icon: ArrowLeftRight, label: "Swap", showIcon: false },
+    { Icon: Coins, label: "Stake", showIcon: false },
+    { Icon: Repeat, label: "Convert", showIcon: false },
   ],
   transactions: [{ Icon: Filter, label: "Filter", showIcon: false }],
 };

@@ -645,7 +645,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: dur(0.15), ease: EASE }}
-                    className="flex items-center gap-1.5 w-full h-full overflow-x-auto scrollbar-hide"
+                    className="flex items-center gap-1.5 w-full h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
+                    style={{
+                      touchAction: "pan-x",
+                      overscrollBehaviorX: "contain",
+                    }}
                   >
                     {filterOptions.map((option, index) => {
                       const isActive = option.id === activeFilter;
@@ -654,9 +658,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           key={option.id}
                           type="button"
                           onClick={() => handleSelectFilter(option.id)}
-                          initial={{ opacity: 0, scale: 0.92, y: 8 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.92, y: -8 }}
+                          /* Scale/fade only — a y offset here creates
+                             transient vertical overflow inside the scroll
+                             row, which strands chips mid-scroll. */
+                          initial={{ opacity: 0, scale: 0.92 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.92 }}
                           transition={{
                             duration: dur(0.16),
                             ease: EASE,
@@ -697,7 +704,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={centerIconsTransition}
-                    className="flex items-center gap-1.5 h-full w-full overflow-x-auto scrollbar-hide"
+                    className="flex items-center gap-1.5 h-full w-full overflow-x-auto overflow-y-hidden scrollbar-hide"
+                    style={{
+                      touchAction: "pan-x",
+                      overscrollBehaviorX: "contain",
+                    }}
                   >
                     {actionsForTab.map((action, actionIndex) => {
                       const isFilter = action.label === "Filter";
@@ -721,7 +732,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                               onActionClick?.(action.label, activeTab);
                             }}
                             className={cn(
-                              "nav-action-chip group/action flex-[1_1_0%] min-w-0 h-[38px] px-3 rounded-full flex items-center justify-center text-center",
+                              /* min-w-fit: with few actions chips stretch to
+                                 fill; with many the row scrolls horizontally
+                                 instead of squishing labels. */
+                              "nav-action-chip group/action flex-[1_1_0%] min-w-fit h-[38px] px-4 rounded-full flex items-center justify-center text-center",
                               isEngaged && "nav-action-chip--active"
                             )}
                             whileTap={

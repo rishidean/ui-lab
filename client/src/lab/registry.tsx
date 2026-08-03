@@ -171,7 +171,7 @@ export const labComponents: LabComponent[] = [
       "Open the tab menu — background controls dim rather than disappear",
       "On Trade, tap Search — the bar itself morphs into a search field",
       "On Home, tap the sparkle — the assistant sheet is the standard pattern",
-      "On Trade, three actions share the pill: Buy, Sell, Swap",
+      "On Trade, five actions overflow the pill — swipe the row horizontally",
       "On Transactions, tap the filter chip to expand Pending / Complete / Scheduled in place",
     ],
     aliases: ["action-bar"],
