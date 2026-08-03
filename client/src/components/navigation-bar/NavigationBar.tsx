@@ -217,6 +217,16 @@ export type NavigationBarProps = {
   onSearchClose?: () => void;
   onSearchChange?: (query: string) => void;
   searchPlaceholder?: string;
+  /** Fired on Enter with the current query; the field then closes. */
+  onSearchSubmit?: (query: string) => void;
+  /** True while a right-button utility surface (sheet, scanner, assistant)
+   *  is open or animating. The left control fades and the center bar is
+   *  absorbed toward the right button; controls restore when this returns
+   *  to false (after the surface has contracted). */
+  isUtilityOpen?: boolean;
+  /** Exposes the right utility button element — the shared origin that
+   *  utility surfaces grow out of and contract back into. */
+  rightButtonRef?: React.Ref<HTMLButtonElement>;
   onRightButtonClick?: () => void;
   activeFilter?: string;
   onFilterChange?: (filterId: string) => void;
@@ -242,6 +252,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   onSearchClose,
   onSearchChange,
   searchPlaceholder = "Search…",
+  onSearchSubmit,
+  isUtilityOpen = false,
+  rightButtonRef,
   onRightButtonClick,
   activeFilter = "",
   onFilterChange,
@@ -306,11 +319,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   }, [isCollapsed]);
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (isSearchOpen) {
       setIsTabMenuOpen(false);
       setIsFilterExpanded(false);
+      setSearchQuery("");
       // Focus only once the field has reached most of its final width, so
       // the mobile keyboard doesn't jump the viewport mid-morph.
       const t = setTimeout(
@@ -320,6 +335,22 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       return () => clearTimeout(t);
     }
   }, [isSearchOpen, prefersReducedMotion]);
+
+  // A utility surface is exclusive: it closes the menu and filter, and the
+  // bar's own controls lock as soon as the transition begins.
+  useEffect(() => {
+    if (isUtilityOpen) {
+      setIsTabMenuOpen(false);
+      setIsFilterExpanded(false);
+    }
+  }, [isUtilityOpen]);
+
+  const prevUtilityOpenRef = useRef(isUtilityOpen);
+  useEffect(() => {
+    prevUtilityOpenRef.current = isUtilityOpen;
+  }, [isUtilityOpen]);
+  const utilityOpening = isUtilityOpen && !prevUtilityOpenRef.current;
+  const utilityClosing = !isUtilityOpen && prevUtilityOpenRef.current;
 
   const navRef = useRef<HTMLDivElement | null>(null);
   const tabMenuContainerRef = useRef<HTMLDivElement | null>(null);
@@ -465,14 +496,23 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             ease: EASE_OUT,
             delay: del(CLOSE_DELAYS.pillGrow),
           }
-        : {
-            duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
-            ease: navCollapsing ? EASE_IN : EASE_OUT,
-            // Scroll collapse waits for the undot beat, same as menu open.
-            delay: del(
-              navCollapsing ? SCROLL_COLLAPSE_DELAYS.centerCollapse : 0
-            ),
-          },
+        : utilityOpening
+          ? // Absorbed toward the RIGHT button as the utility surface grows.
+            { duration: dur(DUR.direct), ease: EASE_IN }
+          : utilityClosing
+            ? // Restores after the surface has contracted into the button.
+              { duration: dur(DUR.expand), ease: EASE_OUT, delay: del(0.05) }
+            : {
+                duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
+                ease: navCollapsing ? EASE_IN : EASE_OUT,
+                // Scroll collapse waits for the undot beat, like menu open.
+                delay: del(
+                  navCollapsing ? SCROLL_COLLAPSE_DELAYS.centerCollapse : 0
+                ),
+              },
+    // The absorb origin flips instantly (left for menu/scroll, right for
+    // utility surfaces) — never animated, only the scale is.
+    originX: { duration: 0 },
     opacity: navCollapsing
       ? {
           duration: dur(DUR.label),
@@ -493,7 +533,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 ease: EASE_OUT,
                 delay: del(CLOSE_DELAYS.pillGrow),
               }
-            : { duration: dur(DUR.direct), ease: EASE },
+            : utilityOpening
+              ? { duration: dur(DUR.label), ease: EASE_IN, delay: del(0.04) }
+              : utilityClosing
+                ? { duration: dur(0.1), ease: EASE_OUT, delay: del(0.05) }
+                : { duration: dur(DUR.direct), ease: EASE },
   };
   const centerIconsTransition = navCollapsing
     ? {
@@ -578,10 +622,15 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           <motion.div
             ref={tabMenuContainerRef}
             className="relative h-14 flex items-center"
-            style={{ pointerEvents: isSearchOpen ? "none" : "auto" }}
+            style={{
+              pointerEvents: isSearchOpen || isUtilityOpen ? "none" : "auto",
+            }}
             animate={{
               width: isSearchOpen ? 0 : 56,
-              opacity: isSearchOpen ? 0 : isFilterExpanded ? 0.45 : 1,
+              // Utility surfaces fade the left control in place; search
+              // collapses it entirely.
+              opacity:
+                isSearchOpen || isUtilityOpen ? 0 : isFilterExpanded ? 0.45 : 1,
             }}
             transition={{ duration: dur(0.25), ease: EASE }}
           >
@@ -769,18 +818,20 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 "px-2.5 py-[5px]"
               )}
               style={{
-                // Dim (don't remove) while the nav menu is open — background
-                // controls stay present but clearly inactive.
-                pointerEvents: isTabMenuOpen || isCollapsed ? "none" : "auto",
+                pointerEvents:
+                  isTabMenuOpen || isCollapsed || isUtilityOpen
+                    ? "none"
+                    : "auto",
               }}
               animate={{
-                // Menu open ABSORBS the bar — fully hidden, not dimmed.
-                opacity: isCollapsed || isTabMenuOpen ? 0 : 1,
-                scaleX: isCollapsed || isTabMenuOpen ? 0 : 1,
-                // Animated alongside scaleX so framer holds the origin at the
-                // left edge every frame — the pill always shrinks toward the
-                // left control, never toward its own center.
-                originX: 0,
+                // Menu open and utility surfaces ABSORB the bar — fully
+                // hidden, not dimmed.
+                opacity: isCollapsed || isTabMenuOpen || isUtilityOpen ? 0 : 1,
+                scaleX: isCollapsed || isTabMenuOpen || isUtilityOpen ? 0 : 1,
+                // Animated alongside scaleX so framer holds the origin every
+                // frame. The bar absorbs toward whichever control owns the
+                // transition: left for menu/scroll, RIGHT for utilities.
+                originX: isUtilityOpen ? 1 : 0,
               }}
               transition={centerPillTransition}
             >
@@ -811,25 +862,49 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     <input
                       ref={searchInputRef}
                       type="text"
+                      value={searchQuery}
                       placeholder={searchPlaceholder}
-                      onChange={e => onSearchChange?.(e.target.value)}
+                      onChange={e => {
+                        setSearchQuery(e.target.value);
+                        onSearchChange?.(e.target.value);
+                      }}
                       onKeyDown={e => {
                         if (e.key === "Escape") onSearchClose?.();
+                        if (e.key === "Enter") {
+                          onSearchSubmit?.(searchQuery);
+                          onSearchClose?.();
+                        }
                       }}
                       className="min-w-0 flex-1 bg-transparent text-[14px] font-medium outline-none placeholder:text-[color:var(--text-quaternary)]"
                       style={{ color: "var(--text-primary)" }}
                     />
+                    {/* Clear resets the query; Cancel exits search. Two
+                        controls, two verbs — never one button doing both. */}
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery("");
+                          onSearchChange?.("");
+                          searchInputRef.current?.focus();
+                        }}
+                        aria-label="Clear search"
+                        className="shrink-0 rounded-full p-1.5 transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
+                      >
+                        <X
+                          className="h-4 w-4"
+                          strokeWidth={2.25}
+                          style={{ color: "var(--text-secondary)" }}
+                        />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={onSearchClose}
-                      aria-label="Close search"
-                      className="shrink-0 rounded-full p-1.5 transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
+                      className="shrink-0 rounded-full px-2.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
+                      style={{ color: "var(--select-fg)" }}
                     >
-                      <X
-                        className="h-4 w-4"
-                        strokeWidth={2.25}
-                        style={{ color: "var(--text-secondary)" }}
-                      />
+                      Cancel
                     </button>
                   </motion.div>
                 ) : isFilterExpanded && hasFilterAction ? (
@@ -1021,8 +1096,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             <motion.div
               className="relative h-14 flex items-center"
               style={{
+                // Disabled the moment a utility transition begins — the
+                // surface owns the interaction until it closes.
                 pointerEvents:
-                  isTabMenuOpen || isCollapsed || isSearchOpen
+                  isTabMenuOpen || isCollapsed || isSearchOpen || isUtilityOpen
                     ? "none"
                     : "auto",
               }}
@@ -1033,7 +1110,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 scale: isCollapsed || isSearchOpen || isTabMenuOpen ? 0.7 : 1,
                 opacity:
                   // Menu open hides the right utility entirely (first out,
-                  // last back); filter expansion only dims it.
+                  // last back); filter expansion only dims it. While a
+                  // utility surface is open it stays fully visible — the
+                  // surface grows out of it and contracts back into it.
                   isCollapsed || isSearchOpen || isTabMenuOpen
                     ? 0
                     : isFilterExpanded
@@ -1043,9 +1122,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               transition={rightButtonTransition}
             >
               <motion.button
+                ref={rightButtonRef}
                 type="button"
                 onClick={onRightButtonClick}
                 aria-label={rightButton.label}
+                aria-expanded={isUtilityOpen || undefined}
+                disabled={isUtilityOpen}
                 className="group relative w-14 h-14 rounded-full flex items-center justify-center pointer-events-auto"
                 whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.93 }}

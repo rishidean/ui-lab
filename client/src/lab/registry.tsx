@@ -98,7 +98,12 @@ const rightButtons = {
   isSearchOpen={isSearchOpen}        // capsule morphs into a search field
   onSearchClose={() => setIsSearchOpen(false)}
   onSearchChange={setQuery}
+  onSearchSubmit={runSearch}         // Enter commits, then the field closes
   searchPlaceholder="Search markets…"
+  isUtilityOpen={utility !== null}   // bar absorbs toward the right button
+                                     // while a utility surface is open
+  rightButtonRef={rightButtonRef}    // shared origin: measure its bounds and
+                                     // grow your surface out of it
   onTabChange={setActiveTab}
   onFilterChange={setActiveFilter}
   onActionClick={(label, tab) => console.log(label, tab)}
@@ -170,7 +175,9 @@ export const labComponents: LabComponent[] = [
       "Tap Deposit — a workflow sheet rises and the lavender pill marks the engaged action",
       "Open the tab menu — the bar is absorbed into the circle and the menu grows out of it",
       "On Trade, tap Search — the bar itself morphs into a search field",
-      "On Home, tap the sparkle — the assistant sheet is the standard pattern",
+      "On Home, tap the sparkle — the assistant sheet grows out of the button (drag it to full screen)",
+      "On Spend, tap Scan — full-screen takeover with permission and error states",
+      "On Transactions, tap Export — a compact sheet grows from the button and contracts back into it",
       "On Trade, five actions overflow the pill — swipe the row horizontally",
       "On Transactions, tap the filter chip to expand Pending / Complete / Scheduled in place",
     ],
