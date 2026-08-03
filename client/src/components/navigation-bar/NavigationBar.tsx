@@ -99,6 +99,11 @@ export type FilterOption = {
 // prefers-reduced-motion collapses every duration and delay to 0.
 const EASE = [0.2, 0, 0, 1] as const;
 
+// Global tempo knob: every duration and delay is multiplied by this.
+// 1.0 = the nominal bands above; raise to make transitions more legible,
+// lower to tighten. Tuned by feel on device.
+const TEMPO = 1.3;
+
 const DUR = {
   press: 0.18, // pressed feedback, small fades
   direct: 0.2, // direct interactions
@@ -241,8 +246,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   );
 
   const prefersReducedMotion = useReducedMotion();
-  const dur = (d: number) => (prefersReducedMotion ? 0 : d);
-  const del = (d: number) => (prefersReducedMotion ? 0 : d);
+  const dur = (d: number) => (prefersReducedMotion ? 0 : d * TEMPO);
+  const del = (d: number) => (prefersReducedMotion ? 0 : d * TEMPO);
 
   useEffect(() => {
     if (!externalActiveTab) return;
@@ -298,7 +303,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       // the mobile keyboard doesn't jump the viewport mid-morph.
       const t = setTimeout(
         () => searchInputRef.current?.focus(),
-        prefersReducedMotion ? 0 : 220
+        prefersReducedMotion ? 0 : 220 * TEMPO
       );
       return () => clearTimeout(t);
     }
@@ -415,7 +420,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     if (filterCloseTimer.current) clearTimeout(filterCloseTimer.current);
     filterCloseTimer.current = setTimeout(
       () => setIsFilterExpanded(false),
-      prefersReducedMotion ? 0 : 200
+      prefersReducedMotion ? 0 : 200 * TEMPO
     );
   };
 

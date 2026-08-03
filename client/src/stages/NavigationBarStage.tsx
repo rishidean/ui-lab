@@ -31,7 +31,7 @@ const TOGGLE_COOLDOWN_MS = 350;
 const ALWAYS_EXPANDED_ABOVE = 20;
 // After a navigation selection the control collapses into the left circle
 // once the menu has closed and the icon has morphed.
-const COLLAPSE_AFTER_SELECT_MS = 180;
+const COLLAPSE_AFTER_SELECT_MS = 230;
 
 export default function NavigationBarStage() {
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
@@ -233,7 +233,7 @@ export default function NavigationBarStage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{
-                duration: prefersReducedMotion ? 0 : 0.18,
+                duration: prefersReducedMotion ? 0 : 0.22,
                 ease: EASE,
               }}
               onClick={closeSheet}
@@ -248,7 +248,7 @@ export default function NavigationBarStage() {
               animate={{ y: 0 }}
               exit={{ y: prefersReducedMotion ? 0 : "100%" }}
               transition={{
-                duration: prefersReducedMotion ? 0 : 0.28,
+                duration: prefersReducedMotion ? 0 : 0.34,
                 ease: EASE,
               }}
             >
