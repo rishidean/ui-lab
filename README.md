@@ -29,7 +29,7 @@ Open the URL Vite prints (normally `http://localhost:3000`).
 
 ## Deploy (Railway)
 
-The repo is Railway-ready out of the box: `pnpm build` produces `dist/`, and `pnpm start` serves it on `$PORT` via a small Express server. Create a Railway service from this GitHub repo and it deploys with no extra configuration (`railway.json` pins the build/start commands).
+The repo deploys via the included `Dockerfile` (pinned to Node 22): a build stage runs `pnpm build`, and a slim runtime stage serves `dist/` on `$PORT` through a small Express server. Create a Railway service from this GitHub repo and it deploys with no extra configuration (`railway.json` points Railway at the Dockerfile). Every push to `main` auto-deploys.
 
 ## Project structure
 
