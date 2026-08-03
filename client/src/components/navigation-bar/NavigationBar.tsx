@@ -682,13 +682,17 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.93 }}
                 transition={{ duration: dur(0.18), ease: EASE }}
               >
-                {/* Full-diameter aurora disc — the one aurora moment in the chrome */}
+                {/* Soft aurora disc — pastel wash over glass with the same
+                    gradient-border halo as the left button, so the two circles
+                    read as siblings rather than one shouting over the other. */}
                 <span
                   className="absolute inset-0 rounded-full"
                   style={{
-                    background: "var(--gradient-aurora)",
+                    background:
+                      "linear-gradient(135deg, color-mix(in oklab, #c4b5fd 40%, white) 0%, color-mix(in oklab, #f0abfc 34%, white) 46%, color-mix(in oklab, #a5b4fc 40%, white) 100%) padding-box, var(--gradient-aurora) border-box",
+                    border: "1.5px solid transparent",
                     boxShadow:
-                      "var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.55)",
+                      "var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.72)",
                   }}
                 />
                 {/* Aurora hover glow */}
@@ -697,7 +701,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   className="absolute inset-0 rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                   style={{
                     boxShadow:
-                      "0 0 22px -2px color-mix(in oklab, var(--aurora-lilac) 70%, transparent)",
+                      "0 0 20px -2px color-mix(in oklab, var(--aurora-lilac) 48%, transparent)",
                   }}
                 />
                 <span className="relative z-10 flex items-center justify-center">
