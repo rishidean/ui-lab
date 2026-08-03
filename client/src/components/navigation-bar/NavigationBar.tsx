@@ -101,6 +101,9 @@ export type NavigationBarProps = {
   onTabChange?: (tab: string) => void;
   activeTab?: string;
   onActionClick?: (label: string, tab: string) => void;
+  /** Label of the currently engaged action, if any. The pill treatment is
+   *  reserved for real state: only this chip gets the lavender inset fill. */
+  activeAction?: string | null;
   onRightButtonClick?: () => void;
   activeFilter?: string;
   onFilterChange?: (filterId: string) => void;
@@ -120,6 +123,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   onTabChange,
   activeTab: externalActiveTab,
   onActionClick,
+  activeAction = null,
   onRightButtonClick,
   activeFilter = "",
   onFilterChange,
@@ -370,14 +374,16 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               whileTap={prefersReducedMotion ? undefined : { scale: 0.93 }}
               transition={{ duration: dur(0.18), ease: EASE }}
             >
-              {/* Outer frosted circle with the aurora gradient-border halo
-                  (padding-box white glass over border-box aurora). */}
+              {/* Selected-navigation circle: faint iris-tinted fill with a
+                  slightly stronger purple border — this is the one element
+                  that reads "current place" in the resting composition. */}
               <motion.div
                 className="w-14 h-14 rounded-full"
                 style={{
                   background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.66)) padding-box, var(--gradient-aurora) border-box",
-                  border: "1.5px solid transparent",
+                    "linear-gradient(180deg, color-mix(in oklab, var(--iris-700) 5%, white), color-mix(in oklab, var(--iris-700) 11%, white))",
+                  border:
+                    "1.5px solid color-mix(in oklab, var(--iris-700) 30%, white)",
                   boxShadow:
                     "var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.75)",
                   backdropFilter: "saturate(1.5) blur(var(--blur-lg))",
@@ -536,9 +542,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             <motion.div
               layout
               className={cn(
-                "relative flex-1 h-14 rounded-full overflow-hidden pointer-events-auto z-10 min-w-0",
+                "relative flex-1 h-12 rounded-full overflow-hidden pointer-events-auto z-10 min-w-0",
                 "glass-nav",
-                isFilterExpanded ? "px-1.5 py-1" : "px-1.5 py-1.5"
+                "px-2 py-[5px]"
               )}
               style={{ transformOrigin: "left center" }}
               animate={{
@@ -579,7 +585,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                             prefersReducedMotion ? undefined : { scale: 0.96 }
                           }
                           className={cn(
-                            "flex-[1_1_0%] min-w-fit h-[42px] px-4 rounded-full text-[13px] font-medium whitespace-nowrap",
+                            "flex-[1_1_0%] min-w-fit h-[38px] px-4 rounded-full text-[13px] font-medium whitespace-nowrap",
                             isActive
                               ? "transition-colors duration-200"
                               : "nav-action-chip text-[color:var(--text-secondary)]"
@@ -609,52 +615,58 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     transition={centerIconsTransition}
                     className="flex items-center gap-1 h-full w-full overflow-x-auto scrollbar-hide"
                   >
-                    {actionsForTab.map(action => {
+                    {actionsForTab.map((action, actionIndex) => {
                       const isFilter = action.label === "Filter";
+                      const isEngaged =
+                        !isFilter && activeAction === action.label;
                       return (
-                        <motion.button
-                          key={action.label}
-                          type="button"
-                          onClick={() => {
-                            if (isFilter) {
-                              handleFilterClick();
-                              return;
-                            }
-                            onActionClick?.(action.label, activeTab);
-                          }}
-                          className="nav-action-chip group/action flex-[1_1_0%] min-w-0 h-[42px] px-3 rounded-full flex items-center justify-center text-center"
-                          whileTap={
-                            prefersReducedMotion ? undefined : { scale: 0.96 }
-                          }
-                          transition={{ duration: dur(0.14), ease: EASE }}
-                        >
-                          <span className="flex items-center gap-1.5 whitespace-nowrap">
-                            {isFilter && currentFilterOption ? (
-                              <span
-                                className="text-[13px] font-medium"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {currentFilterOption.label}
-                              </span>
-                            ) : (
-                              <>
-                                {action.showIcon !== false && (
-                                  <NavIcon
-                                    Icon={action.Icon}
-                                    size={16}
-                                    className="text-[color:var(--text-tertiary)]"
-                                  />
-                                )}
-                                <span
-                                  className="text-[13px] font-medium"
-                                  style={{ color: "var(--text-primary)" }}
-                                >
-                                  {action.label}
-                                </span>
-                              </>
+                        <React.Fragment key={action.label}>
+                          {actionIndex > 0 && (
+                            <span
+                              aria-hidden="true"
+                              className="nav-action-divider"
+                            />
+                          )}
+                          <motion.button
+                            type="button"
+                            onClick={() => {
+                              if (isFilter) {
+                                handleFilterClick();
+                                return;
+                              }
+                              onActionClick?.(action.label, activeTab);
+                            }}
+                            className={cn(
+                              "nav-action-chip group/action flex-[1_1_0%] min-w-0 h-[38px] px-3 rounded-full flex items-center justify-center text-center",
+                              isEngaged && "nav-action-chip--active"
                             )}
-                          </span>
-                        </motion.button>
+                            whileTap={
+                              prefersReducedMotion ? undefined : { scale: 0.96 }
+                            }
+                            transition={{ duration: dur(0.14), ease: EASE }}
+                          >
+                            <span className="flex items-center gap-1.5 whitespace-nowrap">
+                              {isFilter && currentFilterOption ? (
+                                <span className="text-[13px] font-medium text-inherit">
+                                  {currentFilterOption.label}
+                                </span>
+                              ) : (
+                                <>
+                                  {action.showIcon !== false && (
+                                    <NavIcon
+                                      Icon={action.Icon}
+                                      size={16}
+                                      className="text-[color:var(--text-tertiary)]"
+                                    />
+                                  )}
+                                  <span className="text-[13px] font-medium text-inherit">
+                                    {action.label}
+                                  </span>
+                                </>
+                              )}
+                            </span>
+                          </motion.button>
+                        </React.Fragment>
                       );
                     })}
                   </motion.div>
@@ -682,17 +694,19 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.93 }}
                 transition={{ duration: dur(0.18), ease: EASE }}
               >
-                {/* Soft aurora disc — pastel wash over glass with the same
-                    gradient-border halo as the left button, so the two circles
-                    read as siblings rather than one shouting over the other. */}
+                {/* Neutral action circle: frosted white with a muted
+                    gray-lilac border and dark icon. Deliberately quieter than
+                    the selected navigation circle on the left. */}
                 <span
                   className="absolute inset-0 rounded-full"
                   style={{
                     background:
-                      "linear-gradient(135deg, color-mix(in oklab, #c4b5fd 40%, white) 0%, color-mix(in oklab, #f0abfc 34%, white) 46%, color-mix(in oklab, #a5b4fc 40%, white) 100%) padding-box, var(--gradient-aurora) border-box",
-                    border: "1.5px solid transparent",
+                      "linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,255,255,0.72))",
+                    border: "1px solid rgb(88 71 116 / 0.18)",
                     boxShadow:
-                      "var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.72)",
+                      "var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.8)",
+                    backdropFilter: "saturate(1.4) blur(var(--blur-lg))",
+                    WebkitBackdropFilter: "saturate(1.4) blur(var(--blur-lg))",
                   }}
                 />
                 {/* Aurora hover glow */}

@@ -21,6 +21,7 @@ export default function NavigationBarStage() {
   const [activeTab, setActiveTab] = useState("home");
   const [activeFilter, setActiveFilter] = useState("pending");
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [activeAction, setActiveAction] = useState<string | null>(null);
   const [lastAction, setLastAction] = useState("Navigation Bar ready");
 
   const handleScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
@@ -88,6 +89,7 @@ export default function NavigationBarStage() {
           isCollapsed={isCollapsed}
           activeTab={activeTab}
           activeFilter={activeFilter}
+          activeAction={activeAction}
           tabs={navigationTabs}
           tabActions={navigationActions}
           filterOptions={navigationFilters}
@@ -95,15 +97,17 @@ export default function NavigationBarStage() {
           onLogoClick={expandFromLogo}
           onTabChange={tab => {
             setActiveTab(tab);
+            setActiveAction(null);
             setLastAction(`${tab} tab selected`);
           }}
           onFilterChange={filter => {
             setActiveFilter(filter);
             setLastAction(`${filter} filter selected`);
           }}
-          onActionClick={(label, tab) =>
-            setLastAction(`${label} selected in ${tab}`)
-          }
+          onActionClick={(label, tab) => {
+            setActiveAction(prev => (prev === label ? null : label));
+            setLastAction(`${label} selected in ${tab}`);
+          }}
           onRightButtonClick={() =>
             setLastAction(`${rightButton?.label ?? "Right button"} selected`)
           }

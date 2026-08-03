@@ -93,6 +93,8 @@ const rightButtons = {
   isCollapsed={isCollapsed}          // drive from your scroll direction
   activeTab={activeTab}
   activeFilter={activeFilter}
+  activeAction={activeAction}        // engaged action gets the lavender pill;
+                                     // resting actions are plain labels
   onTabChange={setActiveTab}
   onFilterChange={setActiveFilter}
   onActionClick={(label, tab) => console.log(label, tab)}
@@ -161,6 +163,7 @@ export const labComponents: LabComponent[] = [
       "Scroll the canvas down to collapse the bar, up to expand it",
       "Tap the left circle to open the tab menu — Home, Spend, Trade, Transactions",
       "Switch tabs — actions and the right-side button change with the tab",
+      "Tap Deposit — the lavender pill marks the engaged action; tap again to release",
       "On Trade, three actions share the pill: Buy, Sell, Swap",
       "On Transactions, tap the filter chip to expand Pending / Complete / Scheduled in place",
     ],
