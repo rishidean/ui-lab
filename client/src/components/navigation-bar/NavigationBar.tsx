@@ -8,6 +8,7 @@
 import React, { useEffect, useRef, useState, useLayoutEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
 
 // Default collapsed-state glyph: a small aurora dot. A brand mark, not a
 // placeholder icon — consumers pass `logo` to supply their own.
@@ -44,7 +45,10 @@ export type FilterOption = {
 
 // Aura ease-standard (cubic-bezier(0.2, 0, 0, 1)); no spring/overshoot.
 const EASE = [0.2, 0, 0, 1] as const;
-const MENU_FINE_TUNE = { x: -20, y: 15 };
+// Keep the menu visually anchored to the circle it grows from: x ≈ 0 aligns
+// the menu's left edge with the circle's left edge (the icon-centering math
+// already lands within 2px), so the menu reads as the circle unfolding.
+const MENU_FINE_TUNE = { x: -2, y: 15 };
 
 // Choreography delays retuned for Aura: scaled so every element's
 // (delay + duration) stays ≤ 340ms (the --dur-slow ceiling).
@@ -402,7 +406,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   border:
                     "1.5px solid color-mix(in oklab, var(--iris-700) 30%, white)",
                   boxShadow:
-                    "var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.75)",
+                    "0 10px 28px rgb(48 36 72 / 0.12), inset 0 1px 0 rgba(255,255,255,0.8)",
                   backdropFilter: "saturate(1.5) blur(var(--blur-lg))",
                   WebkitBackdropFilter: "saturate(1.5) blur(var(--blur-lg))",
                 }}
@@ -510,7 +514,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                             type="button"
                             onClick={() => handleSelectTab(tab.id)}
                             className={cn(
-                              "flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-md)] text-sm w-full text-left transition-colors duration-200",
+                              "flex items-center gap-3 px-3 py-2 rounded-[var(--radius-md)] text-sm w-full text-left transition-colors duration-200",
                               isActive
                                 ? "font-semibold bg-[var(--select-bg)] text-[var(--select-fg)]"
                                 : "text-[var(--text-secondary)] hover:bg-[var(--action-ghost-bg-hover)] hover:text-[var(--text-primary)]"
@@ -655,10 +659,24 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                             transition={{ duration: dur(0.14), ease: EASE }}
                           >
                             <span className="flex items-center gap-1.5 whitespace-nowrap">
-                              {isFilter && currentFilterOption ? (
-                                <span className="text-[14px] font-semibold tracking-[-0.01em] text-inherit">
-                                  {currentFilterOption.label}
-                                </span>
+                              {isFilter ? (
+                                /* Value + chevron: a control cue, not a CTA.
+                                   Medium weight distinguishes "current value"
+                                   from the heavier action verbs. */
+                                <>
+                                  <span className="text-[14px] font-medium text-inherit">
+                                    {currentFilterOption?.label ?? action.label}
+                                  </span>
+                                  <ChevronDown
+                                    aria-hidden="true"
+                                    className={cn(
+                                      "h-3.5 w-3.5 shrink-0 transition-transform duration-200",
+                                      isFilterExpanded && "rotate-180"
+                                    )}
+                                    strokeWidth={2.25}
+                                    style={{ color: "var(--text-tertiary)" }}
+                                  />
+                                </>
                               ) : (
                                 <>
                                   {action.showIcon !== false && (
@@ -710,10 +728,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   className="absolute inset-0 rounded-full"
                   style={{
                     background:
-                      "linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,255,255,0.72))",
-                    border: "1px solid rgb(88 71 116 / 0.18)",
+                      "linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.66))",
+                    border: "1px solid rgb(88 71 116 / 0.14)",
                     boxShadow:
-                      "var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.8)",
+                      "0 10px 28px rgb(48 36 72 / 0.12), inset 0 1px 0 rgba(255,255,255,0.8)",
                     backdropFilter: "saturate(1.4) blur(var(--blur-lg))",
                     WebkitBackdropFilter: "saturate(1.4) blur(var(--blur-lg))",
                   }}
