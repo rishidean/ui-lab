@@ -88,49 +88,73 @@ export type FilterOption = {
   label: string;
 };
 
-// Aura ease-standard (cubic-bezier(0.2, 0, 0, 1)); no spring/overshoot.
+// ─── Motion system ──────────────────────────────────────────────────────
+// Four component states: expanded, collapsed, navigation-open, search-active.
+// One shared curve (ease-standard, no overshoot) across every transition.
+// Two speed bands:
+//   direct interactions        180–240ms  (press, menu, filter, label fades)
+//   full component transforms  240–320ms  (collapse, expand, search morph)
+// The three controls move on one continuous path — containers transform,
+// labels fade only after movement has begun, nothing fades independently.
+// prefers-reduced-motion collapses every duration and delay to 0.
 const EASE = [0.2, 0, 0, 1] as const;
+
+const DUR = {
+  press: 0.18, // pressed feedback, small fades
+  direct: 0.2, // direct interactions
+  menuOpen: 0.18,
+  menuClose: 0.16,
+  collapse: 0.26, // full transform: 220–280 band
+  expand: 0.2, // reveal is faster than collapse: 180–220 band
+  search: 0.28, // search morph: 260–320 band
+  label: 0.12, // label/divider fades within a transform
+};
+
 // Keep the menu visually anchored to the circle it grows from: x ≈ 0 aligns
 // the menu's left edge with the circle's left edge (the icon-centering math
 // already lands within 2px), so the menu reads as the circle unfolding.
 const MENU_FINE_TUNE = { x: -2, y: 15 };
+const MENU_ROW_STAGGER = 0.018; // ≤25ms per row
 
-// Choreography delays retuned for Aura: scaled so every element's
-// (delay + duration) stays ≤ 340ms (the --dur-slow ceiling).
+// Choreography offsets (seconds) within each transform.
 const OPEN_DELAYS = {
   rightButtonFade: 0.0,
-  centerIconsFade: 0.04,
-  centerSquish: 0.08,
-  tabButtonFade: 0.1,
-  menuGrow: 0.14,
+  centerIconsFade: 0.03,
+  centerSquish: 0.06,
+  tabButtonFade: 0.08,
+  menuGrow: 0.1,
 };
 
 const CLOSE_DELAYS = {
   menuFade: 0.0,
   tabButtonFadeIn: 0.0,
-  menuShrink: 0.04,
-  pillGrow: 0.08,
-  actionsFadeIn: 0.12,
-  rightButtonFadeIn: 0.14,
+  menuShrink: 0.03,
+  pillGrow: 0.05,
+  actionsFadeIn: 0.08,
+  rightButtonFadeIn: 0.1,
 };
 
 const SCROLL_COLLAPSE_DELAYS = {
   searchFade: 0.0,
-  centerCollapse: 0.06,
-  tabIconFade: 0.16,
-  logoFadeIn: 0.18,
+  labelFade: 0.04, // labels fade after movement begins
+  pillFade: 0.12, // container fades late, once nearly shrunk
+  centerCollapse: 0.0, // movement starts immediately
+  tabIconFade: 0.14,
+  logoFadeIn: 0.16,
 };
 
 const SCROLL_EXPAND_DELAYS = {
   logoFade: 0.0,
   tabIconFadeIn: 0.0,
-  centerExpand: 0.14,
-  searchFadeIn: 0.16,
+  centerExpand: 0.0, // container expands first…
+  labelFadeIn: 0.1, // …labels and dividers arrive in the final third
+  rightReveal: 0.06, // right control follows the center bar
+  searchFadeIn: 0.06,
 };
 
 const FILTER_DELAYS = {
-  optionsFadeIn: 0.06,
-  optionStagger: 0.03,
+  optionsFadeIn: 0.05,
+  optionStagger: 0.02,
 };
 
 // Aura icon — clean single-stroke glyph that inherits the parent's color
@@ -264,12 +288,21 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     }
   }, [isCollapsed]);
 
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
   useEffect(() => {
     if (isSearchOpen) {
       setIsTabMenuOpen(false);
       setIsFilterExpanded(false);
+      // Focus only once the field has reached most of its final width, so
+      // the mobile keyboard doesn't jump the viewport mid-morph.
+      const t = setTimeout(
+        () => searchInputRef.current?.focus(),
+        prefersReducedMotion ? 0 : 220
+      );
+      return () => clearTimeout(t);
     }
-  }, [isSearchOpen]);
+  }, [isSearchOpen, prefersReducedMotion]);
 
   const navRef = useRef<HTMLDivElement | null>(null);
   const tabMenuContainerRef = useRef<HTMLDivElement | null>(null);
@@ -324,8 +357,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     });
   }, [isTabMenuOpen, activeTab]);
 
+  const navButtonRef = useRef<HTMLButtonElement | null>(null);
+
   const handleTabButtonClick = () => {
     if (isCollapsed && onLogoClick) {
+      // Tap on the collapsed control expands the bar only — opening the
+      // menu requires a second, deliberate tap.
       onLogoClick();
       return;
     }
@@ -333,10 +370,27 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     setIsTabMenuOpen(open => !open);
   };
 
+  const closeMenu = (returnFocus: boolean) => {
+    setIsTabMenuOpen(false);
+    if (returnFocus) navButtonRef.current?.focus();
+  };
+
+  // Escape closes the menu and returns focus to the left control.
+  useEffect(() => {
+    if (!isTabMenuOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeMenu(true);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTabMenuOpen]);
+
   const handleSelectTab = (id: string) => {
     setActiveTab(id);
     setIsTabMenuOpen(false);
     setIsFilterExpanded(false);
+    navButtonRef.current?.focus();
     onTabChange?.(id);
   };
 
@@ -345,10 +399,44 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     setIsTabMenuOpen(false);
   };
 
+  // Selection sequence: highlight slides to the chosen value first, then the
+  // strip closes and the chip label updates — the value is visibly committed
+  // before the control changes shape.
+  const filterCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (filterCloseTimer.current) clearTimeout(filterCloseTimer.current);
+    },
+    []
+  );
+
   const handleSelectFilter = (filterId: string) => {
     onFilterChange?.(filterId);
-    setIsFilterExpanded(false);
+    if (filterCloseTimer.current) clearTimeout(filterCloseTimer.current);
+    filterCloseTimer.current = setTimeout(
+      () => setIsFilterExpanded(false),
+      prefersReducedMotion ? 0 : 200
+    );
   };
+
+  // Sliding selection highlight, measured against the option buttons.
+  // (Deliberately not framer's layoutId — shared-layout projection takes
+  // over ancestors' transform origins and breaks the pill's left-anchored
+  // collapse.)
+  const filterOptionRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [filterHighlight, setFilterHighlight] = useState<{
+    x: number;
+    w: number;
+  } | null>(null);
+  useLayoutEffect(() => {
+    if (!isFilterExpanded) {
+      setFilterHighlight(null);
+      return;
+    }
+    const el = filterOptionRefs.current[activeFilter];
+    if (!el) return;
+    setFilterHighlight({ x: el.offsetLeft, w: el.offsetWidth });
+  }, [isFilterExpanded, activeFilter, filterOptions]);
 
   const activeTabDef = tabs.find(t => t.id === activeTab) ?? tabs[0];
   const otherTabs = tabs.filter(t => t.id !== activeTabDef?.id);
@@ -367,35 +455,85 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     filterOptions.length,
     isFilterExpanded,
   ]);
+
+  // Measured so the right button can travel toward the left control during
+  // collapse (one continuous path) instead of fading out in place.
+  // offsetWidth ignores the scaleX transform, so the measurement is stable
+  // mid-animation.
+  const pillRef = useRef<HTMLDivElement | null>(null);
+  const [pillTravel, setPillTravel] = useState(0);
+  useEffect(() => {
+    const el = pillRef.current;
+    if (!el) return;
+    const measure = () => setPillTravel(el.offsetWidth + 8);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [hasActions]);
   const currentFilterOption = filterOptions.find(f => f.id === activeFilter);
 
-  // Transition helpers
+  // Transition helpers — per-property timing so containers move first and
+  // opacities follow, keeping the three controls on one continuous path.
   const centerPillTransition = {
-    duration: dur(0.2),
-    ease: EASE,
-    delay: del(
-      navCollapsing
-        ? SCROLL_COLLAPSE_DELAYS.centerCollapse
-        : navExpanding
-          ? SCROLL_EXPAND_DELAYS.centerExpand
-          : menuOpening
-            ? OPEN_DELAYS.centerSquish
-            : menuClosing
-              ? CLOSE_DELAYS.pillGrow
-              : 0
-    ),
+    // The container's shape change (scaleX) runs the full transform band;
+    // its opacity holds until the shrink is mostly done (collapse) or
+    // returns immediately (expand), so the bar never just fades away.
+    scaleX: {
+      duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
+      ease: EASE,
+      delay: del(
+        menuOpening
+          ? OPEN_DELAYS.centerSquish
+          : menuClosing
+            ? CLOSE_DELAYS.pillGrow
+            : 0
+      ),
+    },
+    opacity: navCollapsing
+      ? {
+          duration: dur(DUR.label),
+          ease: EASE,
+          delay: del(SCROLL_COLLAPSE_DELAYS.pillFade),
+        }
+      : navExpanding
+        ? { duration: dur(DUR.label), ease: EASE }
+        : {
+            duration: dur(DUR.direct),
+            ease: EASE,
+            delay: del(
+              menuOpening
+                ? OPEN_DELAYS.centerSquish
+                : menuClosing
+                  ? CLOSE_DELAYS.pillGrow
+                  : 0
+            ),
+          },
   };
-  const centerIconsTransition = {
-    duration: dur(0.14),
-    ease: EASE,
-    delay: del(
-      menuOpening
-        ? OPEN_DELAYS.centerIconsFade
-        : menuClosing
-          ? CLOSE_DELAYS.actionsFadeIn
-          : 0
-    ),
-  };
+  const centerIconsTransition = navCollapsing
+    ? {
+        duration: dur(DUR.label),
+        ease: EASE,
+        delay: del(SCROLL_COLLAPSE_DELAYS.labelFade),
+      }
+    : navExpanding
+      ? {
+          duration: dur(DUR.label),
+          ease: EASE,
+          delay: del(SCROLL_EXPAND_DELAYS.labelFadeIn),
+        }
+      : {
+          duration: dur(0.14),
+          ease: EASE,
+          delay: del(
+            menuOpening
+              ? OPEN_DELAYS.centerIconsFade
+              : menuClosing
+                ? CLOSE_DELAYS.actionsFadeIn
+                : 0
+          ),
+        };
   const tabButtonTransition = {
     duration: dur(0.14),
     ease: EASE,
@@ -408,24 +546,47 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     ),
   };
   const menuGrowTransition = {
-    duration: dur(0.2),
+    duration: dur(menuOpening ? DUR.menuOpen : DUR.menuClose),
     ease: EASE,
     delay: del(menuOpening ? OPEN_DELAYS.menuGrow : CLOSE_DELAYS.menuFade),
   };
   const rightButtonTransition = {
-    duration: dur(0.16),
-    ease: EASE,
-    delay: del(
-      navCollapsing
-        ? SCROLL_COLLAPSE_DELAYS.searchFade
-        : navExpanding
-          ? SCROLL_EXPAND_DELAYS.searchFadeIn
-          : menuOpening
-            ? OPEN_DELAYS.rightButtonFade
-            : menuClosing
-              ? CLOSE_DELAYS.rightButtonFadeIn
-              : 0
-    ),
+    // Position/size travel with the collapse transform; opacity trails so
+    // the button visibly approaches the left control before it fades.
+    x: {
+      duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
+      ease: EASE,
+      delay: del(navExpanding ? SCROLL_EXPAND_DELAYS.rightReveal : 0),
+    },
+    width: {
+      duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
+      ease: EASE,
+      delay: del(navExpanding ? SCROLL_EXPAND_DELAYS.rightReveal : 0),
+    },
+    scale: {
+      duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
+      ease: EASE,
+      delay: del(navExpanding ? SCROLL_EXPAND_DELAYS.rightReveal : 0),
+    },
+    opacity: navCollapsing
+      ? { duration: dur(0.14), ease: EASE, delay: del(0.1) }
+      : navExpanding
+        ? {
+            duration: dur(DUR.label),
+            ease: EASE,
+            delay: del(SCROLL_EXPAND_DELAYS.rightReveal + 0.04),
+          }
+        : {
+            duration: dur(0.16),
+            ease: EASE,
+            delay: del(
+              menuOpening
+                ? OPEN_DELAYS.rightButtonFade
+                : menuClosing
+                  ? CLOSE_DELAYS.rightButtonFadeIn
+                  : 0
+            ),
+          },
   };
 
   const soloIconAnimate = menuOpening
@@ -470,7 +631,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             <motion.div
               className="relative w-14 h-14 group pointer-events-auto"
               whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
-              whileTap={prefersReducedMotion ? undefined : { scale: 0.93 }}
+              /* Collapsed press dips slightly deeper before the expansion. */
+              whileTap={
+                prefersReducedMotion
+                  ? undefined
+                  : { scale: isCollapsed ? 0.9 : 0.93 }
+              }
               transition={{ duration: dur(0.18), ease: EASE }}
             >
               {/* Selected-navigation circle: faint iris-tinted fill with a
@@ -496,6 +662,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               />
 
               <motion.button
+                ref={navButtonRef}
                 type="button"
                 onClick={handleTabButtonClick}
                 className="absolute inset-[2px] rounded-full flex items-center justify-center transition-colors"
@@ -568,20 +735,22 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               {isTabMenuOpen && (
                 <motion.div
                   key="tab-menu"
-                  initial={{ opacity: 0, scale: 0.4 }}
+                  /* Entrance from ~96% scale with ≤12px of travel — the menu
+                     unfolds from the circle's anchor, it doesn't zoom in. */
+                  initial={{ opacity: 0, scale: 0.96 }}
                   animate={{
                     opacity: 1,
                     scale: 1,
                     x: menuIconOffset.x,
                     y: menuIconOffset.y,
                   }}
-                  exit={{ opacity: 0, scale: 0.4 }}
+                  exit={{ opacity: 0, scale: 0.97 }}
                   transition={menuGrowTransition}
                   className="absolute top-0 left-0 z-40 pointer-events-auto"
                   style={{ transformOrigin: "left bottom" }}
                 >
                   <div className="glass-overlay rounded-[var(--radius-xl)] p-1.5 min-w-[210px] overflow-hidden">
-                    {menuTabs.map(tab => {
+                    {menuTabs.map((tab, rowIndex) => {
                       const isActive = tab.id === activeTab;
                       const Icon = tab.Icon;
                       return (
@@ -592,9 +761,22 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                               style={{ background: "var(--border-subtle)" }}
                             />
                           )}
-                          <button
+                          <motion.button
                             type="button"
                             onClick={() => handleSelectTab(tab.id)}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{
+                              duration: dur(0.14),
+                              ease: EASE,
+                              delay: del(
+                                OPEN_DELAYS.menuGrow +
+                                  rowIndex * MENU_ROW_STAGGER
+                              ),
+                            }}
+                            whileTap={
+                              prefersReducedMotion ? undefined : { scale: 0.97 }
+                            }
                             className={cn(
                               "flex items-center gap-3 px-3 py-2 rounded-[var(--radius-md)] text-sm w-full text-left transition-colors duration-200",
                               isActive
@@ -602,27 +784,18 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                                 : "text-[var(--text-secondary)] hover:bg-[var(--action-ghost-bg-hover)] hover:text-[var(--text-primary)]"
                             )}
                           >
-                            <motion.div
+                            <div
                               ref={isActive ? menuActiveIconRef : undefined}
                               className="flex items-center justify-center w-6 h-6"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{
-                                opacity: {
-                                  duration: dur(0.16),
-                                  ease: EASE,
-                                  delay: del(OPEN_DELAYS.menuGrow),
-                                },
-                              }}
                             >
                               <Icon
                                 strokeWidth={1.75}
                                 className="w-5 h-5"
                                 style={{ opacity: 0.85 }}
                               />
-                            </motion.div>
+                            </div>
                             <span>{tab.label}</span>
-                          </button>
+                          </motion.button>
                         </React.Fragment>
                       );
                     })}
@@ -635,14 +808,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           {/* CENTER: Actions pill / Filter expansion */}
           {hasActions && (
             <motion.div
-              layout
+              ref={pillRef}
               className={cn(
                 "relative flex-1 h-12 rounded-full overflow-hidden pointer-events-auto z-10 min-w-0",
                 "glass-nav",
                 "px-2.5 py-[5px]"
               )}
               style={{
-                transformOrigin: "left center",
                 // Dim (don't remove) while the nav menu is open — background
                 // controls stay present but clearly inactive.
                 pointerEvents: isTabMenuOpen || isCollapsed ? "none" : "auto",
@@ -650,18 +822,29 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               animate={{
                 opacity: isCollapsed ? 0 : isTabMenuOpen ? 0.35 : 1,
                 scaleX: isCollapsed ? 0 : 1,
+                // Animated alongside scaleX so framer holds the origin at the
+                // left edge every frame — the pill always shrinks toward the
+                // left control, never toward its own center.
+                originX: 0,
               }}
               transition={centerPillTransition}
             >
               <AnimatePresence mode="wait">
                 {isSearchOpen ? (
-                  /* Search mode: wipes in right-to-left from the trigger. */
+                  /* Search mode: wipes in right-to-left from the trigger,
+                     slightly after the left control begins receding, so the
+                     morph reads as one motion. Entry is a full transform
+                     (search band); exit is a direct interaction. */
                   <motion.div
                     key="search"
                     initial={{ clipPath: "inset(0 0 0 100%)" }}
                     animate={{ clipPath: "inset(0 0 0 0%)" }}
                     exit={{ clipPath: "inset(0 0 0 100%)", opacity: 0 }}
-                    transition={{ duration: dur(0.26), ease: EASE }}
+                    transition={{
+                      duration: dur(0.24),
+                      ease: EASE,
+                      delay: del(0.06),
+                    }}
                     className="flex items-center gap-2 w-full h-full px-2"
                   >
                     <SearchGlyph
@@ -671,7 +854,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                       style={{ color: "var(--text-tertiary)" }}
                     />
                     <input
-                      autoFocus
+                      ref={searchInputRef}
                       type="text"
                       placeholder={searchPlaceholder}
                       onChange={e => onSearchChange?.(e.target.value)}
@@ -703,18 +886,56 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     transition={{ duration: dur(0.15), ease: EASE }}
                     ref={filterRowFade.ref}
                     onScroll={filterRowFade.onScroll}
-                    className="flex items-center gap-1.5 w-full h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
+                    className="relative flex items-center gap-1.5 w-full h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
                     style={{
                       touchAction: "pan-x",
                       overscrollBehaviorX: "contain",
                       ...filterRowFade.style,
                     }}
                   >
+                    {/* Measured sliding highlight — glides between values on
+                        selection instead of blinking chip to chip. */}
+                    {filterHighlight && (
+                      <motion.span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-0 rounded-full"
+                        style={{
+                          top: "50%",
+                          y: "-50%",
+                          height: 34,
+                          background: "var(--select-bg)",
+                          border: "1px solid var(--select-border)",
+                          boxShadow: "var(--shadow-xs)",
+                        }}
+                        initial={{
+                          opacity: 0,
+                          x: filterHighlight.x,
+                          width: filterHighlight.w,
+                        }}
+                        animate={{
+                          opacity: 1,
+                          x: filterHighlight.x,
+                          width: filterHighlight.w,
+                        }}
+                        transition={{
+                          opacity: {
+                            duration: dur(0.14),
+                            ease: EASE,
+                            delay: del(FILTER_DELAYS.optionsFadeIn),
+                          },
+                          x: { duration: dur(DUR.direct), ease: EASE },
+                          width: { duration: dur(DUR.direct), ease: EASE },
+                        }}
+                      />
+                    )}
                     {filterOptions.map((option, index) => {
                       const isActive = option.id === activeFilter;
                       return (
                         <motion.button
                           key={option.id}
+                          ref={el => {
+                            filterOptionRefs.current[option.id] = el;
+                          }}
                           type="button"
                           onClick={() => handleSelectFilter(option.id)}
                           /* Scale/fade only — a y offset here creates
@@ -735,21 +956,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                             prefersReducedMotion ? undefined : { scale: 0.96 }
                           }
                           className={cn(
-                            "flex-[1_1_0%] min-w-fit h-[34px] px-4 rounded-full text-[13px] font-medium whitespace-nowrap",
+                            "relative z-10 flex-[1_1_0%] min-w-fit h-[34px] px-4 rounded-full text-[13px] font-medium whitespace-nowrap",
+                            "transition-colors duration-200",
                             isActive
-                              ? "transition-colors duration-200"
+                              ? "text-[color:var(--select-fg)]"
                               : "nav-action-chip text-[color:var(--text-secondary)]"
                           )}
-                          style={
-                            isActive
-                              ? {
-                                  background: "var(--select-bg)",
-                                  border: "1px solid var(--select-border)",
-                                  color: "var(--select-fg)",
-                                  boxShadow: "var(--shadow-xs)",
-                                }
-                              : undefined
-                          }
                         >
                           {option.label}
                         </motion.button>
@@ -760,7 +972,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   <motion.div
                     key="actions"
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    animate={{ opacity: isCollapsed ? 0 : 1 }}
                     exit={{ opacity: 0 }}
                     transition={centerIconsTransition}
                     ref={actionsRowFade.ref}
@@ -861,6 +1073,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               }}
               animate={{
                 width: isCollapsed || isSearchOpen ? 0 : 56,
+                // Collapse: travel toward the left control along the same
+                // path the center bar shrinks on, scaling down slightly.
+                x: isCollapsed ? -pillTravel : 0,
+                scale: isCollapsed || isSearchOpen ? 0.8 : 1,
                 opacity:
                   isCollapsed || isSearchOpen
                     ? 0

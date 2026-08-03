@@ -14,18 +14,24 @@ import {
   navigationTabs,
 } from "@/demos/navigationBarDemo";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { type UIEvent, useCallback, useRef, useState } from "react";
+import { type UIEvent, useCallback, useEffect, useRef, useState } from "react";
 import "./NavigationBarStage.css";
 
 const ghostCards = [72, 48, 84, 60, 94, 56, 78, 66];
 const EASE = [0.2, 0, 0, 1] as const;
 
-// Scroll hysteresis: collapsing requires a decisive downward pull; expanding
-// only a small upward nudge. Asymmetric thresholds prevent flicker when the
+// Scroll hysteresis: collapsing requires a decisive downward pull (48–72px
+// band); expanding only a small upward nudge (12–24px band). Movements under
+// ~10px are ignored, and a short cooldown prevents rapid toggling when the
 // scroll position hovers around a boundary.
-const COLLAPSE_AFTER_PX = 28;
-const EXPAND_AFTER_PX = 10;
+const COLLAPSE_AFTER_PX = 56;
+const EXPAND_AFTER_PX = 16;
+const MIN_SCROLL_DELTA = 10;
+const TOGGLE_COOLDOWN_MS = 350;
 const ALWAYS_EXPANDED_ABOVE = 20;
+// After a navigation selection the control collapses into the left circle
+// once the menu has closed and the icon has morphed.
+const COLLAPSE_AFTER_SELECT_MS = 180;
 
 export default function NavigationBarStage() {
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
@@ -40,9 +46,29 @@ export default function NavigationBarStage() {
   const [lastAction, setLastAction] = useState("Navigation Bar ready");
   const prefersReducedMotion = useReducedMotion();
 
+  const lastToggleAtRef = useRef(0);
+  const overlayOpenRef = useRef(false);
+  const selectCollapseTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+
+  // Collapse is disabled while any overlay state is active (sheet, search).
+  useEffect(() => {
+    overlayOpenRef.current = openSheet !== null || isSearchOpen;
+  }, [openSheet, isSearchOpen]);
+
+  useEffect(
+    () => () => {
+      if (selectCollapseTimer.current)
+        clearTimeout(selectCollapseTimer.current);
+    },
+    []
+  );
+
   const setCollapsed = useCallback((next: boolean, anchor: number) => {
     collapsedRef.current = next;
     anchorScrollRef.current = anchor;
+    lastToggleAtRef.current = Date.now();
     setIsCollapsed(next);
     if (next) setIsSearchOpen(false);
   }, []);
@@ -58,12 +84,24 @@ export default function NavigationBarStage() {
       }
 
       const delta = scrollTop - anchorScrollRef.current;
+      if (Math.abs(delta) < MIN_SCROLL_DELTA) return; // ignore jitter
+
+      // No collapse while a sheet or search is open; keep the anchor fresh
+      // so closing the overlay doesn't inherit stale scroll distance.
+      if (overlayOpenRef.current) {
+        anchorScrollRef.current = scrollTop;
+        return;
+      }
+
+      const cooling = Date.now() - lastToggleAtRef.current < TOGGLE_COOLDOWN_MS;
 
       if (!collapsedRef.current) {
-        if (delta > COLLAPSE_AFTER_PX) setCollapsed(true, scrollTop);
+        if (delta > COLLAPSE_AFTER_PX && !cooling)
+          setCollapsed(true, scrollTop);
         else if (delta < 0) anchorScrollRef.current = scrollTop; // ratchet up
       } else {
-        if (delta < -EXPAND_AFTER_PX) setCollapsed(false, scrollTop);
+        if (delta < -EXPAND_AFTER_PX && !cooling)
+          setCollapsed(false, scrollTop);
         else if (delta > 0) anchorScrollRef.current = scrollTop; // ratchet down
       }
     },
@@ -140,6 +178,19 @@ export default function NavigationBarStage() {
             setOpenSheet(null);
             setIsSearchOpen(false);
             setLastAction(`${tab} tab selected`);
+            // Navigation-selection sequence: menu closes and the left icon
+            // morphs (component-side), then the bar collapses into the left
+            // circle. Skipped near the top of the page, where the bar always
+            // rests expanded.
+            if (selectCollapseTimer.current)
+              clearTimeout(selectCollapseTimer.current);
+            const scrollTop = scrollAreaRef.current?.scrollTop ?? 0;
+            if (scrollTop > ALWAYS_EXPANDED_ABOVE) {
+              selectCollapseTimer.current = setTimeout(
+                () => setCollapsed(true, scrollTop),
+                COLLAPSE_AFTER_SELECT_MS
+              );
+            }
           }}
           onFilterChange={filter => {
             setActiveFilter(filter);
