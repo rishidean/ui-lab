@@ -44,10 +44,11 @@ const TOGGLE_COOLDOWN_MS = 350;
 const ALWAYS_EXPANDED_ABOVE = 20;
 
 // ── Right-button utility surfaces ────────────────────────────────────────
-// Every utility uses the same shared-origin geometry: a circle reveal that
-// begins at the right button's exact bounds (28px radius at its center) and
-// grows to cover the destination. Close reverses the same geometry, faster.
-// Content fades in once the surface passes ~60% of its growth.
+// Full-screen takeovers (Scan) use a circle reveal from the button's exact
+// bounds. Bottom-sheet utilities (Export, Assistant) instead use the bar
+// grammar: the nav circle fades, the action bar sweeps into the button,
+// and the sheet widens out of the button's footprint before stretching
+// vertically — see UtilitySheetMorph below.
 type UtilityKind = "export" | "assistant" | "scan";
 
 const UTILITY_GROW: Record<UtilityKind, number> = {
@@ -136,10 +137,6 @@ function UtilitySurface({
             delay: reducedMotion ? 0 : grow * 0.6,
           }}
         >
-          {kind === "export" && <ExportSheet onClose={onClose} />}
-          {kind === "assistant" && (
-            <AssistantSheet onClose={onClose} reducedMotion={reducedMotion} />
-          )}
           {kind === "scan" && <ScanView onClose={onClose} />}
         </motion.div>
       </motion.div>
@@ -147,78 +144,240 @@ function UtilitySurface({
   );
 }
 
-/* Export: compact sheet — concise, immediately actionable choices.
-   One row demonstrates the "unavailable" utility state. */
-function ExportSheet({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="navigation-demo__sheet navigation-demo__sheet--compact">
-      <div className="navigation-demo__sheet-grabber" aria-hidden="true" />
-      <div className="navigation-demo__sheet-header">
-        <h2>Export</h2>
-        <button type="button" onClick={onClose}>
-          Done
-        </button>
-      </div>
-      <div className="navigation-demo__export-rows">
-        <button type="button" onClick={onClose}>
-          <FileSpreadsheet aria-hidden="true" /> Download CSV
-        </button>
-        <button type="button" disabled aria-disabled="true">
-          <FileText aria-hidden="true" /> Download PDF
-          <span className="navigation-demo__export-unavailable">
-            Unavailable
-          </span>
-        </button>
-        <button type="button" onClick={onClose}>
-          <Link2 aria-hidden="true" /> Share link
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* AI: large sheet, draggable between half and full height. The first
-   bubble shimmers — the assistant's loading state. */
-function AssistantSheet({
+/* Utility bottom sheets (Export, Assistant) as a morph of the RIGHT
+   button: after the bar has cleared itself (nav circle fades, action bar
+   sweeps into the button — sequenced by isUtilitySheetOpen inside the
+   NavigationBar), the sheet appears at the button's exact footprint,
+   widens outward to the full sheet width like a regrowing bar, then
+   stretches up and down to its initial height. Title and Done fade in
+   once geometry lands; body content a beat later. Close reverses. */
+function UtilitySheetMorph({
+  kind,
+  origin,
   onClose,
   reducedMotion,
 }: {
+  kind: "export" | "assistant";
+  origin: BoxOrigin;
   onClose: () => void;
   reducedMotion: boolean;
 }) {
+  const vw = typeof window !== "undefined" ? window.innerWidth : 400;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  const finalWidth = Math.min(vw - 24, 512);
+  const finalLeft = (vw - finalWidth) / 2;
+
+  // Assistant keeps its half ↔ full drag; heights resolved to px so the
+  // morph interpolates cleanly from the button's numeric height.
   const [isFull, setIsFull] = useState(false);
+  const sheetHeight =
+    kind === "assistant"
+      ? Math.round(vh * (isFull ? 0.94 : 0.62))
+      : ("auto" as const);
+
+  // After the entrance finishes, height changes (drag half ↔ full) use a
+  // direct transition instead of the entrance's delayed one.
+  const [opened, setOpened] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setOpened(true), reducedMotion ? 0 : 1100);
+    return () => clearTimeout(t);
+  }, [reducedMotion]);
+
+  const buttonState = {
+    left: origin.left,
+    width: origin.width,
+    bottom: vh - origin.bottom,
+    height: origin.height,
+    borderRadius: origin.height / 2,
+    boxShadow:
+      "0 10px 28px rgb(48 36 72 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.8)",
+  };
+  const sheetState = {
+    left: finalLeft,
+    width: finalWidth,
+    bottom: 12,
+    height: sheetHeight,
+    borderRadius: 28,
+    boxShadow:
+      "0 24px 60px rgb(48 36 72 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.9)",
+  };
+
+  // Same beat structure as the workflow sheet: widen → beat → stretch →
+  // title → beat → body.
+  const WIDEN = 0.24;
+  const STRETCH_AT = WIDEN + 0.08;
+  const STRETCH = 0.28;
+  const TITLE_AT = STRETCH_AT + STRETCH;
+  const BODY_AT = TITLE_AT + 0.14 + 0.06;
+
   return (
-    <motion.div
-      className="navigation-demo__sheet navigation-demo__sheet--assistant"
-      animate={{ height: isFull ? "94dvh" : "62dvh" }}
-      transition={{ duration: reducedMotion ? 0 : 0.26, ease: EASE }}
-      drag={reducedMotion ? false : "y"}
-      dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={{ top: 0.16, bottom: 0.24 }}
-      onDragEnd={(_, info) => {
-        if (info.offset.y < -70 && !isFull) setIsFull(true);
-        else if (info.offset.y > 70) {
-          if (isFull) setIsFull(false);
-          else onClose();
+    <>
+      <motion.button
+        type="button"
+        aria-label="Close"
+        className="navigation-demo__sheet-scrim"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{
+          duration: reducedMotion ? 0.01 : 0.22,
+          ease: EASE,
+          delay: reducedMotion ? 0 : STRETCH_AT,
+        }}
+        onClick={onClose}
+      />
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-label={kind === "assistant" ? "Assistant" : "Export"}
+        className={
+          "navigation-demo__sheet-morph" +
+          (kind === "assistant" ? " navigation-demo__sheet-morph--flex" : "")
         }
-      }}
-    >
-      <div className="navigation-demo__sheet-grabber" aria-hidden="true" />
-      <div className="navigation-demo__sheet-header">
-        <h2 className="navigation-demo__assistant-title">
-          {/* The assistant icon carries over from the trigger button. */}
-          <Sparkles aria-hidden="true" /> Assistant
-        </h2>
-        <button type="button" onClick={onClose}>
-          Done
-        </button>
-      </div>
-      <div className="navigation-demo__sheet-body" aria-hidden="true">
-        <div className="navigation-demo__sheet-bubble navigation-demo__sheet-bubble--user" />
-        <div className="navigation-demo__sheet-bubble navigation-demo__sheet-bubble--loading" />
-        <div className="navigation-demo__sheet-input">Ask anything…</div>
-      </div>
-    </motion.div>
+        initial={reducedMotion ? { opacity: 0 } : buttonState}
+        animate={reducedMotion ? { opacity: 1 } : sheetState}
+        drag={kind === "assistant" && opened && !reducedMotion ? "y" : false}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0.16, bottom: 0.24 }}
+        onDragEnd={(_, info) => {
+          if (info.offset.y < -70 && !isFull) setIsFull(true);
+          else if (info.offset.y > 70) {
+            if (isFull) setIsFull(false);
+            else onClose();
+          }
+        }}
+        exit={
+          reducedMotion
+            ? { opacity: 0 }
+            : {
+                ...buttonState,
+                // Reverse beats: drop to the button's height first, then
+                // narrow onto its footprint — the button fades back in
+                // underneath as this lands.
+                transition: {
+                  bottom: { delay: 0.06, duration: 0.22, ease: EASE_IN },
+                  height: { delay: 0.06, duration: 0.22, ease: EASE_IN },
+                  left: { delay: 0.32, duration: 0.2, ease: EASE_IN },
+                  width: { delay: 0.32, duration: 0.2, ease: EASE_IN },
+                  borderRadius: { delay: 0.32, duration: 0.2, ease: EASE_IN },
+                  boxShadow: { duration: 0.46, ease: EASE_IN },
+                },
+              }
+        }
+        transition={
+          reducedMotion
+            ? { duration: 0.01 }
+            : opened
+              ? { duration: 0.26, ease: EASE }
+              : {
+                  // Beat one: widen outward from the button's footprint.
+                  left: { duration: WIDEN, ease: EASE_OUT },
+                  width: { duration: WIDEN, ease: EASE_OUT },
+                  borderRadius: { duration: WIDEN, ease: EASE_OUT },
+                  // Beat two: stretch up and down simultaneously.
+                  bottom: {
+                    delay: STRETCH_AT,
+                    duration: STRETCH,
+                    ease: EASE_OUT,
+                  },
+                  height: {
+                    delay: STRETCH_AT,
+                    duration: STRETCH,
+                    ease: EASE_OUT,
+                  },
+                  boxShadow: { duration: TITLE_AT, ease: EASE_OUT },
+                }
+        }
+      >
+        <motion.div
+          className="navigation-demo__sheet-grabber"
+          aria-hidden="true"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.08 } }}
+          transition={{
+            duration: reducedMotion ? 0.01 : 0.14,
+            delay: reducedMotion ? 0 : TITLE_AT,
+          }}
+        />
+        <motion.div
+          style={{ minWidth: finalWidth - 40 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.08 } }}
+          transition={{
+            duration: reducedMotion ? 0.01 : 0.14,
+            ease: EASE_OUT,
+            delay: reducedMotion ? 0 : TITLE_AT,
+          }}
+        >
+          <div className="navigation-demo__sheet-header">
+            {kind === "assistant" ? (
+              <h2 className="navigation-demo__assistant-title">
+                {/* The assistant icon carries over from the trigger. */}
+                <Sparkles aria-hidden="true" /> Assistant
+              </h2>
+            ) : (
+              <h2>Export</h2>
+            )}
+            <button type="button" onClick={onClose}>
+              Done
+            </button>
+          </div>
+        </motion.div>
+        <motion.div
+          style={
+            kind === "assistant"
+              ? {
+                  minWidth: finalWidth - 40,
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                }
+              : { minWidth: finalWidth - 40 }
+          }
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{
+            opacity: 0,
+            y: 6,
+            transition: { duration: reducedMotion ? 0.01 : 0.08 },
+          }}
+          transition={{
+            duration: reducedMotion ? 0.01 : 0.18,
+            ease: EASE_OUT,
+            delay: reducedMotion ? 0 : BODY_AT,
+          }}
+        >
+          {kind === "export" ? (
+            <div className="navigation-demo__export-rows">
+              <button type="button" onClick={onClose}>
+                <FileSpreadsheet aria-hidden="true" /> Download CSV
+              </button>
+              <button type="button" disabled aria-disabled="true">
+                <FileText aria-hidden="true" /> Download PDF
+                <span className="navigation-demo__export-unavailable">
+                  Unavailable
+                </span>
+              </button>
+              <button type="button" onClick={onClose}>
+                <Link2 aria-hidden="true" /> Share link
+              </button>
+            </div>
+          ) : (
+            <div
+              className="navigation-demo__sheet-body"
+              style={{ marginTop: "auto" }}
+              aria-hidden="true"
+            >
+              <div className="navigation-demo__sheet-bubble navigation-demo__sheet-bubble--user" />
+              <div className="navigation-demo__sheet-bubble navigation-demo__sheet-bubble--loading" />
+              <div className="navigation-demo__sheet-input">Ask anything…</div>
+            </div>
+          )}
+        </motion.div>
+      </motion.div>
+    </>
   );
 }
 
@@ -503,6 +662,72 @@ export default function NavigationBarStage() {
     y: number;
   } | null>(null);
 
+  // ── Utility bottom sheets (Export, Assistant) — bar-grammar morph ──
+  // utilSheetPrep drives the nav's clear-out (left circle, bar, then the
+  // button itself) and stays true until the sheet has contracted back.
+  const [utilSheet, setUtilSheet] = useState<"export" | "assistant" | null>(
+    null
+  );
+  const [utilSheetPrep, setUtilSheetPrep] = useState(false);
+  const [utilSheetOrigin, setUtilSheetOrigin] = useState<BoxOrigin | null>(
+    null
+  );
+  const utilPrepTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (utilPrepTimer.current) clearTimeout(utilPrepTimer.current);
+    },
+    []
+  );
+
+  const openUtilitySheet = useCallback(
+    (kind: "export" | "assistant") => {
+      if (utilSheet || utilSheetPrep || utility || utilityClosing) return;
+      const rect = rightButtonRef.current?.getBoundingClientRect();
+      setUtilSheetOrigin(
+        rect
+          ? {
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height,
+              bottom: rect.bottom,
+            }
+          : {
+              top: window.innerHeight - 94,
+              left: window.innerWidth - 74,
+              width: 56,
+              height: 56,
+              bottom: window.innerHeight - 38,
+            }
+      );
+      // Clear-out first: nav circle fades (0.12 @ 0), bar sweeps into the
+      // button (0.2 @ 0.16) — at TEMPO ≈ 470ms. The sheet mounts as the
+      // button begins its own fade (0.4 ≈ 520ms), widening while it goes.
+      setUtilSheetPrep(true);
+      if (utilPrepTimer.current) clearTimeout(utilPrepTimer.current);
+      utilPrepTimer.current = setTimeout(
+        () => setUtilSheet(kind),
+        prefersReducedMotion ? 0 : 500
+      );
+    },
+    [utilSheet, utilSheetPrep, utility, utilityClosing, prefersReducedMotion]
+  );
+
+  const closeUtilitySheet = useCallback(() => {
+    setUtilSheet(null);
+  }, []);
+
+  // Escape closes an open utility sheet.
+  useEffect(() => {
+    if (!utilSheet) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeUtilitySheet();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [utilSheet, closeUtilitySheet]);
+
   const openUtility = useCallback(
     (kind: UtilityKind) => {
       // The right button is disabled the moment a transition begins; only
@@ -543,8 +768,18 @@ export default function NavigationBarStage() {
       sheetPrep ||
       isSearchOpen ||
       utility !== null ||
-      utilityClosing;
-  }, [openSheet, sheetPrep, isSearchOpen, utility, utilityClosing]);
+      utilityClosing ||
+      utilSheet !== null ||
+      utilSheetPrep;
+  }, [
+    openSheet,
+    sheetPrep,
+    isSearchOpen,
+    utility,
+    utilityClosing,
+    utilSheet,
+    utilSheetPrep,
+  ]);
 
   const setCollapsed = useCallback((next: boolean, anchor: number) => {
     collapsedRef.current = next;
@@ -673,6 +908,7 @@ export default function NavigationBarStage() {
           // open, and restore only after the surface has contracted.
           isUtilityOpen={utility !== null || utilityClosing}
           isActionSheetOpen={sheetPrep}
+          isUtilitySheetOpen={utilSheetPrep}
           onTabChange={tab => {
             setActiveTab(tab);
             setActiveAction(null);
@@ -723,20 +959,18 @@ export default function NavigationBarStage() {
             setLastAction(`${label} selected`);
             // Right-button utilities, all sharing the button as origin:
             //   Search → the bar itself morphs into a search field
-            //   AI     → large draggable assistant sheet
-            //   Scan   → full-screen capture takeover
-            //   Export → compact actionable sheet
+            //   AI     → large draggable assistant sheet (bar-grammar morph)
+            //   Export → compact actionable sheet (bar-grammar morph)
+            //   Scan   → full-screen capture takeover (circle reveal)
             if (label === "Search") {
               setIsSearchOpen(true);
               return;
             }
-            openUtility(
-              label === "AI"
-                ? "assistant"
-                : label === "Scan"
-                  ? "scan"
-                  : "export"
-            );
+            if (label === "Scan") {
+              openUtility("scan");
+              return;
+            }
+            openUtilitySheet(label === "AI" ? "assistant" : "export");
           }}
         />
       </div>
@@ -756,6 +990,26 @@ export default function NavigationBarStage() {
             kind={utility}
             origin={utilityOrigin}
             onClose={closeUtility}
+            reducedMotion={!!prefersReducedMotion}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Utility bottom sheets — widen out of the right button and stretch
+          vertically; contract back onto it on dismiss. */}
+      <AnimatePresence
+        onExitComplete={() => {
+          setUtilSheetOrigin(null);
+          setUtilSheetPrep(false); // button, bar, and circle fade back in
+          rightButtonRef.current?.focus();
+        }}
+      >
+        {utilSheet && utilSheetOrigin && (
+          <UtilitySheetMorph
+            key={utilSheet}
+            kind={utilSheet}
+            origin={utilSheetOrigin}
+            onClose={closeUtilitySheet}
             reducedMotion={!!prefersReducedMotion}
           />
         )}

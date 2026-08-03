@@ -552,3 +552,10 @@
   padding: 0.5rem 1.25rem 2.25rem;
   font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
 }
+
+/* Assistant variant of the morph: fixed height, body pinned to the bottom
+   like a conversation. */
+.navigation-demo__sheet-morph--flex {
+  display: flex;
+  flex-direction: column;
+}

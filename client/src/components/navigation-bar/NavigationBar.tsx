@@ -174,6 +174,24 @@ const SCROLL_EXPAND_DELAYS = {
   rightReveal: 0.24, // 2. …then the right utility dots the i
 };
 
+// ── Utility bottom sheets (Export, Assistant) — serial beats mirroring
+//    the workflow sheet but anchored to the RIGHT button:
+//    1. utility shows its pressed state (tap feedback),
+//    2. the nav circle fades out,
+//    3. the action bar collapses inward, left edge sweeping right,
+//    4. the utility fades WHILE the sheet widens out of its footprint.
+//    Close reverses: sheet contracts onto the button, utility fades back
+//    in, the bar regrows, the nav circle returns last.
+const UTILITY_SHEET_DELAYS = {
+  leftFade: 0.0, // 2. nav circle out first
+  barCollapse: 0.16, // 3. bar sweeps into the right button (dur ≈ direct)
+  barFade: 0.24, //    pill surface fades late in the sweep
+  rightFade: 0.4, // 4. utility fades as the sheet takes over its footprint
+  closeRightFadeIn: 0.0, // sheet has landed on the button; button returns
+  closeBarGrow: 0.16, // bar regrows out of it
+  closeLeftFadeIn: 0.4, // nav circle dots the other end last
+};
+
 const FILTER_DELAYS = {
   optionsFadeIn: 0.05,
   optionStagger: 0.02,
@@ -239,6 +257,11 @@ export type NavigationBarProps = {
    *  out (selected label lingers ~100ms longer), leaving the empty bar in
    *  place as the surface a workflow sheet stretches out of. */
   isActionSheetOpen?: boolean;
+  /** Utility bottom sheets (Export, Assistant): the LEFT circle fades
+      first, the bar collapses inward toward the right button, and the
+      right button itself fades as the sheet widens out of it. Search and
+      full-screen takeovers use their own sequences. */
+  isUtilitySheetOpen?: boolean;
   onRightButtonClick?: () => void;
   activeFilter?: string;
   onFilterChange?: (filterId: string) => void;
@@ -269,6 +292,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   rightButtonRef,
   centerBarRef,
   isActionSheetOpen = false,
+  isUtilitySheetOpen = false,
   onRightButtonClick,
   activeFilter = "",
   onFilterChange,
@@ -353,11 +377,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // A utility surface or action sheet is exclusive: it closes the menu and
   // filter, and the bar's own controls lock as soon as the transition begins.
   useEffect(() => {
-    if (isUtilityOpen || isActionSheetOpen) {
+    if (isUtilityOpen || isActionSheetOpen || isUtilitySheetOpen) {
       setIsTabMenuOpen(false);
       setIsFilterExpanded(false);
     }
-  }, [isUtilityOpen, isActionSheetOpen]);
+  }, [isUtilityOpen, isActionSheetOpen, isUtilitySheetOpen]);
 
   const prevUtilityOpenRef = useRef(isUtilityOpen);
   useEffect(() => {
@@ -365,6 +389,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   }, [isUtilityOpen]);
   const utilityOpening = isUtilityOpen && !prevUtilityOpenRef.current;
   const utilityClosing = !isUtilityOpen && prevUtilityOpenRef.current;
+
+  const prevUtilitySheetRef = useRef(isUtilitySheetOpen);
+  useEffect(() => {
+    prevUtilitySheetRef.current = isUtilitySheetOpen;
+  }, [isUtilitySheetOpen]);
+  const utilitySheetClosing =
+    !isUtilitySheetOpen && prevUtilitySheetRef.current;
 
   const navRef = useRef<HTMLDivElement | null>(null);
   const tabMenuContainerRef = useRef<HTMLDivElement | null>(null);
@@ -541,23 +572,46 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             ease: EASE_OUT,
             delay: del(CLOSE_DELAYS.pillGrow),
           }
-        : utilityOpening
-          ? // Absorbed toward the RIGHT button as the utility surface grows.
-            { duration: dur(DUR.direct), ease: EASE_IN }
-          : utilityClosing
-            ? // Restores after the surface has contracted into the button.
-              { duration: dur(DUR.expand), ease: EASE_OUT, delay: del(0.05) }
-            : {
-                duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
-                ease: navCollapsing ? EASE_IN : EASE_OUT,
-                // Scroll collapse waits for the undot beat, like menu open.
-                delay: del(
-                  navCollapsing ? SCROLL_COLLAPSE_DELAYS.centerCollapse : 0
-                ),
-              },
+        : isUtilitySheetOpen
+          ? // Utility sheet: the bar sweeps inward toward the right button
+            // AFTER the nav circle has left.
+            {
+              duration: dur(DUR.direct),
+              ease: EASE_IN,
+              delay: del(UTILITY_SHEET_DELAYS.barCollapse),
+            }
+          : utilitySheetClosing
+            ? // Regrows out of the button once the utility has returned.
+              {
+                duration: dur(DUR.expand),
+                ease: EASE_OUT,
+                delay: del(UTILITY_SHEET_DELAYS.closeBarGrow),
+              }
+            : utilityOpening
+              ? // Absorbed toward the RIGHT button as the surface grows.
+                { duration: dur(DUR.direct), ease: EASE_IN }
+              : utilityClosing
+                ? // Restores after the surface has contracted back.
+                  {
+                    duration: dur(DUR.expand),
+                    ease: EASE_OUT,
+                    delay: del(0.05),
+                  }
+                : {
+                    duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
+                    ease: navCollapsing ? EASE_IN : EASE_OUT,
+                    // Scroll collapse waits for the undot beat, like menu open.
+                    delay: del(
+                      navCollapsing ? SCROLL_COLLAPSE_DELAYS.centerCollapse : 0
+                    ),
+                  },
     // The absorb origin flips instantly (left for menu/scroll, right for
-    // utility surfaces) — never animated, only the scale is.
-    originX: { duration: 0 },
+    // utility surfaces) — never animated, only the scale is. Exception:
+    // when a utility sheet closes, the bar must REGROW from the right, so
+    // the flip back to 0 is held until the regrow has finished.
+    originX: utilitySheetClosing
+      ? { duration: 0, delay: del(UTILITY_SHEET_DELAYS.closeBarGrow + 0.22) }
+      : { duration: 0 },
     opacity: navCollapsing
       ? {
           duration: dur(DUR.label),
@@ -578,11 +632,28 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 ease: EASE_OUT,
                 delay: del(CLOSE_DELAYS.pillGrow),
               }
-            : utilityOpening
-              ? { duration: dur(DUR.label), ease: EASE_IN, delay: del(0.04) }
-              : utilityClosing
-                ? { duration: dur(0.1), ease: EASE_OUT, delay: del(0.05) }
-                : { duration: dur(DUR.direct), ease: EASE },
+            : isUtilitySheetOpen
+              ? // Surface fades late in the inward sweep.
+                {
+                  duration: dur(DUR.label),
+                  ease: EASE_IN,
+                  delay: del(UTILITY_SHEET_DELAYS.barFade),
+                }
+              : utilitySheetClosing
+                ? {
+                    duration: dur(0.1),
+                    ease: EASE_OUT,
+                    delay: del(UTILITY_SHEET_DELAYS.closeBarGrow),
+                  }
+                : utilityOpening
+                  ? {
+                      duration: dur(DUR.label),
+                      ease: EASE_IN,
+                      delay: del(0.04),
+                    }
+                  : utilityClosing
+                    ? { duration: dur(0.1), ease: EASE_OUT, delay: del(0.05) }
+                    : { duration: dur(DUR.direct), ease: EASE },
   };
   const centerIconsTransition = navCollapsing
     ? {
@@ -650,7 +721,22 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               ? // Fades in lockstep with the left circle — the two ends of
                 // the bar leave together before the labels follow.
                 { duration: dur(0.12), ease: EASE_IN }
-              : { duration: dur(0.16), ease: EASE },
+              : isUtilitySheetOpen
+                ? // Utility sheet: the button leaves LAST, as the sheet
+                  // widens out of its footprint.
+                  {
+                    duration: dur(0.12),
+                    ease: EASE_IN,
+                    delay: del(UTILITY_SHEET_DELAYS.rightFade),
+                  }
+                : utilitySheetClosing
+                  ? // …and returns FIRST once the sheet has landed on it.
+                    {
+                      duration: dur(0.12),
+                      ease: EASE_OUT,
+                      delay: del(UTILITY_SHEET_DELAYS.closeRightFadeIn),
+                    }
+                  : { duration: dur(0.16), ease: EASE },
   };
 
   return (
@@ -673,16 +759,22 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             className="relative h-14 flex items-center"
             style={{
               pointerEvents:
-                isSearchOpen || isUtilityOpen || isActionSheetOpen
+                isSearchOpen ||
+                isUtilityOpen ||
+                isActionSheetOpen ||
+                isUtilitySheetOpen
                   ? "none"
                   : "auto",
             }}
             animate={{
               width: isSearchOpen ? 0 : 56,
-              // Utility surfaces and the action-sheet fade phase fade the
-              // left control in place; search collapses it entirely.
+              // Utility surfaces and the sheet fade phases fade the left
+              // control in place; search collapses it entirely.
               opacity:
-                isSearchOpen || isUtilityOpen || isActionSheetOpen
+                isSearchOpen ||
+                isUtilityOpen ||
+                isActionSheetOpen ||
+                isUtilitySheetOpen
                   ? 0
                   : isFilterExpanded
                     ? 0.45
@@ -693,7 +785,21 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               // first beat of the sequence.
               isActionSheetOpen
                 ? { duration: dur(0.12), ease: EASE_IN }
-                : { duration: dur(0.25), ease: EASE }
+                : isUtilitySheetOpen
+                  ? // Utility sheet: nav circle leaves first…
+                    {
+                      duration: dur(0.12),
+                      ease: EASE_IN,
+                      delay: del(UTILITY_SHEET_DELAYS.leftFade),
+                    }
+                  : utilitySheetClosing
+                    ? // …and returns last on close.
+                      {
+                        duration: dur(0.14),
+                        ease: EASE_OUT,
+                        delay: del(UTILITY_SHEET_DELAYS.closeLeftFadeIn),
+                      }
+                    : { duration: dur(0.25), ease: EASE }
             }
           >
             <motion.div
@@ -890,19 +996,32 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   isTabMenuOpen ||
                   isCollapsed ||
                   isUtilityOpen ||
-                  isActionSheetOpen
+                  isActionSheetOpen ||
+                  isUtilitySheetOpen
                     ? "none"
                     : "auto",
               }}
               animate={{
                 // Menu open and utility surfaces ABSORB the bar — fully
                 // hidden, not dimmed.
-                opacity: isCollapsed || isTabMenuOpen || isUtilityOpen ? 0 : 1,
-                scaleX: isCollapsed || isTabMenuOpen || isUtilityOpen ? 0 : 1,
+                opacity:
+                  isCollapsed ||
+                  isTabMenuOpen ||
+                  isUtilityOpen ||
+                  isUtilitySheetOpen
+                    ? 0
+                    : 1,
+                scaleX:
+                  isCollapsed ||
+                  isTabMenuOpen ||
+                  isUtilityOpen ||
+                  isUtilitySheetOpen
+                    ? 0
+                    : 1,
                 // Animated alongside scaleX so framer holds the origin every
                 // frame. The bar absorbs toward whichever control owns the
                 // transition: left for menu/scroll, RIGHT for utilities.
-                originX: isUtilityOpen ? 1 : 0,
+                originX: isUtilityOpen || isUtilitySheetOpen ? 1 : 0,
               }}
               transition={centerPillTransition}
             >
@@ -1194,7 +1313,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   isCollapsed ||
                   isSearchOpen ||
                   isUtilityOpen ||
-                  isActionSheetOpen
+                  isActionSheetOpen ||
+                  isUtilitySheetOpen
                     ? "none"
                     : "auto",
               }}
@@ -1205,14 +1325,15 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 scale: isCollapsed || isSearchOpen || isTabMenuOpen ? 0.7 : 1,
                 opacity:
                   // Menu open hides the right utility entirely (first out,
-                  // last back); the action-sheet fade phase fades it in
-                  // place; filter expansion only dims it. While a utility
-                  // surface is open it stays fully visible — the surface
-                  // grows out of it and contracts back into it.
+                  // last back); the sheet fade phases fade it in place;
+                  // filter expansion only dims it. While a full-screen
+                  // takeover is open it stays visible — that surface grows
+                  // out of it and contracts back into it.
                   isCollapsed ||
                   isSearchOpen ||
                   isTabMenuOpen ||
-                  isActionSheetOpen
+                  isActionSheetOpen ||
+                  isUtilitySheetOpen
                     ? 0
                     : isFilterExpanded
                       ? 0.35
