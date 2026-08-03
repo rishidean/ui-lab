@@ -227,6 +227,9 @@ export type NavigationBarProps = {
   /** Exposes the right utility button element — the shared origin that
    *  utility surfaces grow out of and contract back into. */
   rightButtonRef?: React.Ref<HTMLButtonElement>;
+  /** Exposes the center action bar element — the shared origin that
+   *  workflow sheets grow out of on action press. */
+  centerBarRef?: React.Ref<HTMLDivElement>;
   onRightButtonClick?: () => void;
   activeFilter?: string;
   onFilterChange?: (filterId: string) => void;
@@ -255,6 +258,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   onSearchSubmit,
   isUtilityOpen = false,
   rightButtonRef,
+  centerBarRef,
   onRightButtonClick,
   activeFilter = "",
   onFilterChange,
@@ -812,6 +816,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           {/* CENTER: Actions pill / Filter expansion */}
           {hasActions && (
             <motion.div
+              ref={centerBarRef}
               className={cn(
                 "relative flex-1 h-12 rounded-full overflow-hidden pointer-events-auto z-10 min-w-0",
                 "glass-nav",

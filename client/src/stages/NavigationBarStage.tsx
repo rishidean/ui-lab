@@ -282,6 +282,144 @@ function ScanView({ onClose }: { onClose: () => void }) {
   );
 }
 
+/* Workflow sheet as a morph of the nav bar's center section: it starts as a
+   pixel-perfect clone of the action bar (same rect, radius, glass) hovering
+   where the bar sits — never from the viewport's bottom edge — and grows
+   upward/outward into the sheet. Dismiss reverses the same geometry back
+   into the originating action bar. */
+type BoxOrigin = {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  bottom: number;
+};
+
+function ActionSheetMorph({
+  label,
+  origin,
+  onClose,
+  reducedMotion,
+}: {
+  label: string;
+  origin: BoxOrigin;
+  onClose: () => void;
+  reducedMotion: boolean;
+}) {
+  const vw = typeof window !== "undefined" ? window.innerWidth : 400;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  const finalWidth = Math.min(vw, 512);
+  const finalLeft = (vw - finalWidth) / 2;
+
+  // The bar's pill: 48px tall, fully rounded, resting elevation.
+  const barState = {
+    left: origin.left,
+    width: origin.width,
+    bottom: vh - origin.bottom,
+    height: origin.height,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    boxShadow:
+      "0 10px 28px rgb(48 36 72 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.8)",
+  };
+  // The resting sheet: full width, bottom-anchored, sheet corners, higher
+  // elevation. Same container, second state.
+  const sheetState = {
+    left: finalLeft,
+    width: finalWidth,
+    bottom: 0,
+    height: "auto" as const,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    boxShadow:
+      "0 -14px 40px rgb(48 36 72 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.9)",
+  };
+
+  return (
+    <>
+      {/* Backdrop dims only after the surface begins expanding; the left and
+          right circles fade behind it. */}
+      <motion.button
+        type="button"
+        aria-label="Close sheet"
+        className="navigation-demo__sheet-scrim"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{
+          duration: reducedMotion ? 0.01 : 0.22,
+          ease: EASE,
+          delay: reducedMotion ? 0 : 0.08,
+        }}
+        onClick={onClose}
+      />
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${label} workflow`}
+        className="navigation-demo__sheet-morph"
+        initial={reducedMotion ? { opacity: 0 } : barState}
+        animate={reducedMotion ? { opacity: 1 } : sheetState}
+        exit={
+          reducedMotion
+            ? { opacity: 0 }
+            : {
+                ...barState,
+                transition: { duration: 0.26, ease: EASE_IN },
+              }
+        }
+        transition={{ duration: reducedMotion ? 0.01 : 0.38, ease: EASE_OUT }}
+      >
+        {/* Drag handle appears last. */}
+        <motion.div
+          className="navigation-demo__sheet-grabber"
+          aria-hidden="true"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{
+            duration: reducedMotion ? 0.01 : 0.14,
+            delay: reducedMotion ? 0 : 0.34,
+          }}
+        />
+        {/* Content fades and translates into place once the surface has
+            begun expanding; width is pinned so text never rewraps mid-grow. */}
+        <motion.div
+          style={{ minWidth: finalWidth - 40 }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{
+            opacity: 0,
+            y: 6,
+            transition: { duration: reducedMotion ? 0.01 : 0.1 },
+          }}
+          transition={{
+            duration: reducedMotion ? 0.01 : 0.2,
+            ease: EASE_OUT,
+            delay: reducedMotion ? 0 : 0.16,
+          }}
+        >
+          <div className="navigation-demo__sheet-header">
+            <h2>{label}</h2>
+            <button type="button" onClick={onClose}>
+              Done
+            </button>
+          </div>
+          <div className="navigation-demo__sheet-body" aria-hidden="true">
+            <div className="navigation-demo__sheet-row" />
+            <div className="navigation-demo__sheet-row" />
+            <div className="navigation-demo__sheet-row navigation-demo__sheet-row--short" />
+          </div>
+        </motion.div>
+      </motion.div>
+    </>
+  );
+}
+
 export default function NavigationBarStage() {
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const anchorScrollRef = useRef(0);
@@ -297,6 +435,8 @@ export default function NavigationBarStage() {
 
   // ── Utility surface state ──
   const rightButtonRef = useRef<HTMLButtonElement | null>(null);
+  const centerBarRef = useRef<HTMLDivElement | null>(null);
+  const [sheetOrigin, setSheetOrigin] = useState<BoxOrigin | null>(null);
   const [utility, setUtility] = useState<UtilityKind | null>(null);
   const [utilityClosing, setUtilityClosing] = useState(false);
   const [utilityOrigin, setUtilityOrigin] = useState<{
@@ -391,10 +531,21 @@ export default function NavigationBarStage() {
     scrollAreaRef.current?.scrollBy({ top: -140, behavior: "smooth" });
   }, [setCollapsed]);
 
+  // The engaged action stays highlighted until the sheet has contracted
+  // back into the bar (cleared in onExitComplete).
   const closeSheet = useCallback(() => {
     setOpenSheet(null);
-    setActiveAction(null);
   }, []);
+
+  // Escape closes the workflow sheet.
+  useEffect(() => {
+    if (!openSheet) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeSheet();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [openSheet, closeSheet]);
 
   const rightButton = navigationRightButtons[activeTab] ?? null;
 
@@ -444,6 +595,7 @@ export default function NavigationBarStage() {
           filterOptions={navigationFilters}
           rightButton={rightButton}
           rightButtonRef={rightButtonRef}
+          centerBarRef={centerBarRef}
           onLogoClick={expandFromLogo}
           isSearchOpen={isSearchOpen}
           onSearchClose={() => setIsSearchOpen(false)}
@@ -469,6 +621,26 @@ export default function NavigationBarStage() {
             setLastAction(`${filter} filter selected`);
           }}
           onActionClick={(label, tab) => {
+            // The sheet grows out of the center bar: capture its rect as
+            // the morph origin at press time (bar is frozen while open).
+            const rect = centerBarRef.current?.getBoundingClientRect();
+            setSheetOrigin(
+              rect
+                ? {
+                    top: rect.top,
+                    left: rect.left,
+                    width: rect.width,
+                    height: rect.height,
+                    bottom: rect.bottom,
+                  }
+                : {
+                    top: window.innerHeight - 86,
+                    left: 80,
+                    width: window.innerWidth - 160,
+                    height: 48,
+                    bottom: window.innerHeight - 38,
+                  }
+            );
             setActiveAction(label);
             setOpenSheet(label);
             setLastAction(`${label} selected in ${tab}`);
@@ -517,56 +689,22 @@ export default function NavigationBarStage() {
         )}
       </AnimatePresence>
 
-      {/* Workflow bottom sheet — the "workflow open" playground state for
-          center-bar actions. The scrim dims everything behind it. */}
-      <AnimatePresence>
-        {openSheet && (
-          <>
-            <motion.button
-              key="sheet-scrim"
-              type="button"
-              aria-label="Close sheet"
-              className="navigation-demo__sheet-scrim"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{
-                duration: prefersReducedMotion ? 0 : 0.22,
-                ease: EASE,
-              }}
-              onClick={closeSheet}
-            />
-            <motion.div
-              key="sheet"
-              role="dialog"
-              aria-modal="true"
-              aria-label={`${openSheet} workflow`}
-              className="navigation-demo__sheet"
-              initial={{ y: prefersReducedMotion ? 0 : "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: prefersReducedMotion ? 0 : "100%" }}
-              transition={{
-                duration: prefersReducedMotion ? 0 : 0.34,
-                ease: EASE,
-              }}
-            >
-              <div
-                className="navigation-demo__sheet-grabber"
-                aria-hidden="true"
-              />
-              <div className="navigation-demo__sheet-header">
-                <h2>{openSheet}</h2>
-                <button type="button" onClick={closeSheet}>
-                  Done
-                </button>
-              </div>
-              <div className="navigation-demo__sheet-body" aria-hidden="true">
-                <div className="navigation-demo__sheet-row" />
-                <div className="navigation-demo__sheet-row" />
-                <div className="navigation-demo__sheet-row navigation-demo__sheet-row--short" />
-              </div>
-            </motion.div>
-          </>
+      {/* Workflow sheet — grows out of the nav bar's center section on
+          action press and contracts back into it on dismiss. */}
+      <AnimatePresence
+        onExitComplete={() => {
+          setActiveAction(null);
+          setSheetOrigin(null);
+        }}
+      >
+        {openSheet && sheetOrigin && (
+          <ActionSheetMorph
+            key={openSheet}
+            label={openSheet}
+            origin={sheetOrigin}
+            onClose={closeSheet}
+            reducedMotion={!!prefersReducedMotion}
+          />
         )}
       </AnimatePresence>
 

@@ -172,7 +172,7 @@ export const labComponents: LabComponent[] = [
       "Scroll the canvas down to collapse the bar, up to expand it",
       "Tap the left circle to open the tab menu — Home, Spend, Trade, Transactions",
       "Switch tabs — actions and the right-side button change with the tab",
-      "Tap Deposit — a workflow sheet rises and the lavender pill marks the engaged action",
+      "Tap Deposit — the action bar itself grows into the workflow sheet, and contracts back on Done",
       "Open the tab menu — the bar is absorbed into the circle and the menu grows out of it",
       "On Trade, tap Search — the bar itself morphs into a search field",
       "On Home, tap the sparkle — the assistant sheet grows out of the button (drag it to full screen)",
