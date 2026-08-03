@@ -7,7 +7,7 @@ import { NavigationBar } from "@/components/navigation-bar";
 import {
   navigationActions,
   navigationFilters,
-  navigationRightButton,
+  navigationRightButtons,
   navigationTabs,
 } from "@/demos/navigationBarDemo";
 import { type UIEvent, useCallback, useRef, useState } from "react";
@@ -19,7 +19,7 @@ export default function NavigationBarStage() {
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const lastScrollDecisionRef = useRef(0);
   const [activeTab, setActiveTab] = useState("home");
-  const [activeFilter, setActiveFilter] = useState("today");
+  const [activeFilter, setActiveFilter] = useState("pending");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [lastAction, setLastAction] = useState("Navigation Bar ready");
 
@@ -45,6 +45,8 @@ export default function NavigationBarStage() {
     setIsCollapsed(false);
     scrollAreaRef.current?.scrollBy({ top: -140, behavior: "smooth" });
   }, []);
+
+  const rightButton = navigationRightButtons[activeTab] ?? null;
 
   return (
     <main className="navigation-demo">
@@ -89,7 +91,7 @@ export default function NavigationBarStage() {
           tabs={navigationTabs}
           tabActions={navigationActions}
           filterOptions={navigationFilters}
-          rightButton={navigationRightButton}
+          rightButton={rightButton}
           onLogoClick={expandFromLogo}
           onTabChange={tab => {
             setActiveTab(tab);
@@ -102,7 +104,9 @@ export default function NavigationBarStage() {
           onActionClick={(label, tab) =>
             setLastAction(`${label} selected in ${tab}`)
           }
-          onRightButtonClick={() => setLastAction("Ask Dstil selected")}
+          onRightButtonClick={() =>
+            setLastAction(`${rightButton?.label ?? "Right button"} selected`)
+          }
         />
       </div>
 

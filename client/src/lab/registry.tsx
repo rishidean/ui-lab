@@ -34,31 +34,60 @@ export type LabComponent = {
 };
 
 const navigationBarUsage = `import { NavigationBar } from "@/components/navigation-bar";
-import { Home, Activity, Settings, Search, Filter, Sparkles } from "lucide-react";
+import {
+  Home, CreditCard, TrendingUp, ReceiptText,          // tabs
+  ArrowDownToLine, ArrowUpFromLine, Send, HandCoins,  // actions
+  ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Filter,
+  Sparkles, ScanLine, Search, Download,               // right buttons
+} from "lucide-react";
 
 const tabs = [
   { id: "home", label: "Home", Icon: Home },
-  { id: "activity", label: "Activity", Icon: Activity },
-  { id: "settings", label: "Settings", Icon: Settings },
+  { id: "spend", label: "Spend", Icon: CreditCard },
+  { id: "trade", label: "Trade", Icon: TrendingUp },
+  { id: "transactions", label: "Transactions", Icon: ReceiptText },
 ];
 
+// Each tab carries its own contextual actions in the center pill.
 const tabActions = {
   home: [
-    { Icon: Search, label: "Search" },
-    { Icon: Filter, label: "Filter" }, // "Filter" is special-cased: expands in place
+    { Icon: ArrowDownToLine, label: "Deposit" },
+    { Icon: ArrowUpFromLine, label: "Withdraw" },
   ],
+  spend: [
+    { Icon: Send, label: "Pay" },
+    { Icon: HandCoins, label: "Request" },
+  ],
+  trade: [
+    { Icon: ArrowDownLeft, label: "Buy" },
+    { Icon: ArrowUpRight, label: "Sell" },
+    { Icon: ArrowLeftRight, label: "Swap" },
+  ],
+  // "Filter" is special-cased: it expands filterOptions in place
+  // and the chip shows the currently selected option.
+  transactions: [{ Icon: Filter, label: "Filter" }],
 };
 
 const filterOptions = [
-  { id: "today", label: "Today" },
-  { id: "week", label: "7 days" },
+  { id: "pending", label: "Pending" },
+  { id: "complete", label: "Complete" },
+  { id: "scheduled", label: "Scheduled" },
 ];
+
+// rightButton is a single prop — swap it per tab for a contextual
+// right-side control (AI on Home, Scan on Spend, Search on Trade, ...).
+const rightButtons = {
+  home: { Icon: Sparkles, label: "AI" },
+  spend: { Icon: ScanLine, label: "Scan" },
+  trade: { Icon: Search, label: "Search" },
+  transactions: { Icon: Download, label: "Export" },
+};
 
 <NavigationBar
   tabs={tabs}
   tabActions={tabActions}
   filterOptions={filterOptions}
-  rightButton={{ Icon: Sparkles, label: "Ask AI" }}
+  rightButton={rightButtons[activeTab]}
   isCollapsed={isCollapsed}          // drive from your scroll direction
   activeTab={activeTab}
   activeFilter={activeFilter}
@@ -128,9 +157,10 @@ export const labComponents: LabComponent[] = [
     usage: navigationBarUsage,
     tryIt: [
       "Scroll the canvas down to collapse the bar, up to expand it",
-      "Tap the left circle to open the tab menu",
-      "Switch tabs — the center actions change with the tab",
-      "Tap Filter to expand filter options in place",
+      "Tap the left circle to open the tab menu — Home, Spend, Trade, Transactions",
+      "Switch tabs — actions and the right-side button change with the tab",
+      "On Trade, three actions share the pill: Buy, Sell, Swap",
+      "On Transactions, tap the filter chip to expand Pending / Complete / Scheduled in place",
     ],
     aliases: ["action-bar"],
   },
