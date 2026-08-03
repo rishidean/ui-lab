@@ -308,35 +308,32 @@ function ActionSheetMorph({
 }) {
   const vw = typeof window !== "undefined" ? window.innerWidth : 400;
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-  const finalWidth = Math.min(vw, 512);
+  // Stretches to the full control-cluster width — a floating card, not a
+  // full-bleed sheet welded to the viewport edge.
+  const finalWidth = Math.min(vw - 24, 512);
   const finalLeft = (vw - finalWidth) / 2;
 
-  // The bar's pill: 48px tall, fully rounded, resting elevation.
+  // The emptied bar: 48px tall, fully rounded, resting elevation.
   const barState = {
     left: origin.left,
     width: origin.width,
     bottom: vh - origin.bottom,
     height: origin.height,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderRadius: 24,
     boxShadow:
       "0 10px 28px rgb(48 36 72 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.8)",
   };
-  // The resting sheet: full width, bottom-anchored, sheet corners, higher
-  // elevation. Same container, second state.
+  // The stretched sheet: the bar extends both UP (height grows) and DOWN
+  // (bottom edge drops toward — but never onto — the viewport edge), all
+  // corners staying rounded. Same container, second state.
   const sheetState = {
     left: finalLeft,
     width: finalWidth,
-    bottom: 0,
+    bottom: 12,
     height: "auto" as const,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
+    borderRadius: 28,
     boxShadow:
-      "0 -14px 40px rgb(48 36 72 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.9)",
+      "0 24px 60px rgb(48 36 72 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.9)",
   };
 
   return (
@@ -372,7 +369,7 @@ function ActionSheetMorph({
                 transition: { duration: 0.26, ease: EASE_IN },
               }
         }
-        transition={{ duration: reducedMotion ? 0.01 : 0.38, ease: EASE_OUT }}
+        transition={{ duration: reducedMotion ? 0.01 : 0.34, ease: EASE_OUT }}
       >
         {/* Drag handle appears last. */}
         <motion.div
@@ -383,7 +380,7 @@ function ActionSheetMorph({
           exit={{ opacity: 0 }}
           transition={{
             duration: reducedMotion ? 0.01 : 0.14,
-            delay: reducedMotion ? 0 : 0.34,
+            delay: reducedMotion ? 0 : 0.46,
           }}
         />
         {/* Content fades and translates into place once the surface has
@@ -398,9 +395,9 @@ function ActionSheetMorph({
             transition: { duration: reducedMotion ? 0.01 : 0.1 },
           }}
           transition={{
-            duration: reducedMotion ? 0.01 : 0.2,
+            duration: reducedMotion ? 0.01 : 0.18,
             ease: EASE_OUT,
-            delay: reducedMotion ? 0 : 0.16,
+            delay: reducedMotion ? 0 : 0.32,
           }}
         >
           <div className="navigation-demo__sheet-header">
@@ -437,6 +434,18 @@ export default function NavigationBarStage() {
   const rightButtonRef = useRef<HTMLButtonElement | null>(null);
   const centerBarRef = useRef<HTMLDivElement | null>(null);
   const [sheetOrigin, setSheetOrigin] = useState<BoxOrigin | null>(null);
+  // Action-press sequence: pressed feedback → fade phase (circles and
+  // unselected actions out, selected label lingering) → the emptied bar
+  // stretches into the sheet. sheetPrep drives the fade phase and stays
+  // true until the sheet has contracted back.
+  const [sheetPrep, setSheetPrep] = useState(false);
+  const prepTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (prepTimer.current) clearTimeout(prepTimer.current);
+    },
+    []
+  );
   const [utility, setUtility] = useState<UtilityKind | null>(null);
   const [utilityClosing, setUtilityClosing] = useState(false);
   const [utilityOrigin, setUtilityOrigin] = useState<{
@@ -480,8 +489,12 @@ export default function NavigationBarStage() {
   // Collapse is disabled while any overlay state is active.
   useEffect(() => {
     overlayOpenRef.current =
-      openSheet !== null || isSearchOpen || utility !== null || utilityClosing;
-  }, [openSheet, isSearchOpen, utility, utilityClosing]);
+      openSheet !== null ||
+      sheetPrep ||
+      isSearchOpen ||
+      utility !== null ||
+      utilityClosing;
+  }, [openSheet, sheetPrep, isSearchOpen, utility, utilityClosing]);
 
   const setCollapsed = useCallback((next: boolean, anchor: number) => {
     collapsedRef.current = next;
@@ -609,6 +622,7 @@ export default function NavigationBarStage() {
           // Bar controls absorb toward the right button while a utility is
           // open, and restore only after the surface has contracted.
           isUtilityOpen={utility !== null || utilityClosing}
+          isActionSheetOpen={sheetPrep}
           onTabChange={tab => {
             setActiveTab(tab);
             setActiveAction(null);
@@ -621,8 +635,8 @@ export default function NavigationBarStage() {
             setLastAction(`${filter} filter selected`);
           }}
           onActionClick={(label, tab) => {
-            // The sheet grows out of the center bar: capture its rect as
-            // the morph origin at press time (bar is frozen while open).
+            if (sheetPrep || openSheet) return;
+            // Capture the bar's rect as the stretch origin at press time.
             const rect = centerBarRef.current?.getBoundingClientRect();
             setSheetOrigin(
               rect
@@ -642,8 +656,15 @@ export default function NavigationBarStage() {
                   }
             );
             setActiveAction(label);
-            setOpenSheet(label);
             setLastAction(`${label} selected in ${tab}`);
+            // Fade phase first (circles + unselected actions out, selected
+            // label lingering ~100ms longer), then the empty bar stretches.
+            setSheetPrep(true);
+            if (prepTimer.current) clearTimeout(prepTimer.current);
+            prepTimer.current = setTimeout(
+              () => setOpenSheet(label),
+              prefersReducedMotion ? 0 : 260
+            );
           }}
           onRightButtonClick={() => {
             const label = rightButton?.label;
@@ -695,6 +716,7 @@ export default function NavigationBarStage() {
         onExitComplete={() => {
           setActiveAction(null);
           setSheetOrigin(null);
+          setSheetPrep(false); // circles and actions fade back in
         }}
       >
         {openSheet && sheetOrigin && (

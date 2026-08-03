@@ -230,6 +230,10 @@ export type NavigationBarProps = {
   /** Exposes the center action bar element — the shared origin that
    *  workflow sheets grow out of on action press. */
   centerBarRef?: React.Ref<HTMLDivElement>;
+  /** Action-sheet fade phase: the side circles and unselected actions fade
+   *  out (selected label lingers ~100ms longer), leaving the empty bar in
+   *  place as the surface a workflow sheet stretches out of. */
+  isActionSheetOpen?: boolean;
   onRightButtonClick?: () => void;
   activeFilter?: string;
   onFilterChange?: (filterId: string) => void;
@@ -259,6 +263,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   isUtilityOpen = false,
   rightButtonRef,
   centerBarRef,
+  isActionSheetOpen = false,
   onRightButtonClick,
   activeFilter = "",
   onFilterChange,
@@ -340,14 +345,14 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     }
   }, [isSearchOpen, prefersReducedMotion]);
 
-  // A utility surface is exclusive: it closes the menu and filter, and the
-  // bar's own controls lock as soon as the transition begins.
+  // A utility surface or action sheet is exclusive: it closes the menu and
+  // filter, and the bar's own controls lock as soon as the transition begins.
   useEffect(() => {
-    if (isUtilityOpen) {
+    if (isUtilityOpen || isActionSheetOpen) {
       setIsTabMenuOpen(false);
       setIsFilterExpanded(false);
     }
-  }, [isUtilityOpen]);
+  }, [isUtilityOpen, isActionSheetOpen]);
 
   const prevUtilityOpenRef = useRef(isUtilityOpen);
   useEffect(() => {
@@ -824,7 +829,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               )}
               style={{
                 pointerEvents:
-                  isTabMenuOpen || isCollapsed || isUtilityOpen
+                  isTabMenuOpen ||
+                  isCollapsed ||
+                  isUtilityOpen ||
+                  isActionSheetOpen
                     ? "none"
                     : "auto",
               }}
@@ -1026,9 +1034,16 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                       return (
                         <React.Fragment key={action.label}>
                           {actionIndex > 0 && (
-                            <span
+                            <motion.span
                               aria-hidden="true"
                               className="nav-action-divider"
+                              animate={{
+                                opacity: isActionSheetOpen ? 0 : 1,
+                              }}
+                              transition={{
+                                duration: dur(0.12),
+                                ease: EASE_IN,
+                              }}
                             />
                           )}
                           <motion.button
@@ -1050,7 +1065,21 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                             whileTap={
                               prefersReducedMotion ? undefined : { scale: 0.96 }
                             }
-                            transition={{ duration: dur(0.14), ease: EASE }}
+                            /* Action-sheet fade phase: unselected actions go
+                               with the circles; the pressed label lingers a
+                               beat before the empty bar stretches. */
+                            animate={{ opacity: isActionSheetOpen ? 0 : 1 }}
+                            transition={{
+                              duration: dur(0.14),
+                              ease: EASE,
+                              opacity: {
+                                duration: dur(0.12),
+                                ease: EASE_IN,
+                                delay: del(
+                                  isActionSheetOpen && isEngaged ? 0.1 : 0
+                                ),
+                              },
+                            }}
                           >
                             <span className="flex items-center gap-1.5 whitespace-nowrap">
                               {isFilter ? (
@@ -1104,7 +1133,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 // Disabled the moment a utility transition begins — the
                 // surface owns the interaction until it closes.
                 pointerEvents:
-                  isTabMenuOpen || isCollapsed || isSearchOpen || isUtilityOpen
+                  isTabMenuOpen ||
+                  isCollapsed ||
+                  isSearchOpen ||
+                  isUtilityOpen ||
+                  isActionSheetOpen
                     ? "none"
                     : "auto",
               }}
@@ -1115,10 +1148,14 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 scale: isCollapsed || isSearchOpen || isTabMenuOpen ? 0.7 : 1,
                 opacity:
                   // Menu open hides the right utility entirely (first out,
-                  // last back); filter expansion only dims it. While a
-                  // utility surface is open it stays fully visible — the
-                  // surface grows out of it and contracts back into it.
-                  isCollapsed || isSearchOpen || isTabMenuOpen
+                  // last back); the action-sheet fade phase fades it in
+                  // place; filter expansion only dims it. While a utility
+                  // surface is open it stays fully visible — the surface
+                  // grows out of it and contracts back into it.
+                  isCollapsed ||
+                  isSearchOpen ||
+                  isTabMenuOpen ||
+                  isActionSheetOpen
                     ? 0
                     : isFilterExpanded
                       ? 0.35
