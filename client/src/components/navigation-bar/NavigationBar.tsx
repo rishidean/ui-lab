@@ -8,7 +8,20 @@
 import React, { useEffect, useRef, useState, useLayoutEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
-import { Zap } from "lucide-react";
+
+// Default collapsed-state glyph: a small aurora dot. A brand mark, not a
+// placeholder icon — consumers pass `logo` to supply their own.
+const DefaultLogo = () => (
+  <span
+    aria-hidden="true"
+    className="block h-5 w-5 rounded-full"
+    style={{
+      background: "var(--gradient-aurora)",
+      boxShadow:
+        "0 0 0 3px color-mix(in oklab, var(--aurora-lilac) 28%, transparent), inset 0 1px 1px rgba(255,255,255,0.6)",
+    }}
+  />
+);
 
 export type NavTabId = string;
 
@@ -104,6 +117,9 @@ export type NavigationBarProps = {
   /** Label of the currently engaged action, if any. The pill treatment is
    *  reserved for real state: only this chip gets the lavender inset fill. */
   activeAction?: string | null;
+  /** Glyph shown in the collapsed state (and as fallback when no tab is
+   *  active). Defaults to the aurora-dot brand mark. */
+  logo?: React.ReactNode;
   onRightButtonClick?: () => void;
   activeFilter?: string;
   onFilterChange?: (filterId: string) => void;
@@ -124,6 +140,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   activeTab: externalActiveTab,
   onActionClick,
   activeAction = null,
+  logo,
   onRightButtonClick,
   activeFilter = "",
   onFilterChange,
@@ -423,11 +440,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                       className="flex items-center justify-center"
                     >
                       {isCollapsed ? (
-                        <Zap
-                          className="w-7 h-7"
-                          strokeWidth={1.75}
-                          style={{ color: "var(--iris-700)" }}
-                        />
+                        (logo ?? <DefaultLogo />)
                       ) : activeTabDef ? (
                         <NavIcon
                           Icon={activeTabDef.Icon}
@@ -436,11 +449,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           strokeWidth={1.85}
                         />
                       ) : (
-                        <Zap
-                          className="w-7 h-7"
-                          strokeWidth={1.75}
-                          style={{ color: "var(--iris-700)" }}
-                        />
+                        (logo ?? <DefaultLogo />)
                       )}
                     </motion.div>
                   )}
@@ -462,7 +471,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   {activeTabDef ? (
                     <activeTabDef.Icon className="w-6 h-6" strokeWidth={1.85} />
                   ) : (
-                    <Zap className="w-7 h-7" strokeWidth={1.75} />
+                    (logo ?? <DefaultLogo />)
                   )}
                 </div>
               </motion.div>
@@ -544,7 +553,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               className={cn(
                 "relative flex-1 h-12 rounded-full overflow-hidden pointer-events-auto z-10 min-w-0",
                 "glass-nav",
-                "px-2 py-[5px]"
+                "px-2.5 py-[5px]"
               )}
               style={{ transformOrigin: "left center" }}
               animate={{
@@ -561,7 +570,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: dur(0.15), ease: EASE }}
-                    className="flex items-center gap-1 w-full h-full overflow-x-auto scrollbar-hide"
+                    className="flex items-center gap-1.5 w-full h-full overflow-x-auto scrollbar-hide"
                   >
                     {filterOptions.map((option, index) => {
                       const isActive = option.id === activeFilter;
@@ -613,7 +622,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={centerIconsTransition}
-                    className="flex items-center gap-1 h-full w-full overflow-x-auto scrollbar-hide"
+                    className="flex items-center gap-1.5 h-full w-full overflow-x-auto scrollbar-hide"
                   >
                     {actionsForTab.map((action, actionIndex) => {
                       const isFilter = action.label === "Filter";
@@ -647,7 +656,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           >
                             <span className="flex items-center gap-1.5 whitespace-nowrap">
                               {isFilter && currentFilterOption ? (
-                                <span className="text-[13px] font-medium text-inherit">
+                                <span className="text-[14px] font-semibold tracking-[-0.01em] text-inherit">
                                   {currentFilterOption.label}
                                 </span>
                               ) : (
@@ -659,7 +668,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                                       className="text-[color:var(--text-tertiary)]"
                                     />
                                   )}
-                                  <span className="text-[13px] font-medium text-inherit">
+                                  <span className="text-[14px] font-semibold tracking-[-0.01em] text-inherit">
                                     {action.label}
                                   </span>
                                 </>

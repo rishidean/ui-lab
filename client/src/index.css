@@ -186,15 +186,15 @@
     -webkit-backdrop-filter: saturate(1.45) blur(var(--blur-lg));
   }
 
+  /* Tab menu surface — same one-shadow-plus-inset system as the capsule. */
   .glass-overlay {
-    border: 1px solid rgb(255 255 255 / 0.84);
+    border: 1px solid rgb(255 255 255 / 0.8);
     background:
       linear-gradient(180deg, rgb(255 255 255 / 0.94), rgb(250 248 255 / 0.84)),
       rgb(255 255 255 / 0.86);
     box-shadow:
-      0 22px 55px rgb(44 31 66 / 0.2),
-      0 4px 12px rgb(44 31 66 / 0.08),
-      inset 0 1px 0 rgb(255 255 255 / 0.96);
+      0 18px 44px rgb(44 31 66 / 0.16),
+      inset 0 1px 0 rgb(255 255 255 / 0.9);
     backdrop-filter: saturate(1.5) blur(var(--blur-lg));
     -webkit-backdrop-filter: saturate(1.5) blur(var(--blur-lg));
   }
