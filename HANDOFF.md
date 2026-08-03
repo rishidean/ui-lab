@@ -77,11 +77,12 @@ the two morph components in the stage (raw seconds, no TEMPO).
 1. **Filter choreography.** The Transactions filter (chip expands to
    Pending/Complete/Scheduled in place, measured highlight slider — NOT
    layoutId, that caused transform-origin hijacking) has not had its serial-
-   beats pass. Rishi will supply the sequence spec; expect something like:
-   pressed state → neighbors clear → strip expands → highlight slides →
-   selection confirms → strip closes → chip label updates. Current behavior:
-   selection slides highlight, holds 200ms, closes. Ask him for the spec
-   before building.
+   beats pass. **The spec is in `NavigationBarOverview.md` → Filtering**
+   (marked SPEC): pressed feedback → RHS fades out → strip expands into the
+   vacated space (left button stays FIXED) → selected label fades, options
+   reveal → page dims. Selection: highlight slides → confirm hold → strip
+   collapses → label updates mid-close → control contracts → RHS dots back
+   in last. Current interim behavior: highlight slides, holds 200ms, closes.
 2. **Bottom Sheet as a first-class component.** The sheet morph logic now
    exists twice in the stage (`ActionSheetMorph`, `UtilitySheetMorph`) with
    identical beat structure. Extract into a reusable `BottomSheet` (or
