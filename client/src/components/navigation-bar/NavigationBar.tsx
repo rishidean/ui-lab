@@ -8,7 +8,7 @@
 import React, { useEffect, useRef, useState, useLayoutEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Search as SearchGlyph, X } from "lucide-react";
 
 // Default collapsed-state glyph: a small aurora dot. A brand mark, not a
 // placeholder icon — consumers pass `logo` to supply their own.
@@ -124,6 +124,13 @@ export type NavigationBarProps = {
   /** Glyph shown in the collapsed state (and as fallback when no tab is
    *  active). Defaults to the aurora-dot brand mark. */
   logo?: React.ReactNode;
+  /** Search mode: the left circle recedes and the capsule morphs into a
+   *  search field, wiping right-to-left from the trigger. Controlled by the
+   *  consumer (typically toggled from a Search right button). */
+  isSearchOpen?: boolean;
+  onSearchClose?: () => void;
+  onSearchChange?: (query: string) => void;
+  searchPlaceholder?: string;
   onRightButtonClick?: () => void;
   activeFilter?: string;
   onFilterChange?: (filterId: string) => void;
@@ -145,6 +152,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   onActionClick,
   activeAction = null,
   logo,
+  isSearchOpen = false,
+  onSearchClose,
+  onSearchChange,
+  searchPlaceholder = "Search…",
   onRightButtonClick,
   activeFilter = "",
   onFilterChange,
@@ -207,6 +218,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       setIsFilterExpanded(false);
     }
   }, [isCollapsed]);
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      setIsTabMenuOpen(false);
+      setIsFilterExpanded(false);
+    }
+  }, [isSearchOpen]);
 
   const navRef = useRef<HTMLDivElement | null>(null);
   const tabMenuContainerRef = useRef<HTMLDivElement | null>(null);
@@ -386,7 +404,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           <motion.div
             ref={tabMenuContainerRef}
             className="relative h-14 flex items-center"
-            animate={{ width: 56, opacity: isFilterExpanded ? 0.45 : 1 }}
+            style={{ pointerEvents: isSearchOpen ? "none" : "auto" }}
+            animate={{
+              width: isSearchOpen ? 0 : 56,
+              opacity: isSearchOpen ? 0 : isFilterExpanded ? 0.45 : 1,
+            }}
             transition={{ duration: dur(0.25), ease: EASE }}
           >
             <motion.div
@@ -576,7 +598,47 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               transition={centerPillTransition}
             >
               <AnimatePresence mode="wait">
-                {isFilterExpanded && hasFilterAction ? (
+                {isSearchOpen ? (
+                  /* Search mode: wipes in right-to-left from the trigger. */
+                  <motion.div
+                    key="search"
+                    initial={{ clipPath: "inset(0 0 0 100%)" }}
+                    animate={{ clipPath: "inset(0 0 0 0%)" }}
+                    exit={{ clipPath: "inset(0 0 0 100%)", opacity: 0 }}
+                    transition={{ duration: dur(0.26), ease: EASE }}
+                    className="flex items-center gap-2 w-full h-full px-2"
+                  >
+                    <SearchGlyph
+                      aria-hidden="true"
+                      className="h-4 w-4 shrink-0"
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                    <input
+                      autoFocus
+                      type="text"
+                      placeholder={searchPlaceholder}
+                      onChange={e => onSearchChange?.(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Escape") onSearchClose?.();
+                      }}
+                      className="min-w-0 flex-1 bg-transparent text-[14px] font-medium outline-none placeholder:text-[color:var(--text-quaternary)]"
+                      style={{ color: "var(--text-primary)" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={onSearchClose}
+                      aria-label="Close search"
+                      className="shrink-0 rounded-full p-1.5 transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
+                    >
+                      <X
+                        className="h-4 w-4"
+                        strokeWidth={2.25}
+                        style={{ color: "var(--text-secondary)" }}
+                      />
+                    </button>
+                  </motion.div>
+                ) : isFilterExpanded && hasFilterAction ? (
                   <motion.div
                     key="filter-options"
                     initial={{ opacity: 0 }}
@@ -716,15 +778,19 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             <motion.div
               className="relative h-14 flex items-center"
               style={{
-                pointerEvents: isTabMenuOpen || isCollapsed ? "none" : "auto",
+                pointerEvents:
+                  isTabMenuOpen || isCollapsed || isSearchOpen
+                    ? "none"
+                    : "auto",
               }}
               animate={{
-                width: isCollapsed ? 0 : 56,
-                opacity: isCollapsed
-                  ? 0
-                  : isTabMenuOpen || isFilterExpanded
-                    ? 0.35
-                    : 1,
+                width: isCollapsed || isSearchOpen ? 0 : 56,
+                opacity:
+                  isCollapsed || isSearchOpen
+                    ? 0
+                    : isTabMenuOpen || isFilterExpanded
+                      ? 0.35
+                      : 1,
               }}
               transition={rightButtonTransition}
             >

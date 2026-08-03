@@ -95,6 +95,10 @@ const rightButtons = {
   activeFilter={activeFilter}
   activeAction={activeAction}        // engaged action gets the lavender pill;
                                      // resting actions are plain labels
+  isSearchOpen={isSearchOpen}        // capsule morphs into a search field
+  onSearchClose={() => setIsSearchOpen(false)}
+  onSearchChange={setQuery}
+  searchPlaceholder="Search markets…"
   onTabChange={setActiveTab}
   onFilterChange={setActiveFilter}
   onActionClick={(label, tab) => console.log(label, tab)}
@@ -165,6 +169,8 @@ export const labComponents: LabComponent[] = [
       "Switch tabs — actions and the right-side button change with the tab",
       "Tap Deposit — a workflow sheet rises and the lavender pill marks the engaged action",
       "Open the tab menu — background controls dim rather than disappear",
+      "On Trade, tap Search — the bar itself morphs into a search field",
+      "On Home, tap the sparkle — the assistant sheet is the standard pattern",
       "On Trade, three actions share the pill: Buy, Sell, Swap",
       "On Transactions, tap the filter chip to expand Pending / Complete / Scheduled in place",
     ],

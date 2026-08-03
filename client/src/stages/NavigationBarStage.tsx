@@ -36,6 +36,7 @@ export default function NavigationBarStage() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [openSheet, setOpenSheet] = useState<string | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [lastAction, setLastAction] = useState("Navigation Bar ready");
   const prefersReducedMotion = useReducedMotion();
 
@@ -43,6 +44,7 @@ export default function NavigationBarStage() {
     collapsedRef.current = next;
     anchorScrollRef.current = anchor;
     setIsCollapsed(next);
+    if (next) setIsSearchOpen(false);
   }, []);
 
   const handleScroll = useCallback(
@@ -126,10 +128,17 @@ export default function NavigationBarStage() {
           filterOptions={navigationFilters}
           rightButton={rightButton}
           onLogoClick={expandFromLogo}
+          isSearchOpen={isSearchOpen}
+          onSearchClose={() => setIsSearchOpen(false)}
+          onSearchChange={query =>
+            setLastAction(query ? `Searching for ${query}` : "Search cleared")
+          }
+          searchPlaceholder="Search markets…"
           onTabChange={tab => {
             setActiveTab(tab);
             setActiveAction(null);
             setOpenSheet(null);
+            setIsSearchOpen(false);
             setLastAction(`${tab} tab selected`);
           }}
           onFilterChange={filter => {
@@ -141,9 +150,20 @@ export default function NavigationBarStage() {
             setOpenSheet(label);
             setLastAction(`${label} selected in ${tab}`);
           }}
-          onRightButtonClick={() =>
-            setLastAction(`${rightButton?.label ?? "Right button"} selected`)
-          }
+          onRightButtonClick={() => {
+            const label = rightButton?.label;
+            if (!label) return;
+            setLastAction(`${label} selected`);
+            // Illustrative right-button behaviors:
+            //   Search → the bar itself morphs into a search field
+            //   AI     → assistant sheet (standard pattern, placeholder)
+            //   Scan / Export → workflow sheet
+            if (label === "Search") {
+              setIsSearchOpen(true);
+              return;
+            }
+            setOpenSheet(label === "AI" ? "Assistant" : label);
+          }}
         />
       </div>
 
@@ -191,11 +211,23 @@ export default function NavigationBarStage() {
                   Done
                 </button>
               </div>
-              <div className="navigation-demo__sheet-body" aria-hidden="true">
-                <div className="navigation-demo__sheet-row" />
-                <div className="navigation-demo__sheet-row" />
-                <div className="navigation-demo__sheet-row navigation-demo__sheet-row--short" />
-              </div>
+              {openSheet === "Assistant" ? (
+                /* Standard assistant pattern: ghost conversation + input. */
+                <div className="navigation-demo__sheet-body" aria-hidden="true">
+                  <div className="navigation-demo__sheet-bubble navigation-demo__sheet-bubble--user" />
+                  <div className="navigation-demo__sheet-bubble" />
+                  <div className="navigation-demo__sheet-bubble navigation-demo__sheet-bubble--user navigation-demo__sheet-bubble--short" />
+                  <div className="navigation-demo__sheet-input">
+                    Ask anything…
+                  </div>
+                </div>
+              ) : (
+                <div className="navigation-demo__sheet-body" aria-hidden="true">
+                  <div className="navigation-demo__sheet-row" />
+                  <div className="navigation-demo__sheet-row" />
+                  <div className="navigation-demo__sheet-row navigation-demo__sheet-row--short" />
+                </div>
+              )}
             </motion.div>
           </>
         )}
