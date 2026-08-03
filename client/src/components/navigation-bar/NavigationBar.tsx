@@ -130,10 +130,10 @@ const MENU_ROW_STAGGER = 0.018; // ≤25ms per row
 //    menu grows out of it. Right utility fades first, center bar collapses
 //    right-to-left into the circle, menu expands as the bar finishes.
 const OPEN_DELAYS = {
-  rightButtonFade: 0.0,
-  centerIconsFade: 0.02,
-  centerSquish: 0.05,
-  menuGrow: 0.16,
+  rightButtonFade: 0.0, // 1. undot the i — right utility pops out first
+  centerSquish: 0.12, //   2. then the bar absorbs right-to-left
+  centerIconsFade: 0.14, //    labels fade just after movement begins
+  menuGrow: 0.26, //   3. menu grows as the bar finishes
 };
 
 // ── Navigation close/selection: reverse, slightly faster. The menu
@@ -149,11 +149,14 @@ const CLOSE_DELAYS = {
   tabIconSwap: 0.1, // left icon updates as the menu clears it
 };
 
+// Scroll collapse/expand use the same absorb/regrow grammar as the menu:
+// undot the i (right pops out), bar absorbs into the circle; regrow the
+// bar from the circle, then dot the i (right pops back in last).
 const SCROLL_COLLAPSE_DELAYS = {
-  searchFade: 0.0,
-  labelFade: 0.04, // labels fade after movement begins
-  pillFade: 0.12, // container fades late, once nearly shrunk
-  centerCollapse: 0.0, // movement starts immediately
+  rightUndot: 0.0, // 1. right utility pops out first
+  centerCollapse: 0.12, // 2. bar absorbs right-to-left into the circle
+  labelFade: 0.14, //    labels fade just after movement begins
+  pillFade: 0.24, //    container fades late, once nearly shrunk
   tabIconFade: 0.14,
   logoFadeIn: 0.16,
 };
@@ -161,10 +164,9 @@ const SCROLL_COLLAPSE_DELAYS = {
 const SCROLL_EXPAND_DELAYS = {
   logoFade: 0.0,
   tabIconFadeIn: 0.0,
-  centerExpand: 0.0, // container expands first…
-  labelFadeIn: 0.1, // …labels and dividers arrive in the final third
-  rightReveal: 0.06, // right control follows the center bar
-  searchFadeIn: 0.06,
+  centerExpand: 0.0, // 1. bar regrows from the circle…
+  labelFadeIn: 0.1, //    labels arrive in the final third
+  rightReveal: 0.24, // 2. …then the right utility dots the i
 };
 
 const FILTER_DELAYS = {
@@ -440,22 +442,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     isFilterExpanded,
   ]);
 
-  // Measured so the right button can travel toward the left control during
-  // collapse (one continuous path) instead of fading out in place.
-  // offsetWidth ignores the scaleX transform, so the measurement is stable
-  // mid-animation.
-  const pillRef = useRef<HTMLDivElement | null>(null);
-  const [pillTravel, setPillTravel] = useState(0);
-  useEffect(() => {
-    const el = pillRef.current;
-    if (!el) return;
-    const measure = () => setPillTravel(el.offsetWidth + 8);
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [hasActions]);
   const currentFilterOption = filterOptions.find(f => f.id === activeFilter);
 
   // Transition helpers — per-property timing so containers move first and
@@ -482,6 +468,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         : {
             duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
             ease: navCollapsing ? EASE_IN : EASE_OUT,
+            // Scroll collapse waits for the undot beat, same as menu open.
+            delay: del(
+              navCollapsing ? SCROLL_COLLAPSE_DELAYS.centerCollapse : 0
+            ),
           },
     opacity: navCollapsing
       ? {
@@ -533,51 +523,40 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     ease: menuOpening ? EASE_OUT : EASE_IN,
     delay: del(menuOpening ? OPEN_DELAYS.menuGrow : CLOSE_DELAYS.menuFade),
   };
+  // Right utility = the dot on a horizontal "i": it pops out FIRST before
+  // any absorb (menu open or scroll collapse) and pops back in LAST, after
+  // the bar has fully landed (menu close/selection or scroll expand).
+  const rightDotOut = { duration: dur(DUR.label), ease: EASE_IN };
+  const rightDotIn = (delay: number) => ({
+    duration: dur(0.14),
+    ease: EASE_OUT,
+    delay: del(delay),
+  });
   const rightButtonTransition = {
-    // Position/size travel with the collapse transform; opacity trails so
-    // the button visibly approaches the left control before it fades.
-    x: {
-      duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
-      ease: navCollapsing ? EASE_IN : EASE_OUT,
-      delay: del(navExpanding ? SCROLL_EXPAND_DELAYS.rightReveal : 0),
-    },
+    // Width changes happen while the button is invisible: collapsing after
+    // the undot, restoring during the regrow, so layout never jumps in view.
     width: {
       duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
       ease: navCollapsing ? EASE_IN : EASE_OUT,
-      delay: del(navExpanding ? SCROLL_EXPAND_DELAYS.rightReveal : 0),
+      delay: del(navCollapsing ? SCROLL_COLLAPSE_DELAYS.centerCollapse : 0),
     },
-    scale: menuOpening
-      ? { duration: dur(DUR.label), ease: EASE_IN }
-      : menuClosing
-        ? // Arrives with the opacity beat — a crisp pop, not a drift.
-          {
-            duration: dur(0.14),
-            ease: EASE_OUT,
-            delay: del(CLOSE_DELAYS.rightButtonFadeIn),
-          }
-        : {
-            duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
-            ease: navCollapsing ? EASE_IN : EASE_OUT,
-            delay: del(navExpanding ? SCROLL_EXPAND_DELAYS.rightReveal : 0),
-          },
-    opacity: navCollapsing
-      ? { duration: dur(0.14), ease: EASE_IN, delay: del(0.1) }
+    scale: navCollapsing
+      ? rightDotOut
       : navExpanding
-        ? {
-            duration: dur(DUR.label),
-            ease: EASE_OUT,
-            delay: del(SCROLL_EXPAND_DELAYS.rightReveal + 0.04),
-          }
+        ? rightDotIn(SCROLL_EXPAND_DELAYS.rightReveal)
         : menuOpening
-          ? // The right utility is the FIRST thing to go on menu open.
-            { duration: dur(DUR.label), ease: EASE_IN }
+          ? rightDotOut
           : menuClosing
-            ? // …and the LAST thing to return on close/selection.
-              {
-                duration: dur(0.14),
-                ease: EASE_OUT,
-                delay: del(CLOSE_DELAYS.rightButtonFadeIn),
-              }
+            ? rightDotIn(CLOSE_DELAYS.rightButtonFadeIn)
+            : { duration: dur(0.16), ease: EASE },
+    opacity: navCollapsing
+      ? rightDotOut
+      : navExpanding
+        ? rightDotIn(SCROLL_EXPAND_DELAYS.rightReveal)
+        : menuOpening
+          ? rightDotOut
+          : menuClosing
+            ? rightDotIn(CLOSE_DELAYS.rightButtonFadeIn)
             : { duration: dur(0.16), ease: EASE },
   };
 
@@ -784,7 +763,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           {/* CENTER: Actions pill / Filter expansion */}
           {hasActions && (
             <motion.div
-              ref={pillRef}
               className={cn(
                 "relative flex-1 h-12 rounded-full overflow-hidden pointer-events-auto z-10 min-w-0",
                 "glass-nav",
@@ -1050,13 +1028,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               }}
               animate={{
                 width: isCollapsed || isSearchOpen ? 0 : 56,
-                // Collapse: travel toward the left control along the same
-                // path the center bar shrinks on, scaling down slightly.
-                x: isCollapsed ? -pillTravel : 0,
-                // Menu open shrinks it slightly as it fades, so the return
-                // reads as a pop-in — dotting the horizontal "i".
-                scale:
-                  isCollapsed || isSearchOpen ? 0.8 : isTabMenuOpen ? 0.7 : 1,
+                // Hidden states shrink it slightly as it fades, so every
+                // return reads as a pop-in — dotting the horizontal "i".
+                scale: isCollapsed || isSearchOpen || isTabMenuOpen ? 0.7 : 1,
                 opacity:
                   // Menu open hides the right utility entirely (first out,
                   // last back); filter expansion only dims it.
