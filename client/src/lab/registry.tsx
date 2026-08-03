@@ -168,7 +168,7 @@ export const labComponents: LabComponent[] = [
       "Tap the left circle to open the tab menu — Home, Spend, Trade, Transactions",
       "Switch tabs — actions and the right-side button change with the tab",
       "Tap Deposit — a workflow sheet rises and the lavender pill marks the engaged action",
-      "Open the tab menu — background controls dim rather than disappear",
+      "Open the tab menu — the bar is absorbed into the circle and the menu grows out of it",
       "On Trade, tap Search — the bar itself morphs into a search field",
       "On Home, tap the sparkle — the assistant sheet is the standard pattern",
       "On Trade, five actions overflow the pill — swipe the row horizontally",

@@ -29,9 +29,6 @@ const EXPAND_AFTER_PX = 16;
 const MIN_SCROLL_DELTA = 10;
 const TOGGLE_COOLDOWN_MS = 350;
 const ALWAYS_EXPANDED_ABOVE = 20;
-// After a navigation selection the control collapses into the left circle
-// once the menu has closed and the icon has morphed.
-const COLLAPSE_AFTER_SELECT_MS = 230;
 
 export default function NavigationBarStage() {
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
@@ -48,22 +45,10 @@ export default function NavigationBarStage() {
 
   const lastToggleAtRef = useRef(0);
   const overlayOpenRef = useRef(false);
-  const selectCollapseTimer = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
-
   // Collapse is disabled while any overlay state is active (sheet, search).
   useEffect(() => {
     overlayOpenRef.current = openSheet !== null || isSearchOpen;
   }, [openSheet, isSearchOpen]);
-
-  useEffect(
-    () => () => {
-      if (selectCollapseTimer.current)
-        clearTimeout(selectCollapseTimer.current);
-    },
-    []
-  );
 
   const setCollapsed = useCallback((next: boolean, anchor: number) => {
     collapsedRef.current = next;
@@ -178,19 +163,9 @@ export default function NavigationBarStage() {
             setOpenSheet(null);
             setIsSearchOpen(false);
             setLastAction(`${tab} tab selected`);
-            // Navigation-selection sequence: menu closes and the left icon
-            // morphs (component-side), then the bar collapses into the left
-            // circle. Skipped near the top of the page, where the bar always
-            // rests expanded.
-            if (selectCollapseTimer.current)
-              clearTimeout(selectCollapseTimer.current);
-            const scrollTop = scrollAreaRef.current?.scrollTop ?? 0;
-            if (scrollTop > ALWAYS_EXPANDED_ABOVE) {
-              selectCollapseTimer.current = setTimeout(
-                () => setCollapsed(true, scrollTop),
-                COLLAPSE_AFTER_SELECT_MS
-              );
-            }
+            // Selection choreography is component-side now: the menu
+            // collapses into the left button and the bar regrows with the
+            // new tab's controls (swapped while hidden).
           }}
           onFilterChange={filter => {
             setActiveFilter(filter);

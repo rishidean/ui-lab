@@ -97,7 +97,11 @@ export type FilterOption = {
 // The three controls move on one continuous path — containers transform,
 // labels fade only after movement has begun, nothing fades independently.
 // prefers-reduced-motion collapses every duration and delay to 0.
+// Easing rule: ease-out for reveals, ease-in for collapses, standard for
+// everything symmetric.
 const EASE = [0.2, 0, 0, 1] as const;
+const EASE_OUT = [0, 0, 0.2, 1] as const;
+const EASE_IN = [0.4, 0, 1, 1] as const;
 
 // Global tempo knob: every duration and delay is multiplied by this.
 // 1.0 = the nominal bands above; raise to make transitions more legible,
@@ -115,28 +119,32 @@ const DUR = {
   label: 0.12, // label/divider fades within a transform
 };
 
-// Keep the menu visually anchored to the circle it grows from: x ≈ 0 aligns
-// the menu's left edge with the circle's left edge (the icon-centering math
-// already lands within 2px), so the menu reads as the circle unfolding.
-const MENU_FINE_TUNE = { x: -2, y: 15 };
+// The menu is CSS-anchored to the left circle: its bottom-left corner sits
+// at the circle's center (28px in from the circle's left/bottom), slightly
+// overlapping the button's footprint, and it stays attached through resize
+// with no measurement code.
+const MENU_ANCHOR = { left: 28, bottom: 28 };
 const MENU_ROW_STAGGER = 0.018; // ≤25ms per row
 
-// Choreography offsets (seconds) within each transform.
+// ── Navigation open: the bar is ABSORBED into the left button, then the
+//    menu grows out of it. Right utility fades first, center bar collapses
+//    right-to-left into the circle, menu expands as the bar finishes.
 const OPEN_DELAYS = {
   rightButtonFade: 0.0,
-  centerIconsFade: 0.03,
-  centerSquish: 0.06,
-  tabButtonFade: 0.08,
-  menuGrow: 0.1,
+  centerIconsFade: 0.02,
+  centerSquish: 0.05,
+  menuGrow: 0.16,
 };
 
+// ── Navigation close/selection: reverse, slightly faster. The menu
+//    collapses back into the button; hidden controls swap while invisible;
+//    the bar regrows left-to-right; right utility returns last.
 const CLOSE_DELAYS = {
   menuFade: 0.0,
-  tabButtonFadeIn: 0.0,
-  menuShrink: 0.03,
-  pillGrow: 0.05,
-  actionsFadeIn: 0.08,
-  rightButtonFadeIn: 0.1,
+  pillGrow: 0.08,
+  actionsFadeIn: 0.16,
+  rightButtonFadeIn: 0.2,
+  tabIconSwap: 0.1, // left icon updates as the menu clears it
 };
 
 const SCROLL_COLLAPSE_DELAYS = {
@@ -311,9 +319,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const navRef = useRef<HTMLDivElement | null>(null);
   const tabMenuContainerRef = useRef<HTMLDivElement | null>(null);
-  const tabButtonIconRef = useRef<HTMLDivElement | null>(null);
-  const menuActiveIconRef = useRef<HTMLDivElement | null>(null);
-  const [menuIconOffset, setMenuIconOffset] = useState({ x: 0, y: 0 });
 
   const prevTabMenuOpenRef = useRef(isTabMenuOpen);
   useEffect(() => {
@@ -333,34 +338,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  useLayoutEffect(() => {
-    if (!isTabMenuOpen) {
-      setMenuIconOffset({ x: 0, y: 0 });
-      return;
-    }
-    const containerEl = tabMenuContainerRef.current;
-    const buttonIconEl = tabButtonIconRef.current;
-    const menuIconEl = menuActiveIconRef.current;
-    if (!containerEl || !buttonIconEl || !menuIconEl) return;
-    const containerRect = containerEl.getBoundingClientRect();
-    const buttonRect = buttonIconEl.getBoundingClientRect();
-    const menuRect = menuIconEl.getBoundingClientRect();
-    setMenuIconOffset({
-      x:
-        buttonRect.left +
-        buttonRect.width / 2 -
-        containerRect.left -
-        (menuRect.left + menuRect.width / 2 - containerRect.left) +
-        MENU_FINE_TUNE.x,
-      y:
-        buttonRect.top +
-        buttonRect.height / 2 -
-        containerRect.top -
-        (menuRect.top + menuRect.height / 2 - containerRect.top) +
-        MENU_FINE_TUNE.y,
-    });
-  }, [isTabMenuOpen, activeTab]);
 
   const navButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -481,56 +458,66 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   // Transition helpers — per-property timing so containers move first and
   // opacities follow, keeping the three controls on one continuous path.
+  // Interrupted input (rapid open/close) has one behavior everywhere:
+  // framer retargets from the current animated value; nothing snaps.
   const centerPillTransition = {
     // The container's shape change (scaleX) runs the full transform band;
-    // its opacity holds until the shrink is mostly done (collapse) or
-    // returns immediately (expand), so the bar never just fades away.
-    scaleX: {
-      duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
-      ease: EASE,
-      delay: del(
-        menuOpening
-          ? OPEN_DELAYS.centerSquish
-          : menuClosing
-            ? CLOSE_DELAYS.pillGrow
-            : 0
-      ),
-    },
+    // ease-in when collapsing (menu open, scroll collapse), ease-out when
+    // regrowing. On menu open the bar is absorbed right-to-left into the
+    // left button; on close/selection it regrows left-to-right.
+    scaleX: menuOpening
+      ? {
+          duration: dur(DUR.direct),
+          ease: EASE_IN,
+          delay: del(OPEN_DELAYS.centerSquish),
+        }
+      : menuClosing
+        ? {
+            duration: dur(DUR.expand),
+            ease: EASE_OUT,
+            delay: del(CLOSE_DELAYS.pillGrow),
+          }
+        : {
+            duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
+            ease: navCollapsing ? EASE_IN : EASE_OUT,
+          },
     opacity: navCollapsing
       ? {
           duration: dur(DUR.label),
-          ease: EASE,
+          ease: EASE_IN,
           delay: del(SCROLL_COLLAPSE_DELAYS.pillFade),
         }
       : navExpanding
-        ? { duration: dur(DUR.label), ease: EASE }
-        : {
-            duration: dur(DUR.direct),
-            ease: EASE,
-            delay: del(
-              menuOpening
-                ? OPEN_DELAYS.centerSquish
-                : menuClosing
-                  ? CLOSE_DELAYS.pillGrow
-                  : 0
-            ),
-          },
+        ? { duration: dur(DUR.label), ease: EASE_OUT }
+        : menuOpening
+          ? {
+              duration: dur(DUR.label),
+              ease: EASE_IN,
+              delay: del(OPEN_DELAYS.centerSquish + 0.04),
+            }
+          : menuClosing
+            ? {
+                duration: dur(0.1),
+                ease: EASE_OUT,
+                delay: del(CLOSE_DELAYS.pillGrow),
+              }
+            : { duration: dur(DUR.direct), ease: EASE },
   };
   const centerIconsTransition = navCollapsing
     ? {
         duration: dur(DUR.label),
-        ease: EASE,
+        ease: EASE_IN,
         delay: del(SCROLL_COLLAPSE_DELAYS.labelFade),
       }
     : navExpanding
       ? {
           duration: dur(DUR.label),
-          ease: EASE,
+          ease: EASE_OUT,
           delay: del(SCROLL_EXPAND_DELAYS.labelFadeIn),
         }
       : {
           duration: dur(0.14),
-          ease: EASE,
+          ease: menuOpening ? EASE_IN : EASE_OUT,
           delay: del(
             menuOpening
               ? OPEN_DELAYS.centerIconsFade
@@ -539,20 +526,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 : 0
           ),
         };
-  const tabButtonTransition = {
-    duration: dur(0.14),
-    ease: EASE,
-    delay: del(
-      menuOpening
-        ? OPEN_DELAYS.tabButtonFade
-        : menuClosing
-          ? CLOSE_DELAYS.tabButtonFadeIn
-          : 0
-    ),
-  };
   const menuGrowTransition = {
     duration: dur(menuOpening ? DUR.menuOpen : DUR.menuClose),
-    ease: EASE,
+    ease: menuOpening ? EASE_OUT : EASE_IN,
     delay: del(menuOpening ? OPEN_DELAYS.menuGrow : CLOSE_DELAYS.menuFade),
   };
   const rightButtonTransition = {
@@ -560,53 +536,39 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     // the button visibly approaches the left control before it fades.
     x: {
       duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
-      ease: EASE,
+      ease: navCollapsing ? EASE_IN : EASE_OUT,
       delay: del(navExpanding ? SCROLL_EXPAND_DELAYS.rightReveal : 0),
     },
     width: {
       duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
-      ease: EASE,
+      ease: navCollapsing ? EASE_IN : EASE_OUT,
       delay: del(navExpanding ? SCROLL_EXPAND_DELAYS.rightReveal : 0),
     },
     scale: {
       duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
-      ease: EASE,
+      ease: navCollapsing ? EASE_IN : EASE_OUT,
       delay: del(navExpanding ? SCROLL_EXPAND_DELAYS.rightReveal : 0),
     },
     opacity: navCollapsing
-      ? { duration: dur(0.14), ease: EASE, delay: del(0.1) }
+      ? { duration: dur(0.14), ease: EASE_IN, delay: del(0.1) }
       : navExpanding
         ? {
             duration: dur(DUR.label),
-            ease: EASE,
+            ease: EASE_OUT,
             delay: del(SCROLL_EXPAND_DELAYS.rightReveal + 0.04),
           }
-        : {
-            duration: dur(0.16),
-            ease: EASE,
-            delay: del(
-              menuOpening
-                ? OPEN_DELAYS.rightButtonFade
-                : menuClosing
-                  ? CLOSE_DELAYS.rightButtonFadeIn
-                  : 0
-            ),
-          },
+        : menuOpening
+          ? // The right utility is the FIRST thing to go on menu open.
+            { duration: dur(DUR.label), ease: EASE_IN }
+          : menuClosing
+            ? // …and the LAST thing to return on close/selection.
+              {
+                duration: dur(0.14),
+                ease: EASE_OUT,
+                delay: del(CLOSE_DELAYS.rightButtonFadeIn),
+              }
+            : { duration: dur(0.16), ease: EASE },
   };
-
-  const soloIconAnimate = menuOpening
-    ? { opacity: 0, scale: 0.9 }
-    : menuClosing
-      ? { opacity: [0, 1, 0], scale: [0.8, 1, 1] }
-      : { opacity: 0, scale: 1 };
-  const soloIconTransition = menuOpening
-    ? { duration: dur(0.14), ease: EASE }
-    : menuClosing
-      ? {
-          opacity: { duration: dur(0.13), ease: EASE },
-          scale: { duration: dur(0.13), ease: EASE },
-        }
-      : { duration: dur(0.13), ease: EASE };
 
   return (
     <div className="relative px-[18px] pb-6 pointer-events-none" ref={navRef}>
@@ -644,10 +606,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               }
               transition={{ duration: dur(0.18), ease: EASE }}
             >
-              {/* Selected-navigation circle: faint iris-tinted fill with a
-                  slightly stronger purple border — this is the one element
-                  that reads "current place" in the resting composition. */}
-              <motion.div
+              {/* Selected-navigation circle. Stays fully visible while the
+                  menu is open — the menu grows out of it and the two read
+                  as one attached surface. */}
+              <div
                 className="w-14 h-14 rounded-full"
                 style={{
                   background:
@@ -659,11 +621,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   backdropFilter: "saturate(1.5) blur(var(--blur-lg))",
                   WebkitBackdropFilter: "saturate(1.5) blur(var(--blur-lg))",
                 }}
-                animate={{
-                  opacity: isTabMenuOpen ? 0 : 1,
-                  scale: isTabMenuOpen ? 0.96 : 1,
-                }}
-                transition={tabButtonTransition}
               />
 
               <motion.button
@@ -676,85 +633,91 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 title={isCollapsed ? "Open controls" : undefined}
               >
                 <AnimatePresence mode="wait" initial={false}>
-                  {!isTabMenuOpen && !menuClosing && (
-                    <motion.div
-                      key={activeTabDef?.id ?? "logo"}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{
-                        duration: dur(0.15),
-                        ease: EASE,
-                        delay: del(
-                          navCollapsing
-                            ? SCROLL_COLLAPSE_DELAYS.logoFadeIn - 0.08
-                            : navExpanding
-                              ? SCROLL_EXPAND_DELAYS.tabIconFadeIn
+                  <motion.div
+                    key={activeTabDef?.id ?? "logo"}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{
+                      duration: dur(0.15),
+                      ease: EASE,
+                      delay: del(
+                        navCollapsing
+                          ? SCROLL_COLLAPSE_DELAYS.logoFadeIn - 0.08
+                          : navExpanding
+                            ? SCROLL_EXPAND_DELAYS.tabIconFadeIn
+                            : menuClosing
+                              ? // Selection: icon swaps as the menu clears
+                                // the button, not before.
+                                CLOSE_DELAYS.tabIconSwap
                               : 0
-                        ),
-                      }}
-                      className="flex items-center justify-center"
-                    >
-                      {/* Collapsed and expanded show the SAME current-tab
-                          icon — the collapsed circle is the left control,
-                          not a different button. Logo is the no-tab
-                          fallback only. */}
-                      {activeTabDef ? (
-                        <NavIcon
-                          Icon={activeTabDef.Icon}
-                          className="w-6 h-6"
-                          size={24}
-                          strokeWidth={1.85}
-                        />
-                      ) : (
-                        (logo ?? <DefaultLogo />)
-                      )}
-                    </motion.div>
-                  )}
+                      ),
+                    }}
+                    className="flex items-center justify-center"
+                  >
+                    {/* Collapsed and expanded show the SAME current-tab
+                        icon — the collapsed circle is the left control,
+                        not a different button. Logo is the no-tab
+                        fallback only. */}
+                    {activeTabDef ? (
+                      <NavIcon
+                        Icon={activeTabDef.Icon}
+                        className="w-6 h-6"
+                        size={24}
+                        strokeWidth={1.85}
+                      />
+                    ) : (
+                      (logo ?? <DefaultLogo />)
+                    )}
+                  </motion.div>
                 </AnimatePresence>
               </motion.button>
-
-              {/* Solo icon for menu transition */}
-              <motion.div
-                className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                initial={false}
-                animate={soloIconAnimate}
-                transition={soloIconTransition}
-              >
-                <div
-                  ref={tabButtonIconRef}
-                  className="flex items-center justify-center"
-                  style={{ color: "var(--iris-700)" }}
-                >
-                  {activeTabDef ? (
-                    <activeTabDef.Icon className="w-6 h-6" strokeWidth={1.85} />
-                  ) : (
-                    (logo ?? <DefaultLogo />)
-                  )}
-                </div>
-              </motion.div>
             </motion.div>
 
-            {/* Tab Menu Dropdown */}
+            {/* Tab Menu — CSS-anchored: bottom-left corner at the circle's
+                center, overlapping the button footprint, attached through
+                any resize. Origin-based reveal: upward expansion, slight
+                rightward growth, fade, corner-radius settle, and elevation
+                rising as it clears the button. */}
             <AnimatePresence>
               {isTabMenuOpen && (
                 <motion.div
                   key="tab-menu"
-                  /* Entrance from ~96% scale with ≤12px of travel — the menu
-                     unfolds from the circle's anchor, it doesn't zoom in. */
-                  initial={{ opacity: 0, scale: 0.96 }}
+                  initial={{
+                    opacity: 0,
+                    scaleX: 0.85,
+                    scaleY: 0.45,
+                    borderRadius: 28,
+                    boxShadow:
+                      "0 4px 14px rgb(44 31 66 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9)",
+                  }}
                   animate={{
                     opacity: 1,
-                    scale: 1,
-                    x: menuIconOffset.x,
-                    y: menuIconOffset.y,
+                    scaleX: 1,
+                    scaleY: 1,
+                    borderRadius: 21,
+                    boxShadow:
+                      "0 18px 44px rgb(44 31 66 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.9)",
                   }}
-                  exit={{ opacity: 0, scale: 0.97 }}
+                  exit={{
+                    opacity: 0,
+                    scaleX: 0.88,
+                    scaleY: 0.5,
+                    borderRadius: 28,
+                    boxShadow:
+                      "0 4px 14px rgb(44 31 66 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9)",
+                  }}
                   transition={menuGrowTransition}
-                  className="absolute top-0 left-0 z-40 pointer-events-auto"
-                  style={{ transformOrigin: "left bottom" }}
+                  className="glass-overlay absolute z-40 pointer-events-auto p-1.5 min-w-[210px] overflow-hidden"
+                  style={{
+                    left: MENU_ANCHOR.left,
+                    bottom: MENU_ANCHOR.bottom,
+                    transformOrigin: "left bottom",
+                    originX: 0,
+                    originY: 1,
+                  }}
                 >
-                  <div className="glass-overlay rounded-[var(--radius-xl)] p-1.5 min-w-[210px] overflow-hidden">
+                  <div>
                     {menuTabs.map((tab, rowIndex) => {
                       const isActive = tab.id === activeTab;
                       const Icon = tab.Icon;
@@ -789,10 +752,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                                 : "text-[var(--text-secondary)] hover:bg-[var(--action-ghost-bg-hover)] hover:text-[var(--text-primary)]"
                             )}
                           >
-                            <div
-                              ref={isActive ? menuActiveIconRef : undefined}
-                              className="flex items-center justify-center w-6 h-6"
-                            >
+                            <div className="flex items-center justify-center w-6 h-6">
                               <Icon
                                 strokeWidth={1.75}
                                 className="w-5 h-5"
@@ -825,8 +785,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 pointerEvents: isTabMenuOpen || isCollapsed ? "none" : "auto",
               }}
               animate={{
-                opacity: isCollapsed ? 0 : isTabMenuOpen ? 0.35 : 1,
-                scaleX: isCollapsed ? 0 : 1,
+                // Menu open ABSORBS the bar — fully hidden, not dimmed.
+                opacity: isCollapsed || isTabMenuOpen ? 0 : 1,
+                scaleX: isCollapsed || isTabMenuOpen ? 0 : 1,
                 // Animated alongside scaleX so framer holds the origin at the
                 // left edge every frame — the pill always shrinks toward the
                 // left control, never toward its own center.
@@ -1083,9 +1044,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 x: isCollapsed ? -pillTravel : 0,
                 scale: isCollapsed || isSearchOpen ? 0.8 : 1,
                 opacity:
-                  isCollapsed || isSearchOpen
+                  // Menu open hides the right utility entirely (first out,
+                  // last back); filter expansion only dims it.
+                  isCollapsed || isSearchOpen || isTabMenuOpen
                     ? 0
-                    : isTabMenuOpen || isFilterExpanded
+                    : isFilterExpanded
                       ? 0.35
                       : 1,
               }}
