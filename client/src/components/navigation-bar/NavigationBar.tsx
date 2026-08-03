@@ -610,7 +610,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           ? rightDotOut
           : menuClosing
             ? rightDotIn(CLOSE_DELAYS.rightButtonFadeIn)
-            : { duration: dur(0.16), ease: EASE },
+            : isActionSheetOpen
+              ? // Fades in lockstep with the left circle — the two ends of
+                // the bar leave together before the labels follow.
+                { duration: dur(0.12), ease: EASE_IN }
+              : { duration: dur(0.16), ease: EASE },
   };
 
   return (
@@ -632,16 +636,29 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             ref={tabMenuContainerRef}
             className="relative h-14 flex items-center"
             style={{
-              pointerEvents: isSearchOpen || isUtilityOpen ? "none" : "auto",
+              pointerEvents:
+                isSearchOpen || isUtilityOpen || isActionSheetOpen
+                  ? "none"
+                  : "auto",
             }}
             animate={{
               width: isSearchOpen ? 0 : 56,
-              // Utility surfaces fade the left control in place; search
-              // collapses it entirely.
+              // Utility surfaces and the action-sheet fade phase fade the
+              // left control in place; search collapses it entirely.
               opacity:
-                isSearchOpen || isUtilityOpen ? 0 : isFilterExpanded ? 0.45 : 1,
+                isSearchOpen || isUtilityOpen || isActionSheetOpen
+                  ? 0
+                  : isFilterExpanded
+                    ? 0.45
+                    : 1,
             }}
-            transition={{ duration: dur(0.25), ease: EASE }}
+            transition={
+              // Action-sheet fade phase: both circles drop out together,
+              // first beat of the sequence.
+              isActionSheetOpen
+                ? { duration: dur(0.12), ease: EASE_IN }
+                : { duration: dur(0.25), ease: EASE }
+            }
           >
             <motion.div
               className="relative w-14 h-14 group pointer-events-auto"
@@ -1043,6 +1060,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                               transition={{
                                 duration: dur(0.12),
                                 ease: EASE_IN,
+                                delay: del(isActionSheetOpen ? 0.16 : 0),
                               }}
                             />
                           )}
@@ -1065,9 +1083,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                             whileTap={
                               prefersReducedMotion ? undefined : { scale: 0.96 }
                             }
-                            /* Action-sheet fade phase: unselected actions go
-                               with the circles; the pressed label lingers a
-                               beat before the empty bar stretches. */
+                            /* Action-sheet fade phase, beat two: all labels
+                               (dividers included) leave together, one beat
+                               after the circles, before the bar moves. */
                             animate={{ opacity: isActionSheetOpen ? 0 : 1 }}
                             transition={{
                               duration: dur(0.14),
@@ -1075,9 +1093,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                               opacity: {
                                 duration: dur(0.12),
                                 ease: EASE_IN,
-                                delay: del(
-                                  isActionSheetOpen && isEngaged ? 0.1 : 0
-                                ),
+                                delay: del(isActionSheetOpen ? 0.16 : 0),
                               },
                             }}
                           >

@@ -323,9 +323,11 @@ function ActionSheetMorph({
     boxShadow:
       "0 10px 28px rgb(48 36 72 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.8)",
   };
-  // The stretched sheet: the bar extends both UP (height grows) and DOWN
-  // (bottom edge drops toward — but never onto — the viewport edge), all
-  // corners staying rounded. Same container, second state.
+  // The stretched sheet — reached in two geometry beats: first the bar
+  // widens in place to the sheet's final width, then it stretches UP
+  // (height grows) and DOWN (bottom edge drops toward — but never onto —
+  // the viewport edge). Same container throughout; per-property delays
+  // sequence the beats.
   const sheetState = {
     left: finalLeft,
     width: finalWidth,
@@ -336,10 +338,16 @@ function ActionSheetMorph({
       "0 24px 60px rgb(48 36 72 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.9)",
   };
 
+  // Sequence timing (seconds): widen → beat → stretch → title → beat → body.
+  const WIDEN = 0.24;
+  const STRETCH_AT = WIDEN + 0.08;
+  const STRETCH = 0.28;
+  const TITLE_AT = STRETCH_AT + STRETCH;
+  const BODY_AT = TITLE_AT + 0.14 + 0.06;
+
   return (
     <>
-      {/* Backdrop dims only after the surface begins expanding; the left and
-          right circles fade behind it. */}
+      {/* Backdrop dims as the vertical stretch begins. */}
       <motion.button
         type="button"
         aria-label="Close sheet"
@@ -350,7 +358,7 @@ function ActionSheetMorph({
         transition={{
           duration: reducedMotion ? 0.01 : 0.22,
           ease: EASE,
-          delay: reducedMotion ? 0 : 0.08,
+          delay: reducedMotion ? 0 : STRETCH_AT,
         }}
         onClick={onClose}
       />
@@ -366,38 +374,64 @@ function ActionSheetMorph({
             ? { opacity: 0 }
             : {
                 ...barState,
-                transition: { duration: 0.26, ease: EASE_IN },
+                // Dismissal reverses the beats: drop back to bar height
+                // first, then narrow onto the bar's footprint.
+                transition: {
+                  bottom: { delay: 0.06, duration: 0.22, ease: EASE_IN },
+                  height: { delay: 0.06, duration: 0.22, ease: EASE_IN },
+                  left: { delay: 0.32, duration: 0.2, ease: EASE_IN },
+                  width: { delay: 0.32, duration: 0.2, ease: EASE_IN },
+                  borderRadius: { delay: 0.32, duration: 0.2, ease: EASE_IN },
+                  boxShadow: { duration: 0.46, ease: EASE_IN },
+                },
               }
         }
-        transition={{ duration: reducedMotion ? 0.01 : 0.34, ease: EASE_OUT }}
+        transition={
+          reducedMotion
+            ? { duration: 0.01 }
+            : {
+                // Beat one: widen in place at bar height.
+                left: { duration: WIDEN, ease: EASE_OUT },
+                width: { duration: WIDEN, ease: EASE_OUT },
+                borderRadius: { duration: WIDEN, ease: EASE_OUT },
+                // Beat two: stretch up and down simultaneously.
+                bottom: {
+                  delay: STRETCH_AT,
+                  duration: STRETCH,
+                  ease: EASE_OUT,
+                },
+                height: {
+                  delay: STRETCH_AT,
+                  duration: STRETCH,
+                  ease: EASE_OUT,
+                },
+                boxShadow: { duration: TITLE_AT, ease: EASE_OUT },
+              }
+        }
       >
-        {/* Drag handle appears last. */}
+        {/* Grabber arrives with the title, once geometry has landed. */}
         <motion.div
           className="navigation-demo__sheet-grabber"
           aria-hidden="true"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          exit={{ opacity: 0, transition: { duration: 0.08 } }}
           transition={{
             duration: reducedMotion ? 0.01 : 0.14,
-            delay: reducedMotion ? 0 : 0.46,
+            delay: reducedMotion ? 0 : TITLE_AT,
           }}
         />
-        {/* Content fades and translates into place once the surface has
-            begun expanding; width is pinned so text never rewraps mid-grow. */}
+        {/* Title first, body a beat later; width is pinned so text never
+            rewraps mid-grow. */}
         <motion.div
           style={{ minWidth: finalWidth - 40 }}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{
-            opacity: 0,
-            y: 6,
-            transition: { duration: reducedMotion ? 0.01 : 0.1 },
-          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.08 } }}
           transition={{
-            duration: reducedMotion ? 0.01 : 0.18,
+            duration: reducedMotion ? 0.01 : 0.14,
             ease: EASE_OUT,
-            delay: reducedMotion ? 0 : 0.32,
+            delay: reducedMotion ? 0 : TITLE_AT,
           }}
         >
           <div className="navigation-demo__sheet-header">
@@ -406,6 +440,22 @@ function ActionSheetMorph({
               Done
             </button>
           </div>
+        </motion.div>
+        <motion.div
+          style={{ minWidth: finalWidth - 40 }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{
+            opacity: 0,
+            y: 6,
+            transition: { duration: reducedMotion ? 0.01 : 0.08 },
+          }}
+          transition={{
+            duration: reducedMotion ? 0.01 : 0.18,
+            ease: EASE_OUT,
+            delay: reducedMotion ? 0 : BODY_AT,
+          }}
+        >
           <div className="navigation-demo__sheet-body" aria-hidden="true">
             <div className="navigation-demo__sheet-row" />
             <div className="navigation-demo__sheet-row" />
@@ -657,13 +707,14 @@ export default function NavigationBarStage() {
             );
             setActiveAction(label);
             setLastAction(`${label} selected in ${tab}`);
-            // Fade phase first (circles + unselected actions out, selected
-            // label lingering ~100ms longer), then the empty bar stretches.
+            // Fade phase first: both circles out together, beat, then all
+            // action labels out (0.16 + 0.12 at TEMPO ≈ 365ms), beat — then
+            // the emptied bar begins its widen-and-stretch.
             setSheetPrep(true);
             if (prepTimer.current) clearTimeout(prepTimer.current);
             prepTimer.current = setTimeout(
               () => setOpenSheet(label),
-              prefersReducedMotion ? 0 : 260
+              prefersReducedMotion ? 0 : 440
             );
           }}
           onRightButtonClick={() => {
