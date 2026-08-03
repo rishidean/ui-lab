@@ -735,7 +735,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                             prefersReducedMotion ? undefined : { scale: 0.96 }
                           }
                           className={cn(
-                            "flex-[1_1_0%] min-w-fit h-[38px] px-4 rounded-full text-[13px] font-medium whitespace-nowrap",
+                            "flex-[1_1_0%] min-w-fit h-[34px] px-4 rounded-full text-[13px] font-medium whitespace-nowrap",
                             isActive
                               ? "transition-colors duration-200"
                               : "nav-action-chip text-[color:var(--text-secondary)]"
@@ -797,7 +797,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                               /* min-w-fit: with few actions chips stretch to
                                  fill; with many the row scrolls horizontally
                                  instead of squishing labels. */
-                              "nav-action-chip group/action flex-[1_1_0%] min-w-fit h-[38px] px-4 rounded-full flex items-center justify-center text-center",
+                              "nav-action-chip group/action flex-[1_1_0%] min-w-fit h-[34px] px-4 rounded-full flex items-center justify-center text-center",
                               isEngaged && "nav-action-chip--active"
                             )}
                             whileTap={
