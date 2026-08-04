@@ -19,7 +19,13 @@
  * copy that file with this component and edit a preset to retheme.
  */
 
-import React, { useEffect, useRef, useState, useLayoutEffect } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useLayoutEffect,
+} from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Search as SearchGlyph, X } from "lucide-react";
@@ -662,6 +668,28 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       }
     }
   }, [filterClosing]);
+
+  // A pending focus return targets THIS tab's filter chip. If activeTab
+  // changes before that chip remounts — e.g. a controlled `externalActiveTab`
+  // swap closes the filter in the same render as effect ~372 — the flag must
+  // not survive to fire on whatever chip (same tab, different tab, or none)
+  // shows up next. Declared after the close effect above so that on a
+  // render where both fire, this one runs last and wins.
+  useEffect(() => {
+    pendingFilterFocusReturn.current = false;
+  }, [activeTab]);
+
+  // Stable identity: this ref only ever targets the one filter chip, so it
+  // doesn't need the per-item closures the menu rows / filter options use.
+  // Keeping it memoized avoids detach/reattach churn on every render, and
+  // gives Task 5 a single spot to fold an `actionChipRefs` assignment into.
+  const setFilterChipRef = useCallback((el: HTMLButtonElement | null) => {
+    filterChipRef.current = el;
+    if (el && pendingFilterFocusReturn.current) {
+      pendingFilterFocusReturn.current = false;
+      el.focus({ preventScroll: true });
+    }
+  }, []);
 
   const handleFilterKeyDown = (e: React.KeyboardEvent) => {
     const ids = filterOptions.map(o => o.id);
@@ -1585,17 +1613,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           )}
                           <motion.button
                             type="button"
-                            ref={
-                              isFilter
-                                ? (el: HTMLButtonElement | null) => {
-                                    filterChipRef.current = el;
-                                    if (el && pendingFilterFocusReturn.current) {
-                                      pendingFilterFocusReturn.current = false;
-                                      el.focus({ preventScroll: true });
-                                    }
-                                  }
-                                : undefined
-                            }
+                            ref={isFilter ? setFilterChipRef : undefined}
                             aria-expanded={isFilter ? isFilterExpanded : undefined}
                             onClick={() => {
                               if (isFilter) {
