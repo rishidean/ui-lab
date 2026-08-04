@@ -15,9 +15,16 @@ import type React from "react";
  * focus containment, click blocking, and screen-reader hiding in one
  * attribute. Climbs from the first kept element to document.body,
  * inerting each level's other siblings. Restores exactly the elements
- * it changed on cleanup (unmount), so an exit choreography stays inert
- * until the surface is gone — consumers return focus in
- * onExitComplete, which fires after cleanup.
+ * it changed on cleanup (unmount).
+ *
+ * Timing note for consumers: that cleanup runs in the exiting surface's
+ * own passive-effect teardown, which is NOT guaranteed to have committed
+ * by the time an owning `<AnimatePresence onExitComplete>` fires — in
+ * practice `onExitComplete` can run a frame or more before the `inert`
+ * lid actually lifts. A same-tick `el.focus()` on the origin control in
+ * `onExitComplete` can therefore land on a still-inert element and
+ * silently no-op. Use `focusWhenClear` below to return focus safely
+ * instead of calling `.focus()` directly.
  */
 export function useInertOutside(
   active: boolean,
@@ -48,4 +55,26 @@ export function useInertOutside(
     // keepRefs are stable RefObjects; contents are read inside the effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
+}
+
+/**
+ * Focus `el` once it is no longer covered by an `[inert]` ancestor,
+ * polling up to `attempts` animation frames before giving up silently.
+ *
+ * Pair with `useInertOutside`: call this from an owning
+ * `<AnimatePresence onExitComplete>` to return focus to the control
+ * that opened a sheet/modal. `onExitComplete` can fire before the
+ * exiting surface's `useInertOutside` cleanup commits (see the timing
+ * note above), so a same-tick `el.focus()` there can silently no-op —
+ * this polls instead of guessing a fixed delay. Always resolves to
+ * `{ preventScroll: true }`, per this lab's focus-management contract.
+ */
+export function focusWhenClear(el: HTMLElement | null, attempts = 5) {
+  if (!el) return;
+  if (!el.closest("[inert]")) {
+    el.focus({ preventScroll: true });
+    return;
+  }
+  if (attempts <= 0) return;
+  requestAnimationFrame(() => focusWhenClear(el, attempts - 1));
 }

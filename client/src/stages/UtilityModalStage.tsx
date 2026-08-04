@@ -8,6 +8,7 @@
  * same point on close.
  */
 import { UtilityModal, type ModalOrigin } from "@/components/utility-modal";
+import { focusWhenClear } from "@/lib/a11y";
 import { AnimatePresence, useReducedMotion } from "motion/react";
 import { Maximize2, X } from "lucide-react";
 import { useRef, useState } from "react";
@@ -38,7 +39,9 @@ export default function UtilityModalStage() {
         </button>
       </div>
 
-      <AnimatePresence onExitComplete={() => triggerRef.current?.focus()}>
+      <AnimatePresence
+        onExitComplete={() => focusWhenClear(triggerRef.current)}
+      >
         {origin && (
           <UtilityModal
             key="takeover"

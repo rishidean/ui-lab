@@ -182,6 +182,7 @@ const [status, setStatus] = useState("todo");
 const bottomSheetUsage = `import { useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { BottomSheet, type SheetOrigin } from "@/components/bottom-sheet";
+import { focusWhenClear } from "@/lib/a11y";
 
 const triggerRef = useRef<HTMLButtonElement | null>(null);
 const [origin, setOrigin] = useState<SheetOrigin | null>(null);
@@ -199,8 +200,10 @@ const [origin, setOrigin] = useState<SheetOrigin | null>(null);
 
 {/* Mount inside your own AnimatePresence; unmount to close. The exit
     choreography contracts the sheet back into the trigger, and
-    onExitComplete is your restore hook. */}
-<AnimatePresence onExitComplete={() => triggerRef.current?.focus()}>
+    onExitComplete is your restore hook — use focusWhenClear, not a
+    plain .focus(), since BottomSheet stays inert-covered a beat past
+    onExitComplete (see focusWhenClear's docstring in @/lib/a11y). */}
+<AnimatePresence onExitComplete={() => focusWhenClear(triggerRef.current)}>
   {origin && (
     <BottomSheet
       origin={origin}        // the control the sheet grows out of
@@ -218,6 +221,7 @@ const [origin, setOrigin] = useState<SheetOrigin | null>(null);
 const utilityModalUsage = `import { useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { UtilityModal, type ModalOrigin } from "@/components/utility-modal";
+import { focusWhenClear } from "@/lib/a11y";
 
 const buttonRef = useRef<HTMLButtonElement | null>(null);
 const [origin, setOrigin] = useState<ModalOrigin | null>(null);
@@ -234,8 +238,10 @@ const [origin, setOrigin] = useState<ModalOrigin | null>(null);
 
 {/* Mount inside your own AnimatePresence; unmount to close. The exit
     choreography contracts the circle back to the origin point, and
-    onExitComplete is your restore hook. */}
-<AnimatePresence onExitComplete={() => buttonRef.current?.focus()}>
+    onExitComplete is your restore hook — use focusWhenClear, not a
+    plain .focus(), since UtilityModal stays inert-covered a beat past
+    onExitComplete (see focusWhenClear's docstring in @/lib/a11y). */}
+<AnimatePresence onExitComplete={() => focusWhenClear(buttonRef.current)}>
   {origin && (
     <UtilityModal
       origin={origin}     // the modal expands as a circle from this point

@@ -8,6 +8,7 @@
  * grab-bar drag; drag down snaps back, then dismisses.
  */
 import { BottomSheet, type SheetOrigin } from "@/components/bottom-sheet";
+import { focusWhenClear } from "@/lib/a11y";
 import { AnimatePresence, useReducedMotion } from "motion/react";
 import { CalendarRange, ListChecks, Send } from "lucide-react";
 import { useRef, useState } from "react";
@@ -67,7 +68,7 @@ export default function BottomSheetStage() {
 
       <AnimatePresence
         onExitComplete={() => {
-          lastTrigger.current?.focus();
+          focusWhenClear(lastTrigger.current);
         }}
       >
         {open?.kind === "fixed" && (
