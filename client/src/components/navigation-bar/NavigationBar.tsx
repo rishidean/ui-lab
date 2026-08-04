@@ -192,9 +192,25 @@ const UTILITY_SHEET_DELAYS = {
   closeLeftFadeIn: 0.4, // nav circle dots the other end last
 };
 
+// ── Filter expansion — serial beats. The strip claims the RIGHT button's
+//    space (the left circle never moves):
+//    1. pressed feedback on the chip, the right utility pops out,
+//    2. its width collapses so the strip widens into the vacated space,
+//    3. the selected label fades once the strip has landed; the page dims,
+//    4. the options reveal with the current value highlighted.
+//    Selection: highlight slides → confirm hold → options fade → the chip
+//    label returns (updated) while the strip is still wide → the strip
+//    contracts → the right utility dots the i last.
 const FILTER_DELAYS = {
-  optionsFadeIn: 0.05,
+  rightUndot: 0.0, // 1. right utility pops out first (0.12)
+  barGrow: 0.12, // 2. its width collapses; the strip widens (lands ≈0.32)
+  labelFade: 0.38, // 3. selected label fades after the strip lands
+  scrimFade: 0.38, //    page dims as the label clears
+  optionsFadeIn: 0.05, // 4. options reveal (mounts after the label exit)
   optionStagger: 0.02,
+  confirmHold: 0.16, // hold after the highlight lands on the new value
+  closeBarContract: 0.24, // strip contracts once the label is returning
+  closeRightDotIn: 0.5, // right utility dots the i last
 };
 
 // Aura icon — clean single-stroke glyph that inherits the parent's color
@@ -397,6 +413,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const utilitySheetClosing =
     !isUtilitySheetOpen && prevUtilitySheetRef.current;
 
+  const prevFilterExpandedRef = useRef(isFilterExpanded);
+  useEffect(() => {
+    prevFilterExpandedRef.current = isFilterExpanded;
+  }, [isFilterExpanded]);
+  const filterClosing = !isFilterExpanded && prevFilterExpandedRef.current;
+
   const navRef = useRef<HTMLDivElement | null>(null);
   const tabMenuContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -492,9 +514,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     setIsTabMenuOpen(false);
   };
 
-  // Selection sequence: highlight slides to the chosen value first, then the
-  // strip closes and the chip label updates — the value is visibly committed
-  // before the control changes shape.
+  // Selection sequence: the highlight slides to the chosen value, HOLDS for
+  // a confirmation beat once it lands, and only then does the strip begin
+  // its close — the value is visibly committed before the control changes
+  // shape. (Mirrors the menu's pressed-row confirmation hold.)
   const filterCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -508,9 +531,19 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     if (filterCloseTimer.current) clearTimeout(filterCloseTimer.current);
     filterCloseTimer.current = setTimeout(
       () => setIsFilterExpanded(false),
-      prefersReducedMotion ? 0 : 200 * TEMPO
+      Math.round((dur(DUR.direct) + dur(FILTER_DELAYS.confirmHold)) * 1000)
     );
   };
+
+  // Escape dismisses the filter strip, same as the menu.
+  useEffect(() => {
+    if (!isFilterExpanded) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsFilterExpanded(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isFilterExpanded]);
 
   // Sliding selection highlight, measured against the option buttons.
   // (Deliberately not framer's layoutId — shared-layout projection takes
@@ -526,10 +559,24 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       setFilterHighlight(null);
       return;
     }
+    // Selection slides: on activeFilter change the buttons already exist.
+    // (Initial placement happens in the option ref callback instead — the
+    // options mount AFTER this flag flips, once the label has exited.)
     const el = filterOptionRefs.current[activeFilter];
     if (!el) return;
     setFilterHighlight({ x: el.offsetLeft, w: el.offsetWidth });
   }, [isFilterExpanded, activeFilter, filterOptions]);
+
+  const measureFilterOption = (id: string, el: HTMLButtonElement | null) => {
+    filterOptionRefs.current[id] = el;
+    if (el && isFilterExpanded && id === activeFilter) {
+      setFilterHighlight(prev =>
+        prev && prev.x === el.offsetLeft && prev.w === el.offsetWidth
+          ? prev
+          : { x: el.offsetLeft, w: el.offsetWidth }
+      );
+    }
+  };
 
   const activeTabDef = tabs.find(t => t.id === activeTab) ?? tabs[0];
   const otherTabs = tabs.filter(t => t.id !== activeTabDef?.id);
@@ -695,11 +742,28 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const rightButtonTransition = {
     // Width changes happen while the button is invisible: collapsing after
     // the undot, restoring during the regrow, so layout never jumps in view.
-    width: {
-      duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
-      ease: navCollapsing ? EASE_IN : EASE_OUT,
-      delay: del(navCollapsing ? SCROLL_COLLAPSE_DELAYS.centerCollapse : 0),
-    },
+    // Filter expansion reuses the rule — the width collapses after the
+    // undot so the strip widens into the vacated space, and restores (the
+    // strip contracting) before the button fades back in.
+    width: isFilterExpanded
+      ? {
+          duration: dur(DUR.expand),
+          ease: EASE_OUT,
+          delay: del(FILTER_DELAYS.barGrow),
+        }
+      : filterClosing
+        ? {
+            duration: dur(DUR.direct),
+            ease: EASE_IN,
+            delay: del(FILTER_DELAYS.closeBarContract),
+          }
+        : {
+            duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
+            ease: navCollapsing ? EASE_IN : EASE_OUT,
+            delay: del(
+              navCollapsing ? SCROLL_COLLAPSE_DELAYS.centerCollapse : 0
+            ),
+          },
     scale: navCollapsing
       ? rightDotOut
       : navExpanding
@@ -708,7 +772,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           ? rightDotOut
           : menuClosing
             ? rightDotIn(CLOSE_DELAYS.rightButtonFadeIn)
-            : { duration: dur(0.16), ease: EASE },
+            : isFilterExpanded
+              ? rightDotOut
+              : filterClosing
+                ? rightDotIn(FILTER_DELAYS.closeRightDotIn)
+                : { duration: dur(0.16), ease: EASE },
     opacity: navCollapsing
       ? rightDotOut
       : navExpanding
@@ -717,26 +785,30 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           ? rightDotOut
           : menuClosing
             ? rightDotIn(CLOSE_DELAYS.rightButtonFadeIn)
-            : isActionSheetOpen
-              ? // Fades in lockstep with the left circle — the two ends of
-                // the bar leave together before the labels follow.
-                { duration: dur(0.12), ease: EASE_IN }
-              : isUtilitySheetOpen
-                ? // Utility sheet: the button leaves LAST, as the sheet
-                  // widens out of its footprint.
-                  {
-                    duration: dur(0.12),
-                    ease: EASE_IN,
-                    delay: del(UTILITY_SHEET_DELAYS.rightFade),
-                  }
-                : utilitySheetClosing
-                  ? // …and returns FIRST once the sheet has landed on it.
-                    {
-                      duration: dur(0.12),
-                      ease: EASE_OUT,
-                      delay: del(UTILITY_SHEET_DELAYS.closeRightFadeIn),
-                    }
-                  : { duration: dur(0.16), ease: EASE },
+            : isFilterExpanded
+              ? rightDotOut
+              : filterClosing
+                ? rightDotIn(FILTER_DELAYS.closeRightDotIn)
+                : isActionSheetOpen
+                  ? // Fades in lockstep with the left circle — the two ends of
+                    // the bar leave together before the labels follow.
+                    { duration: dur(0.12), ease: EASE_IN }
+                  : isUtilitySheetOpen
+                    ? // Utility sheet: the button leaves LAST, as the sheet
+                      // widens out of its footprint.
+                      {
+                        duration: dur(0.12),
+                        ease: EASE_IN,
+                        delay: del(UTILITY_SHEET_DELAYS.rightFade),
+                      }
+                    : utilitySheetClosing
+                      ? // …and returns FIRST once the sheet has landed on it.
+                        {
+                          duration: dur(0.12),
+                          ease: EASE_OUT,
+                          delay: del(UTILITY_SHEET_DELAYS.closeRightFadeIn),
+                        }
+                      : { duration: dur(0.16), ease: EASE },
   };
 
   return (
@@ -751,6 +823,37 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             "linear-gradient(to top, var(--bg-canvas) 26%, color-mix(in oklab, var(--aurora-lilac) 13%, var(--bg-canvas)) 58%, transparent 100%)",
         }}
       />
+      {/* Filter scrim — the page dims SLIGHTLY (lighter than the sheet
+          scrims) once the strip has claimed its space, keeping attention
+          on the options while the bar itself stays bright. Sits below the
+          z-10 cluster; tapping it dismisses. */}
+      <AnimatePresence>
+        {isFilterExpanded && hasFilterAction && !isCollapsed && (
+          <motion.button
+            key="filter-scrim"
+            type="button"
+            aria-label="Close filter options"
+            className="fixed inset-0 z-0 pointer-events-auto cursor-pointer"
+            style={{
+              background: "rgb(24 18 34 / 0.14)",
+              border: 0,
+              padding: 0,
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{
+              opacity: 0,
+              transition: { duration: dur(0.15), ease: EASE_IN },
+            }}
+            transition={{
+              duration: dur(0.2),
+              ease: EASE,
+              delay: del(FILTER_DELAYS.scrimFade),
+            }}
+            onClick={() => setIsFilterExpanded(false)}
+          />
+        )}
+      </AnimatePresence>
       <div className="relative z-10 flex items-center gap-3 max-w-lg mx-auto">
         <div className="flex items-center gap-2 w-full px-1 relative z-10">
           {/* LEFT: Tab Switcher / Logo */}
@@ -769,16 +872,16 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             animate={{
               width: isSearchOpen ? 0 : 56,
               // Utility surfaces and the sheet fade phases fade the left
-              // control in place; search collapses it entirely.
+              // control in place; search collapses it entirely. Filter
+              // expansion leaves it FIXED — the strip only claims the
+              // right button's space, and the page dims instead.
               opacity:
                 isSearchOpen ||
                 isUtilityOpen ||
                 isActionSheetOpen ||
                 isUtilitySheetOpen
                   ? 0
-                  : isFilterExpanded
-                    ? 0.45
-                    : 1,
+                  : 1,
             }}
             transition={
               // Action-sheet fade phase: both circles drop out together,
@@ -1102,7 +1205,14 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     key="filter-options"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    /* Close, beat one: options fade out fast so the updated
+                       chip label can return while the strip is still wide —
+                       the contraction (right button width restoring) waits
+                       for closeBarContract. */
+                    exit={{
+                      opacity: 0,
+                      transition: { duration: dur(0.12), ease: EASE_IN },
+                    }}
                     transition={{ duration: dur(0.15), ease: EASE }}
                     ref={filterRowFade.ref}
                     onScroll={filterRowFade.onScroll}
@@ -1153,9 +1263,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                       return (
                         <motion.button
                           key={option.id}
-                          ref={el => {
-                            filterOptionRefs.current[option.id] = el;
-                          }}
+                          ref={el => measureFilterOption(option.id, el)}
                           type="button"
                           onClick={() => handleSelectFilter(option.id)}
                           /* Scale/fade only — a y offset here creates
@@ -1193,7 +1301,22 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     key="actions"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: isCollapsed ? 0 : 1 }}
-                    exit={{ opacity: 0 }}
+                    /* Exiting to the filter strip: the label HOLDS while the
+                       right button undots and the strip widens, then fades —
+                       geometry before label, per the serial-beats grammar.
+                       (mode="wait" then mounts the options after this.) */
+                    exit={
+                      isFilterExpanded && hasFilterAction
+                        ? {
+                            opacity: 0,
+                            transition: {
+                              duration: dur(0.12),
+                              ease: EASE_IN,
+                              delay: del(FILTER_DELAYS.labelFade),
+                            },
+                          }
+                        : { opacity: 0 }
+                    }
                     transition={centerIconsTransition}
                     ref={actionsRowFade.ref}
                     onScroll={actionsRowFade.onScroll}
@@ -1312,6 +1435,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   isTabMenuOpen ||
                   isCollapsed ||
                   isSearchOpen ||
+                  isFilterExpanded ||
                   isUtilityOpen ||
                   isActionSheetOpen ||
                   isUtilitySheetOpen
@@ -1319,25 +1443,33 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     : "auto",
               }}
               animate={{
-                width: isCollapsed || isSearchOpen ? 0 : 56,
+                // Filter expansion vacates the button's space entirely —
+                // the strip widens into it (width collapses only after the
+                // undot fade; see rightButtonTransition).
+                width: isCollapsed || isSearchOpen || isFilterExpanded ? 0 : 56,
                 // Hidden states shrink it slightly as it fades, so every
                 // return reads as a pop-in — dotting the horizontal "i".
-                scale: isCollapsed || isSearchOpen || isTabMenuOpen ? 0.7 : 1,
-                opacity:
-                  // Menu open hides the right utility entirely (first out,
-                  // last back); the sheet fade phases fade it in place;
-                  // filter expansion only dims it. While a full-screen
-                  // takeover is open it stays visible — that surface grows
-                  // out of it and contracts back into it.
+                scale:
                   isCollapsed ||
                   isSearchOpen ||
                   isTabMenuOpen ||
+                  isFilterExpanded
+                    ? 0.7
+                    : 1,
+                opacity:
+                  // Menu open and filter expansion hide the right utility
+                  // entirely (first out, last back); the sheet fade phases
+                  // fade it in place. While a full-screen takeover is open
+                  // it stays visible — that surface grows out of it and
+                  // contracts back into it.
+                  isCollapsed ||
+                  isSearchOpen ||
+                  isTabMenuOpen ||
+                  isFilterExpanded ||
                   isActionSheetOpen ||
                   isUtilitySheetOpen
                     ? 0
-                    : isFilterExpanded
-                      ? 0.35
-                      : 1,
+                    : 1,
               }}
               transition={rightButtonTransition}
             >

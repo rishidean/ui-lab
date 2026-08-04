@@ -64,6 +64,19 @@ Railway via the Dockerfile). Owner: Rishi (rishidean).
    exists on the component).
 5. **Search:** bar morphs into the field right-to-left (unchanged this
    round). Scroll collapse/expand: absorb/regrow with hysteresis (unchanged).
+6. **Filter strip (Transactions):** serial beats per the Overview spec —
+   chip pressed feedback → RHS undots → its width collapses so the strip
+   widens into the vacated space (left circle FIXED) → label fades after
+   the geometry lands → page dims (light scrim, in-component) → options
+   reveal with the measured highlight pill (placed via option ref callback,
+   NOT the useLayoutEffect — options mount after the label exits under
+   AnimatePresence mode="wait", so the effect alone measures too early).
+   Selection: highlight slides → confirm hold (DUR.direct +
+   FILTER_DELAYS.confirmHold) → options fade → chip label returns updated
+   while the strip is still wide → strip contracts → RHS dots in last;
+   the stage reshuffles its ghost cards with a short content transition
+   during the collapse. Dismissal (scrim tap / outside / Escape) = same
+   close, no hold, no label change. All in FILTER_DELAYS.
 
 ### Timing constants live at the top of NavigationBar.tsx
 
@@ -74,16 +87,7 @@ the two morph components in the stage (raw seconds, no TEMPO).
 
 ## NEXT UP (the reason for this handoff)
 
-1. **Filter choreography.** The Transactions filter (chip expands to
-   Pending/Complete/Scheduled in place, measured highlight slider — NOT
-   layoutId, that caused transform-origin hijacking) has not had its serial-
-   beats pass. **The spec is in `NavigationBarOverview.md` → Filtering**
-   (marked SPEC): pressed feedback → RHS fades out → strip expands into the
-   vacated space (left button stays FIXED) → selected label fades, options
-   reveal → page dims. Selection: highlight slides → confirm hold → strip
-   collapses → label updates mid-close → control contracts → RHS dots back
-   in last. Current interim behavior: highlight slides, holds 200ms, closes.
-2. **Bottom Sheet as a first-class component.** The sheet morph logic now
+1. **Bottom Sheet as a first-class component.** The sheet morph logic now
    exists twice in the stage (`ActionSheetMorph`, `UtilitySheetMorph`) with
    identical beat structure. Extract into a reusable `BottomSheet` (or
    `SheetMorph`) component — likely a new lab registry entry with its own
@@ -91,16 +95,20 @@ the two morph components in the stage (raw seconds, no TEMPO).
    and title/body slots. Decide with Rishi whether it ships as its own
    registry component or stays internal to NavigationBar's demo.
 
+(Filter choreography — the previous item 1 — landed and is verified
+frame-by-frame; see Choreography specs #6 above and the Overview's
+Filtering section, no longer marked SPEC.)
+
 ## Remaining roadmap after that
 
-3. **Accessibility pass** — focus trapping in sheets/modals, focus return
+2. **Accessibility pass** — focus trapping in sheets/modals, focus return
    (partially done: onExitComplete focuses the origin control), aria audit,
    keyboard paths for every surface.
-4. **Code cleanup + on-page instructions** — surface the registry `tryIt`
+3. **Code cleanup + on-page instructions** — surface the registry `tryIt`
    hints on the Preview tab; prune the now-unused `isUtilityOpen` absorb
    branches if Rishi agrees the old grammar is dead; update the registry
    `usage` snippet (it still documents `isUtilityOpen`).
-5. **Site description** (About/landing copy).
+4. **Site description** (About/landing copy).
 
 ## Housekeeping
 

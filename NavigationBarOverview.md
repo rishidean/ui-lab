@@ -149,33 +149,33 @@ return.
 
 ### Filtering
 
-**[SPEC — not yet implemented as written; this is the next build item.]**
-Current interim behavior: the options expand in place with a measured
-highlight slider, selection holds ~200ms, then the strip closes and the
-chip label updates. The target sequence:
+The filter strip claims the RIGHT button's space — the left navigation
+button never moves — and the page dims behind it while it is open.
 
 #### Bring up filter options
 
-- Give the active filter control immediate pressed feedback.
-- Fade out the RHS utility button.
-- Keep the left navigation button fixed.
-- Expand the center filter control horizontally into the space vacated by
-  the RHS button.
-- Fade out the selected filter label, then reveal the available filter
-  options — with the selected one indicated/highlighted.
-- Dim the underlying page slightly.
-- Keep the current selection visibly highlighted throughout.
+- The active filter control gets immediate pressed feedback.
+- The RHS utility button fades out first (undotting the i).
+- Its vacated width collapses so the filter control expands horizontally
+  into the space; the left navigation button stays fixed.
+- The selected filter label fades once the strip has landed.
+- The underlying page dims slightly as the label clears — lighter than the
+  sheet scrims; the bar itself stays bright.
+- The filter options reveal with a light stagger, the current value
+  highlighted by the measured sliding pill, visible throughout.
 
 #### Selecting a Filter
 
-- Move the selection highlight from the old value to the new value.
-- Briefly hold the selected state for confirmation.
-- Collapse the option list back into the center control.
-- Update the center label while the options are still closing.
-- Contract the center control to its default width.
-- Fade the RHS utility button back in last.
-- Update the main view during the collapse, using a short crossfade or
-  content transition.
+- The selection highlight slides from the old value to the new value.
+- It holds briefly on the new value for confirmation.
+- The option list fades out; the center label updates (to the new value)
+  while the strip is still at full width.
+- The strip contracts to its default footprint.
+- The RHS utility button fades back in last (dotting the i).
+- The main view runs a short content transition during the collapse.
+
+Dismissal (tap the scrim, tap outside, Escape) runs the same serial close
+without the confirmation hold or label change.
 
 ### Search
 

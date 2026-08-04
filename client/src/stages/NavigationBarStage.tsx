@@ -856,6 +856,15 @@ export default function NavigationBarStage() {
 
   const rightButton = navigationRightButtons[activeTab] ?? null;
 
+  // Ghost cards reshuffle deterministically per filter value so a selection
+  // visibly changes the page (same count — scroll position never jumps).
+  const filterIndex = Math.max(
+    0,
+    navigationFilters.findIndex(f => f.id === activeFilter)
+  );
+  const rot = (filterIndex * 3) % ghostCards.length;
+  const cardsForView = [...ghostCards.slice(rot), ...ghostCards.slice(0, rot)];
+
   return (
     <main className="navigation-demo">
       <div
@@ -874,8 +883,22 @@ export default function NavigationBarStage() {
             </div>
           </div>
 
-          <div className="navigation-demo__card-grid">
-            {ghostCards.map((width, index) => (
+          {/* The "main view" the filter governs: cards reshuffle per filter
+              value and the grid runs a short content transition DURING the
+              strip's collapse — the page answers the selection while the
+              control is still closing. */}
+          <motion.div
+            key={activeFilter}
+            className="navigation-demo__card-grid"
+            initial={{ opacity: 0.35 }}
+            animate={{ opacity: 1 }}
+            transition={{
+              duration: prefersReducedMotion ? 0.01 : 0.3,
+              ease: EASE,
+              delay: prefersReducedMotion ? 0 : 0.12,
+            }}
+          >
+            {cardsForView.map((width, index) => (
               <div
                 className="navigation-demo__ghost-card"
                 key={`${width}-${index}`}
@@ -887,7 +910,7 @@ export default function NavigationBarStage() {
                 </div>
               </div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </div>
 
