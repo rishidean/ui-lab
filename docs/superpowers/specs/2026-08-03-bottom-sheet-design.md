@@ -31,7 +31,11 @@ styling stays in the demo stages.
 
 ```tsx
 export type SheetOrigin = {
-  top: number; left: number; width: number; height: number; bottom: number;
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  bottom: number;
 };
 
 export type BottomSheetProps = {
@@ -123,7 +127,7 @@ disabled (extend control still works — instant height change).
 Delete `ActionSheetMorph` and `UtilitySheetMorph`. Consumers become:
 
 - Workflow sheet: `<BottomSheet origin={centerBarRect} title={label}
-  height="auto">` + existing ghost-row body.
+height="auto">` + existing ghost-row body.
 - Export: origin = right button rect, `height="auto"`, `expandable` (the
   flagship demos the new control).
 - Assistant: origin = right button rect, `height={0.62}`, `expandable`,
@@ -155,6 +159,7 @@ initial↔full (same 0.62/0.94 stops it has today).
 ## Verification
 
 Frame-by-frame Playwright captures (the established loop):
+
 1. NavigationBar regressions: workflow sheet open/close, Export
    open/close, Assistant open → drag/extend to full → back → dismiss —
    compared against the choreography specs in HANDOFF.md.

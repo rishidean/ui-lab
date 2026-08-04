@@ -11,6 +11,7 @@
  * button, button fades — then the surface takes over its footprint.
  */
 import { NavigationBar } from "@/components/navigation-bar";
+import { BottomSheet, type SheetOrigin } from "@/components/bottom-sheet";
 import {
   navigationActions,
   navigationFilters,
@@ -49,7 +50,7 @@ const ALWAYS_EXPANDED_ABOVE = 20;
 // the button, button fades — sequenced by isUtilitySheetOpen inside the
 // NavigationBar). Then: modal takeovers (Scan) expand as a circle from the
 // button's center point; bottom sheets (Export, Assistant) widen out of
-// its footprint and stretch vertically — see UtilitySheetMorph below.
+// its footprint and stretch vertically — the shared BottomSheet component.
 type UtilityKind = "export" | "assistant" | "scan";
 
 const UTILITY_GROW: Record<UtilityKind, number> = {
@@ -145,243 +146,6 @@ function UtilitySurface({
   );
 }
 
-/* Utility bottom sheets (Export, Assistant) as a morph of the RIGHT
-   button: after the bar has cleared itself (nav circle fades, action bar
-   sweeps into the button — sequenced by isUtilitySheetOpen inside the
-   NavigationBar), the sheet appears at the button's exact footprint,
-   widens outward to the full sheet width like a regrowing bar, then
-   stretches up and down to its initial height. Title and Done fade in
-   once geometry lands; body content a beat later. Close reverses. */
-function UtilitySheetMorph({
-  kind,
-  origin,
-  onClose,
-  reducedMotion,
-}: {
-  kind: "export" | "assistant";
-  origin: BoxOrigin;
-  onClose: () => void;
-  reducedMotion: boolean;
-}) {
-  const vw = typeof window !== "undefined" ? window.innerWidth : 400;
-  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-  const finalWidth = Math.min(vw - 24, 512);
-  const finalLeft = (vw - finalWidth) / 2;
-
-  // Assistant keeps its half ↔ full drag; heights resolved to px so the
-  // morph interpolates cleanly from the button's numeric height.
-  const [isFull, setIsFull] = useState(false);
-  const sheetHeight =
-    kind === "assistant"
-      ? Math.round(vh * (isFull ? 0.94 : 0.62))
-      : ("auto" as const);
-
-  // After the entrance finishes, height changes (drag half ↔ full) use a
-  // direct transition instead of the entrance's delayed one.
-  const [opened, setOpened] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setOpened(true), reducedMotion ? 0 : 1100);
-    return () => clearTimeout(t);
-  }, [reducedMotion]);
-
-  const buttonState = {
-    left: origin.left,
-    width: origin.width,
-    bottom: vh - origin.bottom,
-    height: origin.height,
-    borderRadius: origin.height / 2,
-    boxShadow:
-      "0 10px 28px rgb(48 36 72 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.8)",
-  };
-  const sheetState = {
-    left: finalLeft,
-    width: finalWidth,
-    bottom: 12,
-    height: sheetHeight,
-    borderRadius: 28,
-    boxShadow:
-      "0 24px 60px rgb(48 36 72 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.9)",
-  };
-
-  // Same beat structure as the workflow sheet: widen → beat → stretch →
-  // title → beat → body.
-  const WIDEN = 0.24;
-  const STRETCH_AT = WIDEN + 0.08;
-  const STRETCH = 0.28;
-  const TITLE_AT = STRETCH_AT + STRETCH;
-  const BODY_AT = TITLE_AT + 0.14 + 0.06;
-
-  return (
-    <>
-      <motion.button
-        type="button"
-        aria-label="Close"
-        className="navigation-demo__sheet-scrim"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{
-          duration: reducedMotion ? 0.01 : 0.22,
-          ease: EASE,
-          delay: reducedMotion ? 0 : STRETCH_AT,
-        }}
-        onClick={onClose}
-      />
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-label={kind === "assistant" ? "Assistant" : "Export"}
-        className={
-          "navigation-demo__sheet-morph" +
-          (kind === "assistant" ? " navigation-demo__sheet-morph--flex" : "")
-        }
-        initial={reducedMotion ? { opacity: 0 } : buttonState}
-        animate={reducedMotion ? { opacity: 1 } : sheetState}
-        drag={kind === "assistant" && opened && !reducedMotion ? "y" : false}
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={{ top: 0.16, bottom: 0.24 }}
-        onDragEnd={(_, info) => {
-          if (info.offset.y < -70 && !isFull) setIsFull(true);
-          else if (info.offset.y > 70) {
-            if (isFull) setIsFull(false);
-            else onClose();
-          }
-        }}
-        exit={
-          reducedMotion
-            ? { opacity: 0 }
-            : {
-                ...buttonState,
-                // Reverse beats: drop to the button's height first, then
-                // narrow onto its footprint — the button fades back in
-                // underneath as this lands.
-                transition: {
-                  bottom: { delay: 0.06, duration: 0.22, ease: EASE_IN },
-                  height: { delay: 0.06, duration: 0.22, ease: EASE_IN },
-                  left: { delay: 0.32, duration: 0.2, ease: EASE_IN },
-                  width: { delay: 0.32, duration: 0.2, ease: EASE_IN },
-                  borderRadius: { delay: 0.32, duration: 0.2, ease: EASE_IN },
-                  boxShadow: { duration: 0.46, ease: EASE_IN },
-                },
-              }
-        }
-        transition={
-          reducedMotion
-            ? { duration: 0.01 }
-            : opened
-              ? { duration: 0.26, ease: EASE }
-              : {
-                  // Beat one: widen outward from the button's footprint.
-                  left: { duration: WIDEN, ease: EASE_OUT },
-                  width: { duration: WIDEN, ease: EASE_OUT },
-                  borderRadius: { duration: WIDEN, ease: EASE_OUT },
-                  // Beat two: stretch up and down simultaneously.
-                  bottom: {
-                    delay: STRETCH_AT,
-                    duration: STRETCH,
-                    ease: EASE_OUT,
-                  },
-                  height: {
-                    delay: STRETCH_AT,
-                    duration: STRETCH,
-                    ease: EASE_OUT,
-                  },
-                  boxShadow: { duration: TITLE_AT, ease: EASE_OUT },
-                }
-        }
-      >
-        <motion.div
-          className="navigation-demo__sheet-grabber"
-          aria-hidden="true"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.08 } }}
-          transition={{
-            duration: reducedMotion ? 0.01 : 0.14,
-            delay: reducedMotion ? 0 : TITLE_AT,
-          }}
-        />
-        <motion.div
-          style={{ minWidth: finalWidth - 40 }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.08 } }}
-          transition={{
-            duration: reducedMotion ? 0.01 : 0.14,
-            ease: EASE_OUT,
-            delay: reducedMotion ? 0 : TITLE_AT,
-          }}
-        >
-          <div className="navigation-demo__sheet-header">
-            {kind === "assistant" ? (
-              <h2 className="navigation-demo__assistant-title">
-                {/* The assistant icon carries over from the trigger. */}
-                <Sparkles aria-hidden="true" /> Assistant
-              </h2>
-            ) : (
-              <h2>Export</h2>
-            )}
-            <button type="button" onClick={onClose}>
-              Done
-            </button>
-          </div>
-        </motion.div>
-        <motion.div
-          style={
-            kind === "assistant"
-              ? {
-                  minWidth: finalWidth - 40,
-                  flex: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                }
-              : { minWidth: finalWidth - 40 }
-          }
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{
-            opacity: 0,
-            y: 6,
-            transition: { duration: reducedMotion ? 0.01 : 0.08 },
-          }}
-          transition={{
-            duration: reducedMotion ? 0.01 : 0.18,
-            ease: EASE_OUT,
-            delay: reducedMotion ? 0 : BODY_AT,
-          }}
-        >
-          {kind === "export" ? (
-            <div className="navigation-demo__export-rows">
-              <button type="button" onClick={onClose}>
-                <FileSpreadsheet aria-hidden="true" /> Download CSV
-              </button>
-              <button type="button" disabled aria-disabled="true">
-                <FileText aria-hidden="true" /> Download PDF
-                <span className="navigation-demo__export-unavailable">
-                  Unavailable
-                </span>
-              </button>
-              <button type="button" onClick={onClose}>
-                <Link2 aria-hidden="true" /> Share link
-              </button>
-            </div>
-          ) : (
-            <div
-              className="navigation-demo__sheet-body"
-              style={{ marginTop: "auto" }}
-              aria-hidden="true"
-            >
-              <div className="navigation-demo__sheet-bubble navigation-demo__sheet-bubble--user" />
-              <div className="navigation-demo__sheet-bubble navigation-demo__sheet-bubble--loading" />
-              <div className="navigation-demo__sheet-input">Ask anything…</div>
-            </div>
-          )}
-        </motion.div>
-      </motion.div>
-    </>
-  );
-}
-
 /* Scan: full-screen capture takeover. Demonstrates the permission and
    error/unavailable states before the active viewfinder. */
 function ScanView({ onClose }: { onClose: () => void }) {
@@ -442,191 +206,6 @@ function ScanView({ onClose }: { onClose: () => void }) {
   );
 }
 
-/* Workflow sheet as a morph of the nav bar's center section: it starts as a
-   pixel-perfect clone of the action bar (same rect, radius, glass) hovering
-   where the bar sits — never from the viewport's bottom edge — and grows
-   upward/outward into the sheet. Dismiss reverses the same geometry back
-   into the originating action bar. */
-type BoxOrigin = {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-  bottom: number;
-};
-
-function ActionSheetMorph({
-  label,
-  origin,
-  onClose,
-  reducedMotion,
-}: {
-  label: string;
-  origin: BoxOrigin;
-  onClose: () => void;
-  reducedMotion: boolean;
-}) {
-  const vw = typeof window !== "undefined" ? window.innerWidth : 400;
-  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-  // Stretches to the full control-cluster width — a floating card, not a
-  // full-bleed sheet welded to the viewport edge.
-  const finalWidth = Math.min(vw - 24, 512);
-  const finalLeft = (vw - finalWidth) / 2;
-
-  // The emptied bar: 48px tall, fully rounded, resting elevation.
-  const barState = {
-    left: origin.left,
-    width: origin.width,
-    bottom: vh - origin.bottom,
-    height: origin.height,
-    borderRadius: 24,
-    boxShadow:
-      "0 10px 28px rgb(48 36 72 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.8)",
-  };
-  // The stretched sheet — reached in two geometry beats: first the bar
-  // widens in place to the sheet's final width, then it stretches UP
-  // (height grows) and DOWN (bottom edge drops toward — but never onto —
-  // the viewport edge). Same container throughout; per-property delays
-  // sequence the beats.
-  const sheetState = {
-    left: finalLeft,
-    width: finalWidth,
-    bottom: 12,
-    height: "auto" as const,
-    borderRadius: 28,
-    boxShadow:
-      "0 24px 60px rgb(48 36 72 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.9)",
-  };
-
-  // Sequence timing (seconds): widen → beat → stretch → title → beat → body.
-  const WIDEN = 0.24;
-  const STRETCH_AT = WIDEN + 0.08;
-  const STRETCH = 0.28;
-  const TITLE_AT = STRETCH_AT + STRETCH;
-  const BODY_AT = TITLE_AT + 0.14 + 0.06;
-
-  return (
-    <>
-      {/* Backdrop dims as the vertical stretch begins. */}
-      <motion.button
-        type="button"
-        aria-label="Close sheet"
-        className="navigation-demo__sheet-scrim"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{
-          duration: reducedMotion ? 0.01 : 0.22,
-          ease: EASE,
-          delay: reducedMotion ? 0 : STRETCH_AT,
-        }}
-        onClick={onClose}
-      />
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${label} workflow`}
-        className="navigation-demo__sheet-morph"
-        initial={reducedMotion ? { opacity: 0 } : barState}
-        animate={reducedMotion ? { opacity: 1 } : sheetState}
-        exit={
-          reducedMotion
-            ? { opacity: 0 }
-            : {
-                ...barState,
-                // Dismissal reverses the beats: drop back to bar height
-                // first, then narrow onto the bar's footprint.
-                transition: {
-                  bottom: { delay: 0.06, duration: 0.22, ease: EASE_IN },
-                  height: { delay: 0.06, duration: 0.22, ease: EASE_IN },
-                  left: { delay: 0.32, duration: 0.2, ease: EASE_IN },
-                  width: { delay: 0.32, duration: 0.2, ease: EASE_IN },
-                  borderRadius: { delay: 0.32, duration: 0.2, ease: EASE_IN },
-                  boxShadow: { duration: 0.46, ease: EASE_IN },
-                },
-              }
-        }
-        transition={
-          reducedMotion
-            ? { duration: 0.01 }
-            : {
-                // Beat one: widen in place at bar height.
-                left: { duration: WIDEN, ease: EASE_OUT },
-                width: { duration: WIDEN, ease: EASE_OUT },
-                borderRadius: { duration: WIDEN, ease: EASE_OUT },
-                // Beat two: stretch up and down simultaneously.
-                bottom: {
-                  delay: STRETCH_AT,
-                  duration: STRETCH,
-                  ease: EASE_OUT,
-                },
-                height: {
-                  delay: STRETCH_AT,
-                  duration: STRETCH,
-                  ease: EASE_OUT,
-                },
-                boxShadow: { duration: TITLE_AT, ease: EASE_OUT },
-              }
-        }
-      >
-        {/* Grabber arrives with the title, once geometry has landed. */}
-        <motion.div
-          className="navigation-demo__sheet-grabber"
-          aria-hidden="true"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.08 } }}
-          transition={{
-            duration: reducedMotion ? 0.01 : 0.14,
-            delay: reducedMotion ? 0 : TITLE_AT,
-          }}
-        />
-        {/* Title first, body a beat later; width is pinned so text never
-            rewraps mid-grow. */}
-        <motion.div
-          style={{ minWidth: finalWidth - 40 }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.08 } }}
-          transition={{
-            duration: reducedMotion ? 0.01 : 0.14,
-            ease: EASE_OUT,
-            delay: reducedMotion ? 0 : TITLE_AT,
-          }}
-        >
-          <div className="navigation-demo__sheet-header">
-            <h2>{label}</h2>
-            <button type="button" onClick={onClose}>
-              Done
-            </button>
-          </div>
-        </motion.div>
-        <motion.div
-          style={{ minWidth: finalWidth - 40 }}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{
-            opacity: 0,
-            y: 6,
-            transition: { duration: reducedMotion ? 0.01 : 0.08 },
-          }}
-          transition={{
-            duration: reducedMotion ? 0.01 : 0.18,
-            ease: EASE_OUT,
-            delay: reducedMotion ? 0 : BODY_AT,
-          }}
-        >
-          <div className="navigation-demo__sheet-body" aria-hidden="true">
-            <div className="navigation-demo__sheet-row" />
-            <div className="navigation-demo__sheet-row" />
-            <div className="navigation-demo__sheet-row navigation-demo__sheet-row--short" />
-          </div>
-        </motion.div>
-      </motion.div>
-    </>
-  );
-}
-
 export default function NavigationBarStage() {
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const anchorScrollRef = useRef(0);
@@ -643,7 +222,7 @@ export default function NavigationBarStage() {
   // ── Utility surface state ──
   const rightButtonRef = useRef<HTMLButtonElement | null>(null);
   const centerBarRef = useRef<HTMLDivElement | null>(null);
-  const [sheetOrigin, setSheetOrigin] = useState<BoxOrigin | null>(null);
+  const [sheetOrigin, setSheetOrigin] = useState<SheetOrigin | null>(null);
   // Action-press sequence: pressed feedback → fade phase (circles and
   // unselected actions out, selected label lingering) → the emptied bar
   // stretches into the sheet. sheetPrep drives the fade phase and stays
@@ -670,7 +249,7 @@ export default function NavigationBarStage() {
     null
   );
   const [utilSheetPrep, setUtilSheetPrep] = useState(false);
-  const [utilSheetOrigin, setUtilSheetOrigin] = useState<BoxOrigin | null>(
+  const [utilSheetOrigin, setUtilSheetOrigin] = useState<SheetOrigin | null>(
     null
   );
   const utilPrepTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -719,15 +298,7 @@ export default function NavigationBarStage() {
     setUtilSheet(null);
   }, []);
 
-  // Escape closes an open utility sheet.
-  useEffect(() => {
-    if (!utilSheet) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeUtilitySheet();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [utilSheet, closeUtilitySheet]);
+  // (Escape is handled by the BottomSheet itself.)
 
   // Modal takeovers (Scan): the SAME clear-out beats as the bottom sheets
   // — pressed feedback, nav circle out, bar sweeps into the button, button
@@ -844,15 +415,7 @@ export default function NavigationBarStage() {
     setOpenSheet(null);
   }, []);
 
-  // Escape closes the workflow sheet.
-  useEffect(() => {
-    if (!openSheet) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeSheet();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [openSheet, closeSheet]);
+  // (Escape is handled by the BottomSheet itself.)
 
   const rightButton = navigationRightButtons[activeTab] ?? null;
 
@@ -1038,14 +601,58 @@ export default function NavigationBarStage() {
           rightButtonRef.current?.focus();
         }}
       >
-        {utilSheet && utilSheetOrigin && (
-          <UtilitySheetMorph
-            key={utilSheet}
-            kind={utilSheet}
+        {utilSheet === "export" && utilSheetOrigin && (
+          <BottomSheet
+            key="export"
             origin={utilSheetOrigin}
+            title="Export"
+            ariaLabel="Export"
             onClose={closeUtilitySheet}
+            height="auto"
+            expandable
             reducedMotion={!!prefersReducedMotion}
-          />
+          >
+            <div className="navigation-demo__export-rows">
+              <button type="button" onClick={closeUtilitySheet}>
+                <FileSpreadsheet aria-hidden="true" /> Download CSV
+              </button>
+              <button type="button" disabled aria-disabled="true">
+                <FileText aria-hidden="true" /> Download PDF
+                <span className="navigation-demo__export-unavailable">
+                  Unavailable
+                </span>
+              </button>
+              <button type="button" onClick={closeUtilitySheet}>
+                <Link2 aria-hidden="true" /> Share link
+              </button>
+            </div>
+          </BottomSheet>
+        )}
+        {utilSheet === "assistant" && utilSheetOrigin && (
+          <BottomSheet
+            key="assistant"
+            origin={utilSheetOrigin}
+            title={
+              <>
+                <Sparkles aria-hidden="true" /> Assistant
+              </>
+            }
+            ariaLabel="Assistant"
+            onClose={closeUtilitySheet}
+            height={0.62}
+            expandable
+            reducedMotion={!!prefersReducedMotion}
+          >
+            <div
+              className="navigation-demo__sheet-body"
+              style={{ marginTop: "auto" }}
+              aria-hidden="true"
+            >
+              <div className="navigation-demo__sheet-bubble navigation-demo__sheet-bubble--user" />
+              <div className="navigation-demo__sheet-bubble navigation-demo__sheet-bubble--loading" />
+              <div className="navigation-demo__sheet-input">Ask anything…</div>
+            </div>
+          </BottomSheet>
         )}
       </AnimatePresence>
 
@@ -1059,13 +666,20 @@ export default function NavigationBarStage() {
         }}
       >
         {openSheet && sheetOrigin && (
-          <ActionSheetMorph
+          <BottomSheet
             key={openSheet}
-            label={openSheet}
             origin={sheetOrigin}
+            title={openSheet}
+            ariaLabel={`${openSheet} workflow`}
             onClose={closeSheet}
             reducedMotion={!!prefersReducedMotion}
-          />
+          >
+            <div className="navigation-demo__sheet-body" aria-hidden="true">
+              <div className="navigation-demo__sheet-row" />
+              <div className="navigation-demo__sheet-row" />
+              <div className="navigation-demo__sheet-row navigation-demo__sheet-row--short" />
+            </div>
+          </BottomSheet>
         )}
       </AnimatePresence>
 
