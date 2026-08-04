@@ -8,9 +8,11 @@ import type { ComponentType } from "react";
 import NavigationBarStage from "@/stages/NavigationBarStage";
 import PressAndSlidePickerStage from "@/stages/PressAndSlidePickerStage";
 import BottomSheetStage from "@/stages/BottomSheetStage";
+import UtilityModalStage from "@/stages/UtilityModalStage";
 import navigationBarSource from "@/components/navigation-bar/NavigationBar.tsx?raw";
 import pressAndSlidePickerSource from "@/components/press-and-slide-picker/PressAndSlidePicker.tsx?raw";
 import bottomSheetSource from "@/components/bottom-sheet/BottomSheet.tsx?raw";
+import utilityModalSource from "@/components/utility-modal/UtilityModal.tsx?raw";
 
 export const LAB_NAME = "Rishi's UI Lab";
 export const LAB_TAGLINE =
@@ -129,6 +131,24 @@ const utilityActions = {
  * glass classes, scrims — with Aurora light and Ink dark presets).
  * Copy theme.css alongside the component and edit a preset block, or
  * remap the variables to your own design system.
+ */
+
+/*
+ * Utility surfaces — the bar renders only the UtilityButton; WHICH
+ * surface opens is your routing decision inside onUtilityClick:
+ *
+ *   Search → set isSearchOpen (the bar itself morphs into the field).
+ *   Sheets → flip isUtilitySheetOpen, wait UTILITY_CLEAROUT_MS, then
+ *            mount a BottomSheet (@/components/bottom-sheet) from the
+ *            UtilityButton's rect. Workflow sheets from ActionButtons
+ *            use the same pattern: isActionSheetOpen +
+ *            ACTION_SHEET_CLEAROUT_MS from the bar's rect (actionBarRef).
+ *   Modals → same clear-out, then mount a UtilityModal
+ *            (@/components/utility-modal) from the UtilityButton's
+ *            CENTER point — a full-screen circle-reveal takeover.
+ *
+ * The demo stage (client/src/stages/NavigationBarStage.tsx) wires all
+ * three; each companion component has its own page with API and usage.
  */`;
 
 const pressAndSlidePickerUsage = `import { PressAndSlidePicker } from "@/components/press-and-slide-picker";
@@ -195,6 +215,46 @@ const [origin, setOrigin] = useState<SheetOrigin | null>(null);
   )}
 </AnimatePresence>`;
 
+const utilityModalUsage = `import { useRef, useState } from "react";
+import { AnimatePresence } from "motion/react";
+import { UtilityModal, type ModalOrigin } from "@/components/utility-modal";
+
+const buttonRef = useRef<HTMLButtonElement | null>(null);
+const [origin, setOrigin] = useState<ModalOrigin | null>(null);
+
+<button
+  ref={buttonRef}
+  onClick={() => {
+    const r = buttonRef.current!.getBoundingClientRect();
+    setOrigin({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+  }}
+>
+  Scan
+</button>
+
+{/* Mount inside your own AnimatePresence; unmount to close. The exit
+    choreography contracts the circle back to the origin point, and
+    onExitComplete is your restore hook. */}
+<AnimatePresence onExitComplete={() => buttonRef.current?.focus()}>
+  {origin && (
+    <UtilityModal
+      origin={origin}     // the modal expands as a circle from this point
+      ariaLabel="Scanner"
+      onClose={() => setOrigin(null)}
+    >
+      {/* your full-screen surface — give it its own close control;
+          the scrim is covered once the circle lands */}
+    </UtilityModal>
+  )}
+</AnimatePresence>
+
+/*
+ * The modal is chrome-only (scrim + circle clip) — children supply the
+ * surface. In the NavigationBar demo, Scan's permission / denied /
+ * active states are exactly such children. Styling reads the token
+ * contract in theme/theme.css.
+ */`;
+
 export const labComponents: LabComponent[] = [
   {
     slug: "navigation-bar",
@@ -214,6 +274,9 @@ export const labComponents: LabComponent[] = [
       "motion",
       "lucide-react",
       "clsx + tailwind-merge (cn)",
+      "theme/theme.css (token contract)",
+      "@/components/bottom-sheet (sheet surfaces)",
+      "@/components/utility-modal (modal takeovers)",
     ],
     usage: navigationBarUsage,
     tryIt: [
@@ -272,6 +335,7 @@ export const labComponents: LabComponent[] = [
       "motion",
       "lucide-react",
       "clsx + tailwind-merge (cn)",
+      "theme/theme.css (token contract)",
     ],
     usage: bottomSheetUsage,
     tryIt: [
@@ -282,6 +346,34 @@ export const labComponents: LabComponent[] = [
       "Quick actions is an auto-height sheet — it still extends to full",
     ],
     aliases: ["sheet"],
+  },
+  {
+    slug: "utility-modal",
+    name: "Utility Modal",
+    tagline:
+      "A full-screen takeover that expands as a circle from the control that owns it.",
+    description:
+      "A modal takeover for focused tasks that temporarily replace the page — a camera scanner, a full-screen editor. It expands as a circle from its trigger's center point and contracts back to it on close, so the surface reads as the control itself unfolding. Chrome-only by design: scrim, circle clip, Escape, and dismissal are handled for you; your children supply the full-screen content. The Navigation Bar's Scan demo is a consumer.",
+    tags: ["overlay", "mobile", "motion"],
+    status: "stable",
+    accent: "linear-gradient(135deg, #f0abfc 0%, #c4b5fd 50%, #93c5fd 100%)",
+    Stage: UtilityModalStage,
+    source: utilityModalSource,
+    sourceFile: "UtilityModal.tsx",
+    dependencies: [
+      "react",
+      "motion",
+      "clsx + tailwind-merge (cn)",
+      "theme/theme.css (token contract)",
+    ],
+    usage: utilityModalUsage,
+    tryIt: [
+      "Tap the trigger — the takeover expands as a circle from the button's center",
+      "Close it — the circle contracts back to the same point",
+      "Escape and the scrim (visible mid-reveal) dismiss too",
+      "Flip the theme toggle — the surface reads the token contract",
+    ],
+    aliases: ["modal-takeover"],
   },
 ];
 

@@ -22,6 +22,11 @@ Railway via the Dockerfile). Owner: Rishi (rishidean).
   `isUtilityOpen` is fully pruned. NavigationBar exports
   ACTION_SHEET_CLEAROUT_MS / UTILITY_CLEAROUT_MS — the stage's sheet
   launch timers derive from them (never hardcode clear-out waits).
+- ALL sheet/modal surfaces are shared components now: BottomSheet
+  (workflow + Export + Assistant — every one `expandable`, skeleton
+  bodies with the shimmer pulse; no fake feature content) and
+  UtilityModal (Scan). The NavigationBar usage snippet documents the
+  onUtilityClick surface-routing pattern + file dependencies.
 - **Theme system:** `client/src/theme/theme.css` is the component token
   contract — Aurora (light, :root) and Ink (dark, .dark) presets, glass
   classes included. Shell has a sun/moon toggle (ThemeContext,
@@ -73,10 +78,12 @@ Railway via the Dockerfile). Owner: Rishi (rishidean).
    stage `utilSheetPrep` + 500ms timer. Assistant keeps half↔full drag
    (enabled only after entrance, `opened` state).
 4. **Modal takeovers (Scan):** SAME clear-out as sheets, then the modal
-   expands as a circle from the button's CENTER POINT (`UtilitySurface`
-   clipPath). Close: circle contracts to the point, then restore. The
-   legacy `isUtilityOpen` absorb path has since been REMOVED entirely
-   (2026-08-04).
+   expands as a circle from the button's CENTER POINT — now the shared
+   `UtilityModal` component (`client/src/components/utility-modal/`, its
+   own registry entry at `/utility-modal`; chrome-only, children supply
+   the surface; ScanView content stays in the stage). Close: circle
+   contracts to the point, then restore. The legacy `isUtilityOpen`
+   absorb path has been REMOVED entirely (2026-08-04).
 5. **Search:** bar morphs into the field right-to-left (unchanged this
    round). Scroll collapse/expand: absorb/regrow with hysteresis (unchanged).
 6. **Filter strip (Transactions):** serial beats per the Overview spec —

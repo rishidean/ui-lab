@@ -1,0 +1,29 @@
+/* UtilityModal — self-contained chrome styles. Reads the host app's
+   theme variables where present, with neutral fallbacks. */
+
+.utility-modal__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 62;
+  border: 0;
+  padding: 0;
+  background: var(--scrim-strong, rgb(24 18 34 / 0.26));
+  cursor: pointer;
+}
+
+.utility-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 64;
+  pointer-events: none;
+}
+
+.utility-modal__content {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.utility-modal__content > * {
+  pointer-events: auto;
+}

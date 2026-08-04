@@ -20,6 +20,7 @@ import {
   UTILITY_CLEAROUT_MS,
 } from "@/components/navigation-bar";
 import { BottomSheet, type SheetOrigin } from "@/components/bottom-sheet";
+import { UtilityModal } from "@/components/utility-modal";
 import {
   navigationContextualActions,
   navigationFilters,
@@ -27,14 +28,7 @@ import {
   navigationTabs,
 } from "@/demos/navigationBarDemo";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import {
-  Camera,
-  FileSpreadsheet,
-  FileText,
-  Link2,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { Camera, Sparkles, X } from "lucide-react";
 import { type UIEvent, useCallback, useEffect, useRef, useState } from "react";
 import "./NavigationBarStage.css";
 
@@ -53,107 +47,13 @@ const MIN_SCROLL_DELTA = 10;
 const TOGGLE_COOLDOWN_MS = 350;
 const ALWAYS_EXPANDED_ABOVE = 20;
 
-// ── Right-button utility surfaces ────────────────────────────────────────
-// Both kinds run the same clear-out first (nav circle out, bar sweeps into
-// the button, button fades — sequenced by isUtilitySheetOpen inside the
-// NavigationBar). Then: modal takeovers (Scan) expand as a circle from the
-// button's center point; bottom sheets (Export, Assistant) widen out of
-// its footprint and stretch vertically — the shared BottomSheet component.
-type UtilityKind = "export" | "assistant" | "scan";
-
-const UTILITY_GROW: Record<UtilityKind, number> = {
-  export: 0.34,
-  assistant: 0.4,
-  scan: 0.28, // quick transition into the full-screen takeover
-};
-
-function UtilitySurface({
-  kind,
-  origin,
-  onClose,
-  reducedMotion,
-}: {
-  kind: UtilityKind;
-  origin: { x: number; y: number };
-  onClose: () => void;
-  reducedMotion: boolean;
-}) {
-  const grow = UTILITY_GROW[kind];
-  const shrink = grow * 0.7;
-  // Radius that covers the whole viewport from the origin point.
-  const vw = typeof window !== "undefined" ? window.innerWidth : 400;
-  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-  const R = Math.ceil(
-    Math.hypot(
-      Math.max(origin.x, vw - origin.x),
-      Math.max(origin.y, vh - origin.y)
-    )
-  );
-  const at = `${origin.x}px ${origin.y}px`;
-
-  // Reduced motion: opacity-only, no geometry.
-  const clipProps = reducedMotion
-    ? {
-        initial: { opacity: 0 },
-        animate: { opacity: 1 },
-        exit: { opacity: 0 },
-        transition: { duration: 0.01 },
-      }
-    : {
-        initial: { clipPath: `circle(28px at ${at})` },
-        animate: { clipPath: `circle(${R}px at ${at})` },
-        exit: { clipPath: `circle(28px at ${at})` },
-        transition: { duration: grow, ease: EASE_OUT },
-      };
-
-  return (
-    <>
-      {/* Backdrop dims after the surface begins growing; the page beneath
-          stays rendered as context. */}
-      <motion.button
-        type="button"
-        aria-label="Close"
-        className="navigation-demo__utility-scrim"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{
-          duration: reducedMotion ? 0.01 : 0.24,
-          ease: EASE,
-          delay: reducedMotion ? 0 : 0.06,
-        }}
-        onClick={onClose}
-      />
-      <motion.div
-        className="navigation-demo__utility-clip"
-        {...clipProps}
-        exit={{
-          ...clipProps.exit,
-          transition: {
-            duration: reducedMotion ? 0.01 : shrink,
-            ease: EASE_IN,
-          },
-        }}
-      >
-        {/* Destination content reveals after ~60% of the growth. */}
-        <motion.div
-          className="navigation-demo__utility-content"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{
-            duration: reducedMotion ? 0.01 : 0.16,
-            ease: EASE_OUT,
-            delay: reducedMotion ? 0 : grow * 0.6,
-          }}
-        >
-          {kind === "scan" && <ScanView onClose={onClose} />}
-        </motion.div>
-      </motion.div>
-    </>
-  );
-}
-
+// ── UtilityButton surfaces ──────────────────────────────────────────────
+// Every kind runs the same clear-out first (NavigationButton out, bar
+// sweeps into the UtilityButton, button fades — sequenced by
+// isUtilitySheetOpen inside the NavigationBar). Then: modal takeovers
+// (Scan) use the shared UtilityModal (circle-reveal from the button's
+// center point); bottom sheets (Export, Assistant) use the shared
+// BottomSheet (widen out of its footprint, stretch vertically).
 /* Scan: full-screen capture takeover. Demonstrates the permission and
    error/unavailable states before the active viewfinder. */
 function ScanView({ onClose }: { onClose: () => void }) {
@@ -243,7 +143,7 @@ export default function NavigationBarStage() {
     },
     []
   );
-  const [utility, setUtility] = useState<UtilityKind | null>(null);
+  const [utility, setUtility] = useState<"scan" | null>(null);
   const [utilityClosing, setUtilityClosing] = useState(false);
   const [utilityOrigin, setUtilityOrigin] = useState<{
     x: number;
@@ -312,7 +212,7 @@ export default function NavigationBarStage() {
   // — pressed feedback, nav circle out, bar sweeps into the button, button
   // fades — then the modal expands from the button's center point.
   const openUtility = useCallback(
-    (kind: UtilityKind) => {
+    (kind: "scan") => {
       // Locked the moment any utility transition begins; only one surface
       // can exist at a time.
       if (utility || utilityClosing || utilSheet || utilSheetPrep) return;
@@ -337,15 +237,7 @@ export default function NavigationBarStage() {
     setUtilityClosing(true);
   }, []);
 
-  // Escape closes any open utility.
-  useEffect(() => {
-    if (!utility) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeUtility();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [utility, closeUtility]);
+  // (Escape is handled by the UtilityModal itself.)
 
   const lastToggleAtRef = useRef(0);
   const overlayOpenRef = useRef(false);
@@ -590,13 +482,16 @@ export default function NavigationBarStage() {
         }}
       >
         {utility && utilityOrigin && (
-          <UtilitySurface
-            key={utility}
-            kind={utility}
+          <UtilityModal
+            key="scan"
             origin={utilityOrigin}
+            ariaLabel="Scanner"
             onClose={closeUtility}
+            growDuration={0.28}
             reducedMotion={!!prefersReducedMotion}
-          />
+          >
+            <ScanView onClose={closeUtility} />
+          </UtilityModal>
         )}
       </AnimatePresence>
 
@@ -620,19 +515,10 @@ export default function NavigationBarStage() {
             expandable
             reducedMotion={!!prefersReducedMotion}
           >
-            <div className="navigation-demo__export-rows">
-              <button type="button" onClick={closeUtilitySheet}>
-                <FileSpreadsheet aria-hidden="true" /> Download CSV
-              </button>
-              <button type="button" disabled aria-disabled="true">
-                <FileText aria-hidden="true" /> Download PDF
-                <span className="navigation-demo__export-unavailable">
-                  Unavailable
-                </span>
-              </button>
-              <button type="button" onClick={closeUtilitySheet}>
-                <Link2 aria-hidden="true" /> Share link
-              </button>
+            <div className="navigation-demo__sheet-body" aria-hidden="true">
+              <div className="navigation-demo__sheet-row" />
+              <div className="navigation-demo__sheet-row" />
+              <div className="navigation-demo__sheet-row navigation-demo__sheet-row--short" />
             </div>
           </BottomSheet>
         )}
@@ -680,6 +566,8 @@ export default function NavigationBarStage() {
             title={openSheet}
             ariaLabel={`${openSheet} workflow`}
             onClose={closeSheet}
+            height="auto"
+            expandable
             reducedMotion={!!prefersReducedMotion}
           >
             <div className="navigation-demo__sheet-body" aria-hidden="true">
