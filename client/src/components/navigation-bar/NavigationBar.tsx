@@ -28,6 +28,7 @@ import React, {
 } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { focusWhenClear } from "@/lib/a11y";
 import { ChevronDown, Search as SearchGlyph, X } from "lucide-react";
 
 // Default collapsed-state glyph: a small aurora dot. A brand mark, not a
@@ -464,8 +465,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   }, [isActionSheetOpen, isUtilitySheetOpen]);
 
   // The chip that launched the workflow sheet gets focus back when the
-  // bar's clear-out lifts (isActionSheetOpen falls in onExitComplete,
-  // after the sheet is gone and inert is restored).
+  // bar's clear-out lifts (isActionSheetOpen falls in onExitComplete).
+  // The workflow sheet is a BottomSheet running useInertOutside, whose
+  // cleanup is NOT guaranteed to have committed by the time onExitComplete
+  // fires — a same-tick .focus() on the chip can land on a still-inert
+  // element and silently no-op (see focusWhenClear's docstring in
+  // @/lib/a11y). Use focusWhenClear instead of a raw .focus() call.
   const actionChipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const lastEngagedActionRef = useRef<string | null>(null);
   useEffect(() => {
@@ -477,7 +482,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     prevActionSheetOpenRef.current = isActionSheetOpen;
     if (was && !isActionSheetOpen) {
       const label = lastEngagedActionRef.current;
-      if (label) actionChipRefs.current[label]?.focus({ preventScroll: true });
+      if (label) focusWhenClear(actionChipRefs.current[label] ?? null);
     }
   }, [isActionSheetOpen]);
 
