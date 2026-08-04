@@ -26,15 +26,31 @@ registry snippets. Breaking renames are deliberate (pre-launch).
 Also renamed in prose: NavigationBarOverview.md section headings and the
 registry `tryIt`/`usage` text adopt the same vocabulary.
 
+Additional renames from the straggler sweep:
+
+- `onLogoClick` → `onCollapsedClick` (6 sites) — it fires on the
+  collapsed NavigationButton tap, which shows the tab icon, not the logo.
+  The `logo` prop itself stays (genuine no-tab brand-mark fallback).
+- Demo data exports: `navigationActions` → `navigationContextualActions`,
+  `navigationRightButtons` → `navigationUtilityActions`
+  (navigationBarDemo.ts + all import sites).
+- Stage CSS prefix: `.bs-demo` → `.sheet-demo` (consistency with the
+  spelled-out `.navigation-demo`).
+
 ## 2. Comments + attribution
 
-- Remove every `dStil` / `WAJOR` / `Dstil` reference (5 files:
-  NavigationBar.tsx, BottomSheet.tsx, NavigationBarStage.tsx/.css,
-  index.css). Rewrite surrounding comments as generic, useful
-  explanations of behavior; keep the choreography beat comments.
-- Standard header on each public component file (and both stages):
+- Remove every `dStil` / `WAJOR` / `Dstil` reference (6 files:
+  NavigationBar.tsx, navigation-bar/index.ts, BottomSheet.tsx,
+  NavigationBarStage.tsx/.css, index.css). Rewrite surrounding comments
+  as generic, useful explanations of behavior; keep the choreography
+  beat comments.
+- Standard header on each public component file (PressAndSlidePicker.tsx
+  included — it currently has a stale "Production TypeScript port"
+  header and no attribution) and all three stages:
   `Part of Rishi's UI Lab — © 2026 Rishi Dean (rishidean.com) ·
   MIT license · github.com/rishidean/ui-lab` (matches LICENSE).
+  Home.tsx's byline is intentional and untouched; the shadcn `ui/`
+  folder and stock hooks are third-party boilerplate, untouched.
 
 ## 3. Theme system (CSS token contract + presets)
 
@@ -81,6 +97,13 @@ formal, documented contract. No JS theme objects — CSS presets only.
 4. **Filter by flag, not label**: `Action` gains `isFilter?: boolean`;
    the `label === "Filter"` special-case is dropped entirely (breaking,
    consistent with the naming break); demo data sets `isFilter: true`.
+
+## 5. README
+
+- Add the missing **Bottom Sheet** row to the components table.
+- New "Theming" section: the token contract, the Aurora/Ink presets and
+  shell toggle, and the consumer story (copy `theme.css`, edit a preset
+  block).
 
 ## Verification
 
