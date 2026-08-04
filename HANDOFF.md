@@ -1,8 +1,31 @@
 # Session Handoff — Rishi's UI Lab
 
-Working doc for continuing the NavigationBar motion/design work in a fresh
-session. Repo: `github.com/rishidean/ui-lab` (push to `main` auto-deploys on
+Working doc for continuing the lab's component work in a fresh session.
+Repo: `github.com/rishidean/ui-lab` (push to `main` auto-deploys on
 Railway via the Dockerfile). Owner: Rishi (rishidean).
+
+## Latest session (2026-08-04) — recap
+
+Everything below landed, frame-verified, and is pushed/deployed:
+
+1. Filter choreography (serial beats per the Overview spec).
+2. BottomSheet extracted as a public registry entry (`/bottom-sheet`);
+   NavigationBar's three sheets consume it.
+3. Consumer refactor: canonical naming (breaking prop renames),
+   attribution headers, theme.css token contract with Aurora/Ink presets
+   - shell toggle, isUtilityOpen pruned, `Action.isFilter`, exported
+     clear-out constants.
+4. UtilityModal extracted (`/utility-modal`); all demo sheets are
+   multi-level with shimmer skeletons; usage docs explain surface
+   routing + file dependencies.
+5. Rishi's sweep fixes: hover/pressed states on NavigationButton /
+   UtilityButton / Done / expand; legible modal reveal (content visible
+   from frame one); NavigationButton absorb pulse; filter-highlight
+   second-open bug (stale AnimatePresence exit props + mid-widen
+   measurement — see Gotchas).
+
+Design specs live in `docs/superpowers/specs/`, plans in
+`docs/superpowers/plans/`.
 
 ## Project shape
 
