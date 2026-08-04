@@ -11,17 +11,17 @@ with a dark preset, and four adoption fixes identified in review.
 One vocabulary everywhere — exported API, internals, comments, docs,
 registry snippets. Breaking renames are deliberate (pre-launch).
 
-| Element | Canonical name | API changes |
-| --- | --- | --- |
-| Left circle | NavigationButton | ref `navigationButtonRef` (internal) |
-| Tab menu | NavigationMenu | state `isNavigationMenuOpen` (internal) |
-| Menu row | NavigationMenuItem | (internal/comments) |
-| Tab definition | `Tab` | type `TabDef` → `Tab` |
-| Center pill | ContextualActionBar | prop `centerBarRef` → `actionBarRef`; prop `tabActions` → `contextualActions` |
-| Action chip | ActionButton | type `ActionDef` → `Action` |
-| Filter strip | FilterOptionSet | type `FilterOption` unchanged |
-| Right circle | UtilityButton | prop `rightButtonRef` → `utilityButtonRef`; `showRightButton` → `showUtilityButton` |
-| Utility definition | `UtilityAction` | prop `rightButton` → `utilityAction` (new exported type `UtilityAction = { Icon; label }`); `onRightButtonClick` → `onUtilityClick` |
+| Element            | Canonical name      | API changes                                                                                                                         |
+| ------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Left circle        | NavigationButton    | ref `navigationButtonRef` (internal)                                                                                                |
+| Tab menu           | NavigationMenu      | state `isNavigationMenuOpen` (internal)                                                                                             |
+| Menu row           | NavigationMenuItem  | (internal/comments)                                                                                                                 |
+| Tab definition     | `Tab`               | type `TabDef` → `Tab`                                                                                                               |
+| Center pill        | ContextualActionBar | prop `centerBarRef` → `actionBarRef`; prop `tabActions` → `contextualActions`                                                       |
+| Action chip        | ActionButton        | type `ActionDef` → `Action`                                                                                                         |
+| Filter strip       | FilterOptionSet     | type `FilterOption` unchanged                                                                                                       |
+| Right circle       | UtilityButton       | prop `rightButtonRef` → `utilityButtonRef`; `showRightButton` → `showUtilityButton`                                                 |
+| Utility definition | `UtilityAction`     | prop `rightButton` → `utilityAction` (new exported type `UtilityAction = { Icon; label }`); `onRightButtonClick` → `onUtilityClick` |
 
 Also renamed in prose: NavigationBarOverview.md section headings and the
 registry `tryIt`/`usage` text adopt the same vocabulary.
@@ -44,11 +44,9 @@ Additional renames from the straggler sweep:
   NavigationBarStage.tsx/.css, index.css). Rewrite surrounding comments
   as generic, useful explanations of behavior; keep the choreography
   beat comments.
-- Standard header on each public component file (PressAndSlidePicker.tsx
-  included — it currently has a stale "Production TypeScript port"
-  header and no attribution) and all three stages:
-  `Part of Rishi's UI Lab — © 2026 Rishi Dean (rishidean.com) ·
-  MIT license · github.com/rishidean/ui-lab` (matches LICENSE).
+- Standard header on NavigationBar.tsx, BottomSheet.tsx, and their two
+  stages: `Part of Rishi's UI Lab — © 2026 Rishi Dean (rishidean.com) ·
+MIT license · github.com/rishidean/ui-lab` (matches LICENSE).
   Home.tsx's byline is intentional and untouched; the shadcn `ui/`
   folder and stock hooks are third-party boilerplate, untouched.
 
@@ -98,12 +96,12 @@ formal, documented contract. No JS theme objects — CSS presets only.
    the `label === "Filter"` special-case is dropped entirely (breaking,
    consistent with the naming break); demo data sets `isFilter: true`.
 
-## 5. README
+## Scope rule (Rishi, 2026-08-04)
 
-- Add the missing **Bottom Sheet** row to the components table.
-- New "Theming" section: the token contract, the Aurora/Ink presets and
-  shell toggle, and the consumer story (copy `theme.css`, edit a preset
-  block).
+App-side changes ONLY in service of decoupling the components: the
+`theme.css` import, the minimal shell theme toggle, tokenizing the two
+stage canvases so Ink renders correctly, and compile-level updates
+forced by the renames. Everything else app-side is deferred.
 
 ## Verification
 
@@ -113,10 +111,14 @@ formal, documented contract. No JS theme objects — CSS presets only.
   same states in **Ink** — every capture read, both themes; plus the
   shell toggle itself.
 - Grep gates: zero hits for `dStil|WAJOR|Dstil|rightButton|tabActions|
-  isUtilityOpen|label === "Filter"` in client/src after the sweep.
+isUtilityOpen|label === "Filter"` in client/src after the sweep.
 
 ## Out of scope
 
+- **PressAndSlidePicker — untouched entirely** (Rishi: acceptable even
+  if incidentally broken; it has no dependency on the renamed API).
+- README updates (Bottom Sheet row, Theming section) — deferred app
+  polish.
 - Accessibility pass (still next on the roadmap).
 - Additional accent presets beyond Aurora + Ink (the mechanism supports
   them; add later).

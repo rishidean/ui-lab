@@ -835,7 +835,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             aria-label="Close filter options"
             className="fixed inset-0 z-0 pointer-events-auto cursor-pointer"
             style={{
-              background: "rgb(24 18 34 / 0.14)",
+              background: "var(--scrim-light)",
               border: 0,
               padding: 0,
             }}
@@ -922,12 +922,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               <div
                 className="w-14 h-14 rounded-full"
                 style={{
-                  background:
-                    "linear-gradient(180deg, color-mix(in oklab, var(--iris-700) 5%, white), color-mix(in oklab, var(--iris-700) 11%, white))",
-                  border:
-                    "1.5px solid color-mix(in oklab, var(--iris-700) 30%, white)",
-                  boxShadow:
-                    "0 10px 28px rgb(48 36 72 / 0.12), inset 0 1px 0 rgba(255,255,255,0.8)",
+                  background: "var(--nav-circle-bg)",
+                  border: "1.5px solid var(--nav-circle-border)",
+                  boxShadow: "var(--circle-shadow)",
                   backdropFilter: "saturate(1.5) blur(var(--blur-lg))",
                   WebkitBackdropFilter: "saturate(1.5) blur(var(--blur-lg))",
                 }}
@@ -1491,11 +1488,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 <span
                   className="absolute inset-0 rounded-full"
                   style={{
-                    background:
-                      "linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.66))",
-                    border: "1px solid rgb(88 71 116 / 0.14)",
-                    boxShadow:
-                      "0 10px 28px rgb(48 36 72 / 0.12), inset 0 1px 0 rgba(255,255,255,0.8)",
+                    background: "var(--utility-circle-bg)",
+                    border: "1px solid var(--utility-circle-border)",
+                    boxShadow: "var(--circle-shadow)",
                     backdropFilter: "saturate(1.4) blur(var(--blur-lg))",
                     WebkitBackdropFilter: "saturate(1.4) blur(var(--blur-lg))",
                   }}
