@@ -1,6 +1,6 @@
 /* BottomSheet demo — restrained canvas; the sheet is the focal object. */
 
-.bs-demo {
+.sheet-demo {
   /* Fills the lab's stage panel (height: 100%), like the other stages —
      never the raw viewport, which would push the triggers below the
      lab chrome. */
@@ -15,7 +15,7 @@
   background: var(--bg-canvas, #f6f4fb);
 }
 
-.bs-demo__canvas {
+.sheet-demo__canvas {
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -23,25 +23,25 @@
   justify-content: center;
 }
 
-.bs-demo__ghost-block {
+.sheet-demo__ghost-block {
   height: 7.5rem;
   border-radius: 1.25rem;
   background: rgb(255 255 255 / 0.6);
   border: 1px solid rgb(255 255 255 / 0.8);
 }
 
-.bs-demo__ghost-block--short {
+.sheet-demo__ghost-block--short {
   height: 4.5rem;
   opacity: 0.7;
 }
 
-.bs-demo__triggers {
+.sheet-demo__triggers {
   display: flex;
   gap: 0.75rem;
   justify-content: center;
 }
 
-.bs-demo__triggers button {
+.sheet-demo__triggers button {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -63,31 +63,31 @@
   cursor: pointer;
 }
 
-.bs-demo__triggers button svg {
+.sheet-demo__triggers button svg {
   width: 1rem;
   height: 1rem;
   color: var(--text-secondary, #55496b);
 }
 
-.bs-demo__rows,
-.bs-demo__actions {
+.sheet-demo__rows,
+.sheet-demo__actions {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-.bs-demo__row {
+.sheet-demo__row {
   height: 3.25rem;
   border-radius: 1rem;
   background: rgb(53 42 75 / 0.06);
 }
 
-.bs-demo__row--short {
+.sheet-demo__row--short {
   width: 62%;
   height: 2.5rem;
 }
 
-.bs-demo__actions button {
+.sheet-demo__actions button {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -102,8 +102,34 @@
   cursor: pointer;
 }
 
-.bs-demo__actions button svg {
+.sheet-demo__actions button svg {
   width: 1rem;
   height: 1rem;
   color: var(--text-secondary, #55496b);
+}
+
+/* ── Ink (dark) — demo canvas content overrides ─────────────────────── */
+
+.dark .sheet-demo__ghost-block {
+  background: rgb(255 255 255 / 0.04);
+  border-color: rgb(255 255 255 / 0.08);
+}
+
+.dark .sheet-demo__triggers button {
+  border-color: rgb(255 255 255 / 0.14);
+  background: linear-gradient(
+    180deg,
+    rgb(48 41 63 / 0.92),
+    rgb(38 32 51 / 0.78)
+  );
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.45);
+}
+
+.dark .sheet-demo__row {
+  background: rgb(167 139 250 / 0.1);
+}
+
+.dark .sheet-demo__actions button {
+  border-color: rgb(255 255 255 / 0.1);
+  background: rgb(255 255 255 / 0.06);
 }

@@ -12,7 +12,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #f5f5f5;
+  background: var(--bg-canvas);
 }
 
 .navigation-demo__scroll-area {
@@ -22,7 +22,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
-  background: #f5f5f5;
+  background: var(--bg-canvas);
 }
 
 .navigation-demo__scroll-area::-webkit-scrollbar {
@@ -224,7 +224,7 @@
   z-index: 62;
   border: 0;
   padding: 0;
-  background: rgb(24 18 34 / 0.26);
+  background: var(--scrim-strong);
   cursor: pointer;
 }
 
@@ -451,4 +451,54 @@
     linear-gradient(#fff, #fff) bottom right / 3px 2rem;
   background-repeat: no-repeat;
   opacity: 0.85;
+}
+
+/* ── Ink (dark) — demo canvas content overrides ─────────────────────── */
+
+.dark .navigation-demo__feature-card {
+  border-color: rgb(255 255 255 / 0.08);
+  background: rgb(255 255 255 / 0.04);
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 0.3);
+}
+
+.dark .navigation-demo__ghost-card {
+  border-color: rgb(255 255 255 / 0.07);
+  background: rgb(255 255 255 / 0.035);
+}
+
+.dark .navigation-demo__ghost-lines span {
+  background: rgb(255 255 255 / 0.09);
+}
+
+.dark .navigation-demo__ghost-icon {
+  background: rgb(167 139 250 / 0.16);
+}
+
+.dark .navigation-demo__sheet-row,
+.dark .navigation-demo__sheet-bubble {
+  background: rgb(167 139 250 / 0.1);
+  border-color: rgb(255 255 255 / 0.08);
+}
+
+.dark .navigation-demo__sheet-bubble--user {
+  background: rgb(109 40 217 / 0.3);
+  border-color: rgb(167 139 250 / 0.3);
+}
+
+.dark .navigation-demo__sheet-input {
+  border-color: rgb(255 255 255 / 0.12);
+  background: rgb(255 255 255 / 0.06);
+}
+
+.dark .navigation-demo__export-rows > button {
+  border-color: rgb(255 255 255 / 0.1);
+  background: rgb(255 255 255 / 0.06);
+}
+
+.dark .navigation-demo__export-rows > button:hover:not(:disabled) {
+  background: rgb(167 139 250 / 0.14);
+}
+
+.dark .navigation-demo__export-rows > button:disabled {
+  background: rgb(255 255 255 / 0.03);
 }

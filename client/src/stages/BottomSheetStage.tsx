@@ -43,12 +43,12 @@ export default function BottomSheetStage() {
   const close = () => setOpen(null);
 
   return (
-    <main className="bs-demo">
-      <div className="bs-demo__canvas" aria-hidden="true">
-        <div className="bs-demo__ghost-block" />
-        <div className="bs-demo__ghost-block bs-demo__ghost-block--short" />
+    <main className="sheet-demo">
+      <div className="sheet-demo__canvas" aria-hidden="true">
+        <div className="sheet-demo__ghost-block" />
+        <div className="sheet-demo__ghost-block sheet-demo__ghost-block--short" />
       </div>
-      <div className="bs-demo__triggers">
+      <div className="sheet-demo__triggers">
         <button
           type="button"
           ref={fixedRef}
@@ -81,10 +81,10 @@ export default function BottomSheetStage() {
             expandable
             reducedMotion={!!prefersReducedMotion}
           >
-            <div className="bs-demo__rows" aria-hidden="true">
-              <div className="bs-demo__row" />
-              <div className="bs-demo__row" />
-              <div className="bs-demo__row bs-demo__row--short" />
+            <div className="sheet-demo__rows" aria-hidden="true">
+              <div className="sheet-demo__row" />
+              <div className="sheet-demo__row" />
+              <div className="sheet-demo__row sheet-demo__row--short" />
             </div>
           </BottomSheet>
         )}
@@ -99,7 +99,7 @@ export default function BottomSheetStage() {
             expandable
             reducedMotion={!!prefersReducedMotion}
           >
-            <div className="bs-demo__actions">
+            <div className="sheet-demo__actions">
               <button type="button" onClick={close}>
                 <Send aria-hidden="true" /> Send update
               </button>
