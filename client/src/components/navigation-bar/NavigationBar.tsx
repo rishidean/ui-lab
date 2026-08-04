@@ -620,6 +620,70 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isFilterExpanded]);
 
+  // APG radiogroup: roving tabindex + focus return, mirroring the menu.
+  const filterChipRef = useRef<HTMLButtonElement | null>(null);
+  const [filterFocusId, setFilterFocusId] = useState<string | null>(null);
+  // One-shot flag: focus the selected radio when the options first mount
+  // (they appear AFTER the label exits under mode="wait", so an effect on
+  // isFilterExpanded fires too early — the ref callback is the mount signal).
+  const filterFocusApplied = useRef(false);
+  // Mirror image of the above: the chip itself unmounts while the options
+  // are showing and only remounts once they finish exiting (same
+  // mode="wait" AnimatePresence), so a focus() call made the instant
+  // isFilterExpanded flips false lands on a not-yet-mounted button and is
+  // silently dropped. This flag is consumed by the chip's own ref callback
+  // once it actually mounts.
+  const pendingFilterFocusReturn = useRef(false);
+
+  // Close: reset roving; return focus to the chip unless the user has
+  // already clicked focus somewhere else on the page. Rides the existing
+  // filterClosing falling-edge signal (~line 455) rather than a second
+  // isFilterExpanded-tracking ref.
+  //
+  // The just-activated (or just-escaped-from) radio keeps DOM focus while
+  // it fades out under AnimatePresence — a still-mounted exiting radio, not
+  // document.body, so the check for "focus already moved on" is whether
+  // activeElement is one of OUR OWN option buttons (still owned by the
+  // closing strip) versus something genuinely outside it.
+  useEffect(() => {
+    if (!filterClosing) return;
+    setFilterFocusId(null);
+    filterFocusApplied.current = false;
+    const el = document.activeElement;
+    const stillOwnedByStrip =
+      el === document.body ||
+      el === null ||
+      Object.values(filterOptionRefs.current).some(opt => opt === el);
+    if (stillOwnedByStrip) {
+      if (filterChipRef.current) {
+        filterChipRef.current.focus({ preventScroll: true });
+      } else {
+        pendingFilterFocusReturn.current = true;
+      }
+    }
+  }, [filterClosing]);
+
+  const handleFilterKeyDown = (e: React.KeyboardEvent) => {
+    const ids = filterOptions.map(o => o.id);
+    const current = Math.max(0, ids.indexOf(filterFocusId ?? activeFilter));
+    let next: number | null = null;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown")
+      next = (current + 1) % ids.length;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp")
+      next = (current - 1 + ids.length) % ids.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = ids.length - 1;
+    if (next !== null) {
+      e.preventDefault();
+      setFilterFocusId(ids[next]);
+      filterOptionRefs.current[ids[next]]?.focus({ preventScroll: true });
+    }
+  };
+  // Note: arrows move focus WITHOUT selecting — selection (Enter/Space →
+  // native click → handleSelectFilter) triggers the confirm-hold
+  // choreography, so focus-follows-selection would fire it on every
+  // keystroke.
+
   // Sliding selection highlight, measured against the option buttons.
   // (Deliberately not framer's layoutId — shared-layout projection takes
   // over ancestors' transform origins and breaks the pill's left-anchored
@@ -666,6 +730,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         const ro = new ResizeObserver(apply);
         ro.observe(el);
         filterHighlightObserver.current = ro;
+      }
+      if (!filterFocusApplied.current) {
+        filterFocusApplied.current = true;
+        el.focus({ preventScroll: true });
       }
     }
   };
@@ -940,7 +1008,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           <motion.button
             key="filter-scrim"
             type="button"
-            aria-label="Close filter options"
+            aria-hidden="true"
+            tabIndex={-1}
             className="fixed inset-0 z-0 pointer-events-auto cursor-pointer"
             style={{
               background: "var(--scrim-light)",
@@ -1368,6 +1437,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     transition={{ duration: dur(0.15), ease: EASE }}
                     ref={filterRowFade.ref}
                     onScroll={filterRowFade.onScroll}
+                    role="radiogroup"
+                    aria-label={`${actionsForTab.find(a => a.isFilter)?.label ?? "Filter"} options`}
+                    onKeyDown={handleFilterKeyDown}
                     className="relative flex items-center gap-1.5 w-full h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
                     style={{
                       touchAction: "pan-x",
@@ -1417,6 +1489,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           key={option.id}
                           ref={el => measureFilterOption(option.id, el)}
                           type="button"
+                          role="radio"
+                          aria-checked={isActive}
+                          tabIndex={
+                            (filterFocusId ?? activeFilter) === option.id
+                              ? 0
+                              : -1
+                          }
                           onClick={() => handleSelectFilter(option.id)}
                           /* Scale/fade only — a y offset here creates
                              transient vertical overflow inside the scroll
@@ -1436,7 +1515,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                             prefersReducedMotion ? undefined : { scale: 0.96 }
                           }
                           className={cn(
-                            "relative z-10 flex-[1_1_0%] min-w-fit h-[34px] px-4 rounded-full text-[13px] font-medium whitespace-nowrap",
+                            "nav-filter-option relative z-10 flex-[1_1_0%] min-w-fit h-[34px] px-4 rounded-full text-[13px] font-medium whitespace-nowrap",
                             "transition-colors duration-200",
                             isActive
                               ? "text-[color:var(--select-fg)]"
@@ -1506,6 +1585,18 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           )}
                           <motion.button
                             type="button"
+                            ref={
+                              isFilter
+                                ? (el: HTMLButtonElement | null) => {
+                                    filterChipRef.current = el;
+                                    if (el && pendingFilterFocusReturn.current) {
+                                      pendingFilterFocusReturn.current = false;
+                                      el.focus({ preventScroll: true });
+                                    }
+                                  }
+                                : undefined
+                            }
+                            aria-expanded={isFilter ? isFilterExpanded : undefined}
                             onClick={() => {
                               if (isFilter) {
                                 handleFilterClick();
