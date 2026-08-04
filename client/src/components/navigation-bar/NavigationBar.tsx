@@ -356,6 +356,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   showUtilityButton = true,
 }) => {
   const [isNavigationMenuOpen, setIsNavigationMenuOpen] = useState(false);
+  const menuId = React.useId();
+  const menuItemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  // Roving tabindex: exactly one row is tabbable; arrows move it.
+  const [menuFocusId, setMenuFocusId] = useState<string | null>(null);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(
     externalActiveTab || tabs[0]?.id || "home"
@@ -526,7 +530,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const closeMenu = (returnFocus: boolean) => {
     setIsNavigationMenuOpen(false);
-    if (returnFocus) navigationButtonRef.current?.focus();
+    if (returnFocus)
+      navigationButtonRef.current?.focus({ preventScroll: true });
   };
 
   // Escape closes the menu and returns focus to the left control.
@@ -572,7 +577,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         setActiveTab(id);
         setIsNavigationMenuOpen(false);
         setIsFilterExpanded(false);
-        navigationButtonRef.current?.focus();
+        navigationButtonRef.current?.focus({ preventScroll: true });
         onTabChange?.(id);
       },
       Math.round(dur(SELECT_CONFIRM_S) * 1000)
@@ -672,6 +677,36 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const activeTabDef = tabs.find(t => t.id === activeTab) ?? tabs[0];
   const otherTabs = tabs.filter(t => t.id !== activeTabDef?.id);
   const menuTabs = [...otherTabs, activeTabDef].filter(Boolean) as Tab[];
+
+  // APG menu: focus moves to the active row when the menu opens; the
+  // roving pointer resets when it closes. rAF waits for the rows to mount.
+  useEffect(() => {
+    if (isNavigationMenuOpen) {
+      const index = menuTabs.findIndex(t => t.id === activeTab);
+      requestAnimationFrame(() =>
+        menuItemRefs.current[Math.max(0, index)]?.focus({ preventScroll: true })
+      );
+    } else {
+      setMenuFocusId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNavigationMenuOpen]);
+
+  const handleMenuKeyDown = (e: React.KeyboardEvent) => {
+    const ids = menuTabs.map(t => t.id);
+    const current = Math.max(0, ids.indexOf(menuFocusId ?? activeTab));
+    let next: number | null = null;
+    if (e.key === "ArrowDown") next = (current + 1) % ids.length;
+    else if (e.key === "ArrowUp") next = (current - 1 + ids.length) % ids.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = ids.length - 1;
+    if (next !== null) {
+      e.preventDefault();
+      setMenuFocusId(ids[next]);
+      menuItemRefs.current[next]?.focus({ preventScroll: true });
+    }
+  };
+
   const actionsForTab = contextualActions[activeTab] ?? [];
   const hasActions = actionsForTab.length > 0;
   const hasFilterAction = actionsForTab.some(a => a.isFilter);
@@ -1043,6 +1078,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 style={{ color: "var(--iris-700)" }}
                 aria-label={isCollapsed ? "Open controls" : undefined}
                 title={isCollapsed ? "Open controls" : undefined}
+                aria-haspopup="menu"
+                aria-expanded={isNavigationMenuOpen}
+                aria-controls={isNavigationMenuOpen ? menuId : undefined}
               >
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
@@ -1095,6 +1133,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               {isNavigationMenuOpen && (
                 <motion.div
                   key="tab-menu"
+                  id={menuId}
+                  role="menu"
+                  aria-label="Navigate"
+                  onKeyDown={handleMenuKeyDown}
                   initial={{
                     opacity: 0,
                     scaleX: 0.85,
@@ -1148,6 +1190,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           )}
                           <motion.button
                             type="button"
+                            role="menuitem"
+                            ref={el => {
+                              menuItemRefs.current[rowIndex] = el;
+                            }}
+                            tabIndex={
+                              (menuFocusId ?? activeTab) === tab.id ? 0 : -1
+                            }
                             onClick={() => handleSelectTab(tab.id)}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -1163,7 +1212,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                               prefersReducedMotion ? undefined : { scale: 0.97 }
                             }
                             className={cn(
-                              "flex items-center gap-3 px-3 py-2 rounded-[var(--radius-md)] text-sm w-full text-left transition-colors duration-200",
+                              "nav-menu-item flex items-center gap-3 px-3 py-2 rounded-[var(--radius-md)] text-sm w-full text-left transition-colors duration-200",
                               isHighlighted
                                 ? "font-semibold bg-[var(--select-bg)] text-[var(--select-fg)]"
                                 : "text-[var(--text-secondary)] hover:bg-[var(--action-ghost-bg-hover)] hover:text-[var(--text-primary)]"
