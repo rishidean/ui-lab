@@ -1,7 +1,11 @@
 /**
- * Dstil source-stage reminder: the uploaded NavigationBar is the focal object.
- * The restrained ghost content exists only to provide real scrolling for its
- * built-in collapse choreography; it must never compete with the bottom bar.
+ * NavigationBar demo stage.
+ * Part of Rishi's UI Lab — © 2026 Rishi Dean (rishidean.com)
+ * MIT license · github.com/rishidean/ui-lab
+ *
+ * The NavigationBar is the focal object; the restrained ghost content
+ * exists only to provide real scrolling for its built-in collapse
+ * choreography, and must never compete with the bottom bar.
  *
  * Playground states shown here: expanded, navigation open, filter menu,
  * workflow sheet (tap any action), collapsed (scroll down), and the four
@@ -10,12 +14,16 @@
  * share one clear-out grammar: nav circle out, bar sweeps into the
  * button, button fades — then the surface takes over its footprint.
  */
-import { NavigationBar } from "@/components/navigation-bar";
+import {
+  NavigationBar,
+  ACTION_SHEET_CLEAROUT_MS,
+  UTILITY_CLEAROUT_MS,
+} from "@/components/navigation-bar";
 import { BottomSheet, type SheetOrigin } from "@/components/bottom-sheet";
 import {
-  navigationActions,
+  navigationContextualActions,
   navigationFilters,
-  navigationRightButtons,
+  navigationUtilityActions,
   navigationTabs,
 } from "@/demos/navigationBarDemo";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -220,8 +228,8 @@ export default function NavigationBarStage() {
   const prefersReducedMotion = useReducedMotion();
 
   // ── Utility surface state ──
-  const rightButtonRef = useRef<HTMLButtonElement | null>(null);
-  const centerBarRef = useRef<HTMLDivElement | null>(null);
+  const utilityButtonRef = useRef<HTMLButtonElement | null>(null);
+  const actionBarRef = useRef<HTMLDivElement | null>(null);
   const [sheetOrigin, setSheetOrigin] = useState<SheetOrigin | null>(null);
   // Action-press sequence: pressed feedback → fade phase (circles and
   // unselected actions out, selected label lingering) → the emptied bar
@@ -263,7 +271,7 @@ export default function NavigationBarStage() {
   const openUtilitySheet = useCallback(
     (kind: "export" | "assistant") => {
       if (utilSheet || utilSheetPrep || utility || utilityClosing) return;
-      const rect = rightButtonRef.current?.getBoundingClientRect();
+      const rect = utilityButtonRef.current?.getBoundingClientRect();
       setUtilSheetOrigin(
         rect
           ? {
@@ -288,7 +296,7 @@ export default function NavigationBarStage() {
       if (utilPrepTimer.current) clearTimeout(utilPrepTimer.current);
       utilPrepTimer.current = setTimeout(
         () => setUtilSheet(kind),
-        prefersReducedMotion ? 0 : 500
+        prefersReducedMotion ? 0 : UTILITY_CLEAROUT_MS
       );
     },
     [utilSheet, utilSheetPrep, utility, utilityClosing, prefersReducedMotion]
@@ -308,7 +316,7 @@ export default function NavigationBarStage() {
       // Locked the moment any utility transition begins; only one surface
       // can exist at a time.
       if (utility || utilityClosing || utilSheet || utilSheetPrep) return;
-      const rect = rightButtonRef.current?.getBoundingClientRect();
+      const rect = utilityButtonRef.current?.getBoundingClientRect();
       setUtilityOrigin(
         rect
           ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
@@ -318,7 +326,7 @@ export default function NavigationBarStage() {
       if (utilPrepTimer.current) clearTimeout(utilPrepTimer.current);
       utilPrepTimer.current = setTimeout(
         () => setUtility(kind),
-        prefersReducedMotion ? 0 : 500
+        prefersReducedMotion ? 0 : UTILITY_CLEAROUT_MS
       );
     },
     [utility, utilityClosing, utilSheet, utilSheetPrep, prefersReducedMotion]
@@ -417,7 +425,7 @@ export default function NavigationBarStage() {
 
   // (Escape is handled by the BottomSheet itself.)
 
-  const rightButton = navigationRightButtons[activeTab] ?? null;
+  const utilityAction = navigationUtilityActions[activeTab] ?? null;
 
   // Ghost cards reshuffle deterministically per filter value so a selection
   // visibly changes the page (same count — scroll position never jumps).
@@ -484,12 +492,12 @@ export default function NavigationBarStage() {
           activeFilter={activeFilter}
           activeAction={activeAction}
           tabs={navigationTabs}
-          tabActions={navigationActions}
+          contextualActions={navigationContextualActions}
           filterOptions={navigationFilters}
-          rightButton={rightButton}
-          rightButtonRef={rightButtonRef}
-          centerBarRef={centerBarRef}
-          onLogoClick={expandFromLogo}
+          utilityAction={utilityAction}
+          utilityButtonRef={utilityButtonRef}
+          actionBarRef={actionBarRef}
+          onCollapsedClick={expandFromLogo}
           isSearchOpen={isSearchOpen}
           onSearchClose={() => setIsSearchOpen(false)}
           onSearchChange={query =>
@@ -518,7 +526,7 @@ export default function NavigationBarStage() {
           onActionClick={(label, tab) => {
             if (sheetPrep || openSheet) return;
             // Capture the bar's rect as the stretch origin at press time.
-            const rect = centerBarRef.current?.getBoundingClientRect();
+            const rect = actionBarRef.current?.getBoundingClientRect();
             setSheetOrigin(
               rect
                 ? {
@@ -545,11 +553,11 @@ export default function NavigationBarStage() {
             if (prepTimer.current) clearTimeout(prepTimer.current);
             prepTimer.current = setTimeout(
               () => setOpenSheet(label),
-              prefersReducedMotion ? 0 : 440
+              prefersReducedMotion ? 0 : ACTION_SHEET_CLEAROUT_MS
             );
           }}
-          onRightButtonClick={() => {
-            const label = rightButton?.label;
+          onUtilityClick={() => {
+            const label = utilityAction?.label;
             if (!label) return;
             setLastAction(`${label} selected`);
             // Right-button utilities, all sharing the button as origin:
@@ -578,7 +586,7 @@ export default function NavigationBarStage() {
           setUtilityOrigin(null);
           setUtilSheetPrep(false); // button, bar, and circle fade back in
           // Focus returns to the origin control.
-          rightButtonRef.current?.focus();
+          utilityButtonRef.current?.focus();
         }}
       >
         {utility && utilityOrigin && (
@@ -598,7 +606,7 @@ export default function NavigationBarStage() {
         onExitComplete={() => {
           setUtilSheetOrigin(null);
           setUtilSheetPrep(false); // button, bar, and circle fade back in
-          rightButtonRef.current?.focus();
+          utilityButtonRef.current?.focus();
         }}
       >
         {utilSheet === "export" && utilSheetOrigin && (

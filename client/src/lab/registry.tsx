@@ -35,12 +35,16 @@ export type LabComponent = {
   aliases?: string[];
 };
 
-const navigationBarUsage = `import { NavigationBar } from "@/components/navigation-bar";
+const navigationBarUsage = `import {
+  NavigationBar,
+  ACTION_SHEET_CLEAROUT_MS,   // clear-out windows for launching sheet
+  UTILITY_CLEAROUT_MS,        // surfaces from the bar (see below)
+} from "@/components/navigation-bar";
 import {
-  Home, CreditCard, TrendingUp, ReceiptText,          // tabs
-  ArrowDownToLine, ArrowUpFromLine, Send, HandCoins,  // actions
+  Home, CreditCard, TrendingUp, ReceiptText,          // Tabs
+  ArrowDownToLine, ArrowUpFromLine, Send, HandCoins,  // ActionButtons
   ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Filter,
-  Sparkles, ScanLine, Search, Download,               // right buttons
+  Sparkles, ScanLine, Search, Download,               // UtilityActions
 } from "lucide-react";
 
 const tabs = [
@@ -50,10 +54,10 @@ const tabs = [
   { id: "transactions", label: "Transactions", Icon: ReceiptText },
 ];
 
-// Each tab carries its own contextual actions in the center pill.
-// Design rule: pill chips are text-only (showIcon: false) — icons belong
-// to the circular left/right buttons. Icon still feeds accessibility.
-const tabActions = {
+// Each Tab carries its own ActionButtons in the ContextualActionBar.
+// Design rule: ActionButtons are text-only (showIcon: false) — icons
+// belong to the circular buttons. Icon still feeds accessibility.
+const contextualActions = {
   home: [
     { Icon: ArrowDownToLine, label: "Deposit", showIcon: false },
     { Icon: ArrowUpFromLine, label: "Withdraw", showIcon: false },
@@ -67,9 +71,11 @@ const tabActions = {
     { Icon: ArrowUpRight, label: "Sell", showIcon: false },
     { Icon: ArrowLeftRight, label: "Swap", showIcon: false },
   ],
-  // "Filter" is special-cased: it expands filterOptions in place
-  // and the chip shows the currently selected option.
-  transactions: [{ Icon: Filter, label: "Filter", showIcon: false }],
+  // isFilter marks the filter control: the chip shows the current
+  // filterOptions value and expands the FilterOptionSet in place.
+  transactions: [
+    { Icon: Filter, label: "Filter", showIcon: false, isFilter: true },
+  ],
 };
 
 const filterOptions = [
@@ -78,9 +84,9 @@ const filterOptions = [
   { id: "scheduled", label: "Scheduled" },
 ];
 
-// rightButton is a single prop — swap it per tab for a contextual
-// right-side control (AI on Home, Scan on Spend, Search on Trade, ...).
-const rightButtons = {
+// One UtilityAction per tab drives the UtilityButton (AI on Home,
+// Scan on Spend, Search on Trade, Export on Transactions).
+const utilityActions = {
   home: { Icon: Sparkles, label: "AI" },
   spend: { Icon: ScanLine, label: "Scan" },
   trade: { Icon: Search, label: "Search" },
@@ -89,36 +95,40 @@ const rightButtons = {
 
 <NavigationBar
   tabs={tabs}
-  tabActions={tabActions}
+  contextualActions={contextualActions}
   filterOptions={filterOptions}
-  rightButton={rightButtons[activeTab]}
+  utilityAction={utilityActions[activeTab]}
   isCollapsed={isCollapsed}          // drive from your scroll direction
   activeTab={activeTab}
   activeFilter={activeFilter}
-  activeAction={activeAction}        // engaged action gets the lavender pill;
+  activeAction={activeAction}        // engaged ActionButton gets the pill;
                                      // resting actions are plain labels
-  isSearchOpen={isSearchOpen}        // capsule morphs into a search field
+  isSearchOpen={isSearchOpen}        // bar morphs into a search field
   onSearchClose={() => setIsSearchOpen(false)}
   onSearchChange={setQuery}
   onSearchSubmit={runSearch}         // Enter commits, then the field closes
   searchPlaceholder="Search markets…"
-  isUtilityOpen={utility !== null}   // bar absorbs toward the right button
-                                     // while a utility surface is open
-  rightButtonRef={rightButtonRef}    // shared origin: measure its bounds and
-                                     // grow your surface out of it
+  utilityButtonRef={utilityButtonRef} // shared origin: measure its bounds
+                                      // and grow utility surfaces out of it
+  actionBarRef={actionBarRef}         // shared origin for workflow sheets
+  isActionSheetOpen={sheetPrep}       // flip, wait ACTION_SHEET_CLEAROUT_MS,
+                                      // then mount your sheet (BottomSheet
+                                      // pairs perfectly here)
+  isUtilitySheetOpen={utilPrep}       // flip, wait UTILITY_CLEAROUT_MS,
+                                      // then mount the utility surface
   onTabChange={setActiveTab}
   onFilterChange={setActiveFilter}
   onActionClick={(label, tab) => console.log(label, tab)}
-  onRightButtonClick={() => console.log("right button")}
-  onLogoClick={() => setIsCollapsed(false)}
+  onUtilityClick={() => console.log("utility pressed")}
+  onCollapsedClick={() => setIsCollapsed(false)}
 />
 
 /*
- * Styling contract: the component reads CSS custom properties
- * (--iris-700, --gradient-aurora, --surface-overlay, shadows, radii, text
- * scale) plus three utility classes: .glass-nav, .glass-overlay, and
- * .nav-action-chip. Copy the token block from client/src/index.css in this
- * repo, or remap the variables to your own design system.
+ * Styling contract: the component reads the token contract in
+ * client/src/theme/theme.css (accent family, text scale, select pill,
+ * glass classes, scrims — with Aurora light and Ink dark presets).
+ * Copy theme.css alongside the component and edit a preset block, or
+ * remap the variables to your own design system.
  */`;
 
 const pressAndSlidePickerUsage = `import { PressAndSlidePicker } from "@/components/press-and-slide-picker";
@@ -208,12 +218,12 @@ export const labComponents: LabComponent[] = [
     usage: navigationBarUsage,
     tryIt: [
       "Scroll the canvas down to collapse the bar, up to expand it",
-      "Tap the left circle to open the tab menu — Home, Spend, Trade, Transactions",
-      "Switch tabs — actions and the right-side button change with the tab",
+      "Tap the NavigationButton to open the NavigationMenu — Home, Spend, Trade, Transactions",
+      "Switch tabs — the ActionButtons and UtilityButton change with the tab",
       "Tap Deposit — the action bar itself grows into the workflow sheet, and contracts back on Done",
       "Open the tab menu — the bar is absorbed into the circle and the menu grows out of it",
       "On Trade, tap Search — the bar itself morphs into a search field",
-      "On Home, tap the sparkle — the assistant sheet grows out of the button (drag it to full screen)",
+      "On Home, tap the sparkle UtilityButton — the assistant sheet grows out of it (extend it to full screen)",
       "On Spend, tap Scan — full-screen takeover with permission and error states",
       "On Transactions, tap Export — a compact sheet grows from the button and contracts back into it",
       "On Trade, five actions overflow the pill — swipe the row horizontally",

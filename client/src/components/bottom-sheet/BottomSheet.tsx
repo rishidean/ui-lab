@@ -1,5 +1,8 @@
 /**
- * BottomSheet — dStil
+ * BottomSheet
+ * Part of Rishi's UI Lab — © 2026 Rishi Dean (rishidean.com)
+ * MIT license · github.com/rishidean/ui-lab
+ *
  * A floating bottom sheet that grows out of the control that owns it.
  *
  * Bar-grammar morph (extracted from the NavigationBar demo's sheets): the

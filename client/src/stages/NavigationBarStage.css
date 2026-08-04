@@ -1,7 +1,11 @@
 /*
- * Dstil source-stage reminder: #f5f5f5 is the fixed recording canvas, the
- * content is intentionally low-contrast, and the real NavigationBar stays
- * centered at the viewport bottom as the only high-fidelity interface surface.
+ * NavigationBar demo stage styles.
+ * Part of Rishi's UI Lab — © 2026 Rishi Dean (rishidean.com)
+ * MIT license · github.com/rishidean/ui-lab
+ *
+ * The canvas content is intentionally low-contrast; the NavigationBar
+ * stays centered at the viewport bottom as the only high-fidelity
+ * interface surface.
  */
 .navigation-demo {
   position: relative;

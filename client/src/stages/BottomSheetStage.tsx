@@ -1,6 +1,9 @@
 /**
- * BottomSheet stage — two triggers, each the origin its sheet grows out
- * of: a fixed-height sheet (60% of the viewport) and an auto-height
+ * BottomSheet demo stage.
+ * Part of Rishi's UI Lab — © 2026 Rishi Dean (rishidean.com)
+ * MIT license · github.com/rishidean/ui-lab
+ *
+ * Two triggers, each the origin its sheet grows out of: a fixed-height sheet (60% of the viewport) and an auto-height
  * sheet. Both extend to full screen via the header control or the
  * grab-bar drag; drag down snaps back, then dismisses.
  */

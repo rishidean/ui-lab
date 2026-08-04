@@ -1,8 +1,22 @@
 /**
- * NavigationBar — dStil
- * Adapted from the WAJOR NavigationBar paradigm.
- * Glass-premium bottom bar with: tab switcher (left), center action pill, right action button.
- * Collapses on scroll down, expands on scroll up.
+ * NavigationBar
+ * Part of Rishi's UI Lab — © 2026 Rishi Dean (rishidean.com)
+ * MIT license · github.com/rishidean/ui-lab
+ *
+ * A glass bottom bar where navigation, actions, and filters share one
+ * morphing surface. Three regions, named consistently throughout:
+ *
+ *   NavigationButton (left circle)  — current Tab's icon; opens the
+ *     NavigationMenu (rows of NavigationMenuItems) grown out of itself.
+ *   ContextualActionBar (center)    — per-tab ActionButtons, or a filter
+ *     control that expands into the FilterOptionSet in place.
+ *   UtilityButton (right circle)    — one high-value UtilityAction per
+ *     tab (Search, Export, Assistant, Scan…); utility surfaces grow out
+ *     of this button.
+ *
+ * The bar collapses into the NavigationButton on scroll down and regrows
+ * on scroll up. Styling reads the token contract in theme/theme.css —
+ * copy that file with this component and edit a preset to retheme.
  */
 
 import React, { useEffect, useRef, useState, useLayoutEffect } from "react";
@@ -71,16 +85,26 @@ function useScrollEdgeFade(deps: React.DependencyList) {
 
 export type NavTabId = string;
 
-export type TabDef<T extends NavTabId = NavTabId> = {
+export type Tab<T extends NavTabId = NavTabId> = {
   id: T;
   label: string;
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 };
 
-export type ActionDef = {
+export type Action = {
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   label: string;
   showIcon?: boolean;
+  /** Marks this ActionButton as the filter control: it renders the
+   *  current filter value with a chevron and expands the FilterOptionSet
+   *  in place when pressed. */
+  isFilter?: boolean;
+};
+
+/** The UtilityButton's per-tab action (Search, Export, Assistant…). */
+export type UtilityAction = {
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  label: string;
 };
 
 export type FilterOption = {
@@ -130,7 +154,7 @@ const MENU_ROW_STAGGER = 0.018; // ≤25ms per row
 //    menu grows out of it. Right utility fades first, center bar collapses
 //    right-to-left into the circle, menu expands as the bar finishes.
 const OPEN_DELAYS = {
-  rightButtonFade: 0.0, // 1. undot the i — right utility pops out first
+  utilityButtonFade: 0.0, // 1. undot the i — right utility pops out first
   centerSquish: 0.12, //   2. then the bar absorbs right-to-left
   centerIconsFade: 0.14, //    labels fade just after movement begins
   menuGrow: 0.26, //   3. menu grows as the bar finishes
@@ -151,7 +175,7 @@ const CLOSE_DELAYS = {
   pillGrow: 0.22, // bar regrows after the menu has landed + a beat
   actionsFadeIn: 0.3, // labels arrive in the regrow's final third
   // Bar finishes at pillGrow + expand ≈ 0.42; the utility dots the i.
-  rightButtonFadeIn: 0.46,
+  utilityButtonFadeIn: 0.46,
 };
 
 // Scroll collapse/expand use the same absorb/regrow grammar as the menu:
@@ -201,6 +225,21 @@ const UTILITY_SHEET_DELAYS = {
 //    Selection: highlight slides → confirm hold → options fade → the chip
 //    label returns (updated) while the strip is still wide → the strip
 //    contracts → the right utility dots the i last.
+// ── Clear-out windows for launching sheet surfaces from the bar ─────────
+//    Consumers flip isActionSheetOpen / isUtilitySheetOpen, wait the
+//    matching window, then mount their surface (see the demo stage). Both
+//    derive from the delay tables above × TEMPO, so retuning the tempo or
+//    the beats keeps launch timing in sync automatically.
+// Workflow sheets: circles + labels fade (labels land ≈0.28) + a beat
+// before the emptied bar begins its widen.
+export const ACTION_SHEET_CLEAROUT_MS = Math.round(
+  (0.28 + 0.06) * TEMPO * 1000
+);
+// Utility surfaces: mount as the UtilityButton begins its own fade.
+export const UTILITY_CLEAROUT_MS = Math.round(
+  UTILITY_SHEET_DELAYS.rightFade * TEMPO * 1000
+);
+
 const FILTER_DELAYS = {
   rightUndot: 0.0, // 1. right utility pops out first (0.12)
   barGrow: 0.12, // 2. its width collapses; the strip widens (lands ≈0.32)
@@ -239,61 +278,60 @@ const NavIcon = ({
 
 export type NavigationBarProps = {
   isCollapsed?: boolean;
-  onLogoClick?: () => void;
+  /** Fired when the collapsed NavigationButton is tapped — expand the bar
+   *  here. (Opening the NavigationMenu then requires a second tap.) */
+  onCollapsedClick?: () => void;
   onTabChange?: (tab: string) => void;
   activeTab?: string;
   onActionClick?: (label: string, tab: string) => void;
   /** Label of the currently engaged action, if any. The pill treatment is
-   *  reserved for real state: only this chip gets the lavender inset fill. */
+   *  reserved for real state: only this ActionButton gets the lavender
+   *  inset fill. */
   activeAction?: string | null;
-  /** Glyph shown in the collapsed state (and as fallback when no tab is
-   *  active). Defaults to the aurora-dot brand mark. */
+  /** Glyph shown when no tab is active. Defaults to the aurora-dot brand
+   *  mark. */
   logo?: React.ReactNode;
-  /** Search mode: the left circle recedes and the capsule morphs into a
-   *  search field, wiping right-to-left from the trigger. Controlled by the
-   *  consumer (typically toggled from a Search right button). */
+  /** Search mode: the NavigationButton recedes and the bar morphs into a
+   *  search field, wiping right-to-left from the trigger. Controlled by
+   *  the consumer (typically toggled from a Search UtilityButton). */
   isSearchOpen?: boolean;
   onSearchClose?: () => void;
   onSearchChange?: (query: string) => void;
   searchPlaceholder?: string;
   /** Fired on Enter with the current query; the field then closes. */
   onSearchSubmit?: (query: string) => void;
-  /** True while a right-button utility surface (sheet, scanner, assistant)
-   *  is open or animating. The left control fades and the center bar is
-   *  absorbed toward the right button; controls restore when this returns
-   *  to false (after the surface has contracted). */
-  isUtilityOpen?: boolean;
-  /** Exposes the right utility button element — the shared origin that
-   *  utility surfaces grow out of and contract back into. */
-  rightButtonRef?: React.Ref<HTMLButtonElement>;
-  /** Exposes the center action bar element — the shared origin that
+  /** Exposes the UtilityButton element — the shared origin that utility
+   *  surfaces grow out of and contract back into. */
+  utilityButtonRef?: React.Ref<HTMLButtonElement>;
+  /** Exposes the ContextualActionBar element — the shared origin that
    *  workflow sheets grow out of on action press. */
-  centerBarRef?: React.Ref<HTMLDivElement>;
-  /** Action-sheet fade phase: the side circles and unselected actions fade
-   *  out (selected label lingers ~100ms longer), leaving the empty bar in
-   *  place as the surface a workflow sheet stretches out of. */
+  actionBarRef?: React.Ref<HTMLDivElement>;
+  /** Workflow-sheet fade phase: the side circles and unselected actions
+   *  fade out, leaving the empty bar in place as the surface a workflow
+   *  sheet stretches out of. Flip this, wait ACTION_SHEET_CLEAROUT_MS,
+   *  then mount the sheet. */
   isActionSheetOpen?: boolean;
-  /** Utility bottom sheets (Export, Assistant): the LEFT circle fades
-      first, the bar collapses inward toward the right button, and the
-      right button itself fades as the sheet widens out of it. Search and
-      full-screen takeovers use their own sequences. */
+  /** Utility bottom sheets: the NavigationButton fades first, the bar
+   *  collapses inward toward the UtilityButton, and the UtilityButton
+   *  itself fades as the sheet widens out of it. Flip this, wait
+   *  UTILITY_CLEAROUT_MS, then mount the surface. Search and full-screen
+   *  takeovers use their own sequences. */
   isUtilitySheetOpen?: boolean;
-  onRightButtonClick?: () => void;
+  onUtilityClick?: () => void;
   activeFilter?: string;
   onFilterChange?: (filterId: string) => void;
   filterOptions?: FilterOption[];
-  tabs?: TabDef[];
-  tabActions?: Record<string, ActionDef[]>;
-  rightButton?: {
-    Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-    label: string;
-  } | null;
-  showRightButton?: boolean;
+  tabs?: Tab[];
+  /** ActionButtons for the ContextualActionBar, keyed by tab id. */
+  contextualActions?: Record<string, Action[]>;
+  /** The UtilityButton's action for the current tab (null hides it). */
+  utilityAction?: UtilityAction | null;
+  showUtilityButton?: boolean;
 };
 
 export const NavigationBar: React.FC<NavigationBarProps> = ({
   isCollapsed = false,
-  onLogoClick,
+  onCollapsedClick,
   onTabChange,
   activeTab: externalActiveTab,
   onActionClick,
@@ -304,21 +342,20 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   onSearchChange,
   searchPlaceholder = "Search…",
   onSearchSubmit,
-  isUtilityOpen = false,
-  rightButtonRef,
-  centerBarRef,
+  utilityButtonRef,
+  actionBarRef,
   isActionSheetOpen = false,
   isUtilitySheetOpen = false,
-  onRightButtonClick,
+  onUtilityClick,
   activeFilter = "",
   onFilterChange,
   filterOptions = [],
   tabs = [],
-  tabActions = {},
-  rightButton,
-  showRightButton = true,
+  contextualActions = {},
+  utilityAction,
+  showUtilityButton = true,
 }) => {
-  const [isTabMenuOpen, setIsTabMenuOpen] = useState(false);
+  const [isNavigationMenuOpen, setIsNavigationMenuOpen] = useState(false);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(
     externalActiveTab || tabs[0]?.id || "home"
@@ -367,7 +404,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   useEffect(() => {
     if (isCollapsed) {
-      setIsTabMenuOpen(false);
+      setIsNavigationMenuOpen(false);
       setIsFilterExpanded(false);
     }
   }, [isCollapsed]);
@@ -377,7 +414,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   useEffect(() => {
     if (isSearchOpen) {
-      setIsTabMenuOpen(false);
+      setIsNavigationMenuOpen(false);
       setIsFilterExpanded(false);
       setSearchQuery("");
       // Focus only once the field has reached most of its final width, so
@@ -390,21 +427,15 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     }
   }, [isSearchOpen, prefersReducedMotion]);
 
-  // A utility surface or action sheet is exclusive: it closes the menu and
-  // filter, and the bar's own controls lock as soon as the transition begins.
+  // A sheet surface is exclusive: it closes the NavigationMenu and the
+  // FilterOptionSet, and the bar's own controls lock as soon as the
+  // transition begins.
   useEffect(() => {
-    if (isUtilityOpen || isActionSheetOpen || isUtilitySheetOpen) {
-      setIsTabMenuOpen(false);
+    if (isActionSheetOpen || isUtilitySheetOpen) {
+      setIsNavigationMenuOpen(false);
       setIsFilterExpanded(false);
     }
-  }, [isUtilityOpen, isActionSheetOpen, isUtilitySheetOpen]);
-
-  const prevUtilityOpenRef = useRef(isUtilityOpen);
-  useEffect(() => {
-    prevUtilityOpenRef.current = isUtilityOpen;
-  }, [isUtilityOpen]);
-  const utilityOpening = isUtilityOpen && !prevUtilityOpenRef.current;
-  const utilityClosing = !isUtilityOpen && prevUtilityOpenRef.current;
+  }, [isActionSheetOpen, isUtilitySheetOpen]);
 
   const prevUtilitySheetRef = useRef(isUtilitySheetOpen);
   useEffect(() => {
@@ -420,20 +451,20 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const filterClosing = !isFilterExpanded && prevFilterExpandedRef.current;
 
   const navRef = useRef<HTMLDivElement | null>(null);
-  const tabMenuContainerRef = useRef<HTMLDivElement | null>(null);
+  const navigationMenuContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const prevTabMenuOpenRef = useRef(isTabMenuOpen);
+  const prevNavigationMenuOpenRef = useRef(isNavigationMenuOpen);
   useEffect(() => {
-    prevTabMenuOpenRef.current = isTabMenuOpen;
-  }, [isTabMenuOpen]);
-  const prevTabMenuOpen = prevTabMenuOpenRef.current;
-  const menuOpening = isTabMenuOpen && !prevTabMenuOpen;
-  const menuClosing = !isTabMenuOpen && prevTabMenuOpen;
+    prevNavigationMenuOpenRef.current = isNavigationMenuOpen;
+  }, [isNavigationMenuOpen]);
+  const prevNavigationMenuOpen = prevNavigationMenuOpenRef.current;
+  const menuOpening = isNavigationMenuOpen && !prevNavigationMenuOpen;
+  const menuClosing = !isNavigationMenuOpen && prevNavigationMenuOpen;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
-        setIsTabMenuOpen(false);
+        setIsNavigationMenuOpen(false);
         setIsFilterExpanded(false);
       }
     }
@@ -441,34 +472,34 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const navButtonRef = useRef<HTMLButtonElement | null>(null);
+  const navigationButtonRef = useRef<HTMLButtonElement | null>(null);
 
-  const handleTabButtonClick = () => {
-    if (isCollapsed && onLogoClick) {
+  const handleNavigationButtonClick = () => {
+    if (isCollapsed && onCollapsedClick) {
       // Tap on the collapsed control expands the bar only — opening the
       // menu requires a second, deliberate tap.
-      onLogoClick();
+      onCollapsedClick();
       return;
     }
     if (isFilterExpanded) setIsFilterExpanded(false);
-    setIsTabMenuOpen(open => !open);
+    setIsNavigationMenuOpen(open => !open);
   };
 
   const closeMenu = (returnFocus: boolean) => {
-    setIsTabMenuOpen(false);
-    if (returnFocus) navButtonRef.current?.focus();
+    setIsNavigationMenuOpen(false);
+    if (returnFocus) navigationButtonRef.current?.focus();
   };
 
   // Escape closes the menu and returns focus to the left control.
   useEffect(() => {
-    if (!isTabMenuOpen) return;
+    if (!isNavigationMenuOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeMenu(true);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTabMenuOpen]);
+  }, [isNavigationMenuOpen]);
 
   // Selection sequence, beat one: the pressed row visibly takes the
   // selection (highlight moves to it) and holds for a beat BEFORE the menu
@@ -486,11 +517,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // Menu closed by any other path (Escape, toggle, outside click) while a
   // confirmation was pending: abandon the pending selection cleanly.
   useEffect(() => {
-    if (!isTabMenuOpen && pendingTab !== null) {
+    if (!isNavigationMenuOpen && pendingTab !== null) {
       if (selectTimer.current) clearTimeout(selectTimer.current);
       setPendingTab(null);
     }
-  }, [isTabMenuOpen, pendingTab]);
+  }, [isNavigationMenuOpen, pendingTab]);
 
   const handleSelectTab = (id: string) => {
     if (pendingTab !== null) return; // one selection at a time
@@ -500,9 +531,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       () => {
         setPendingTab(null);
         setActiveTab(id);
-        setIsTabMenuOpen(false);
+        setIsNavigationMenuOpen(false);
         setIsFilterExpanded(false);
-        navButtonRef.current?.focus();
+        navigationButtonRef.current?.focus();
         onTabChange?.(id);
       },
       Math.round(dur(SELECT_CONFIRM_S) * 1000)
@@ -511,7 +542,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const handleFilterClick = () => {
     setIsFilterExpanded(open => !open);
-    setIsTabMenuOpen(false);
+    setIsNavigationMenuOpen(false);
   };
 
   // Selection sequence: the highlight slides to the chosen value, HOLDS for
@@ -580,10 +611,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const activeTabDef = tabs.find(t => t.id === activeTab) ?? tabs[0];
   const otherTabs = tabs.filter(t => t.id !== activeTabDef?.id);
-  const menuTabs = [...otherTabs, activeTabDef].filter(Boolean) as TabDef[];
-  const actionsForTab = tabActions[activeTab] ?? [];
+  const menuTabs = [...otherTabs, activeTabDef].filter(Boolean) as Tab[];
+  const actionsForTab = contextualActions[activeTab] ?? [];
   const hasActions = actionsForTab.length > 0;
-  const hasFilterAction = actionsForTab.some(a => a.label === "Filter");
+  const hasFilterAction = actionsForTab.some(a => a.isFilter);
 
   const actionsRowFade = useScrollEdgeFade([
     activeTab,
@@ -634,24 +665,14 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 ease: EASE_OUT,
                 delay: del(UTILITY_SHEET_DELAYS.closeBarGrow),
               }
-            : utilityOpening
-              ? // Absorbed toward the RIGHT button as the surface grows.
-                { duration: dur(DUR.direct), ease: EASE_IN }
-              : utilityClosing
-                ? // Restores after the surface has contracted back.
-                  {
-                    duration: dur(DUR.expand),
-                    ease: EASE_OUT,
-                    delay: del(0.05),
-                  }
-                : {
-                    duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
-                    ease: navCollapsing ? EASE_IN : EASE_OUT,
-                    // Scroll collapse waits for the undot beat, like menu open.
-                    delay: del(
-                      navCollapsing ? SCROLL_COLLAPSE_DELAYS.centerCollapse : 0
-                    ),
-                  },
+            : {
+                duration: dur(navCollapsing ? DUR.collapse : DUR.expand),
+                ease: navCollapsing ? EASE_IN : EASE_OUT,
+                // Scroll collapse waits for the undot beat, like menu open.
+                delay: del(
+                  navCollapsing ? SCROLL_COLLAPSE_DELAYS.centerCollapse : 0
+                ),
+              },
     // The absorb origin flips instantly (left for menu/scroll, right for
     // utility surfaces) — never animated, only the scale is. Exception:
     // when a utility sheet closes, the bar must REGROW from the right, so
@@ -692,15 +713,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     ease: EASE_OUT,
                     delay: del(UTILITY_SHEET_DELAYS.closeBarGrow),
                   }
-                : utilityOpening
-                  ? {
-                      duration: dur(DUR.label),
-                      ease: EASE_IN,
-                      delay: del(0.04),
-                    }
-                  : utilityClosing
-                    ? { duration: dur(0.1), ease: EASE_OUT, delay: del(0.05) }
-                    : { duration: dur(DUR.direct), ease: EASE },
+                : { duration: dur(DUR.direct), ease: EASE },
   };
   const centerIconsTransition = navCollapsing
     ? {
@@ -739,7 +752,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     ease: EASE_OUT,
     delay: del(delay),
   });
-  const rightButtonTransition = {
+  const utilityButtonTransition = {
     // Width changes happen while the button is invisible: collapsing after
     // the undot, restoring during the regrow, so layout never jumps in view.
     // Filter expansion reuses the rule — the width collapses after the
@@ -771,7 +784,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         : menuOpening
           ? rightDotOut
           : menuClosing
-            ? rightDotIn(CLOSE_DELAYS.rightButtonFadeIn)
+            ? rightDotIn(CLOSE_DELAYS.utilityButtonFadeIn)
             : isFilterExpanded
               ? rightDotOut
               : filterClosing
@@ -784,7 +797,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         : menuOpening
           ? rightDotOut
           : menuClosing
-            ? rightDotIn(CLOSE_DELAYS.rightButtonFadeIn)
+            ? rightDotIn(CLOSE_DELAYS.utilityButtonFadeIn)
             : isFilterExpanded
               ? rightDotOut
               : filterClosing
@@ -858,14 +871,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         <div className="flex items-center gap-2 w-full px-1 relative z-10">
           {/* LEFT: Tab Switcher / Logo */}
           <motion.div
-            ref={tabMenuContainerRef}
+            ref={navigationMenuContainerRef}
             className="relative h-14 flex items-center"
             style={{
               pointerEvents:
-                isSearchOpen ||
-                isUtilityOpen ||
-                isActionSheetOpen ||
-                isUtilitySheetOpen
+                isSearchOpen || isActionSheetOpen || isUtilitySheetOpen
                   ? "none"
                   : "auto",
             }}
@@ -876,12 +886,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               // expansion leaves it FIXED — the strip only claims the
               // right button's space, and the page dims instead.
               opacity:
-                isSearchOpen ||
-                isUtilityOpen ||
-                isActionSheetOpen ||
-                isUtilitySheetOpen
-                  ? 0
-                  : 1,
+                isSearchOpen || isActionSheetOpen || isUtilitySheetOpen ? 0 : 1,
             }}
             transition={
               // Action-sheet fade phase: both circles drop out together,
@@ -931,9 +936,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               />
 
               <motion.button
-                ref={navButtonRef}
+                ref={navigationButtonRef}
                 type="button"
-                onClick={handleTabButtonClick}
+                onClick={handleNavigationButtonClick}
                 className="absolute inset-[2px] rounded-full flex items-center justify-center transition-colors"
                 style={{ color: "var(--iris-700)" }}
                 aria-label={isCollapsed ? "Open controls" : undefined}
@@ -987,7 +992,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 rightward growth, fade, corner-radius settle, and elevation
                 rising as it clears the button. */}
             <AnimatePresence>
-              {isTabMenuOpen && (
+              {isNavigationMenuOpen && (
                 <motion.div
                   key="tab-menu"
                   initial={{
@@ -1085,7 +1090,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           {/* CENTER: Actions pill / Filter expansion */}
           {hasActions && (
             <motion.div
-              ref={centerBarRef}
+              ref={actionBarRef}
               className={cn(
                 "relative flex-1 h-12 rounded-full overflow-hidden pointer-events-auto z-10 min-w-0",
                 "glass-nav",
@@ -1093,9 +1098,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               )}
               style={{
                 pointerEvents:
-                  isTabMenuOpen ||
+                  isNavigationMenuOpen ||
                   isCollapsed ||
-                  isUtilityOpen ||
                   isActionSheetOpen ||
                   isUtilitySheetOpen
                     ? "none"
@@ -1105,23 +1109,17 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 // Menu open and utility surfaces ABSORB the bar — fully
                 // hidden, not dimmed.
                 opacity:
-                  isCollapsed ||
-                  isTabMenuOpen ||
-                  isUtilityOpen ||
-                  isUtilitySheetOpen
+                  isCollapsed || isNavigationMenuOpen || isUtilitySheetOpen
                     ? 0
                     : 1,
                 scaleX:
-                  isCollapsed ||
-                  isTabMenuOpen ||
-                  isUtilityOpen ||
-                  isUtilitySheetOpen
+                  isCollapsed || isNavigationMenuOpen || isUtilitySheetOpen
                     ? 0
                     : 1,
                 // Animated alongside scaleX so framer holds the origin every
                 // frame. The bar absorbs toward whichever control owns the
                 // transition: left for menu/scroll, RIGHT for utilities.
-                originX: isUtilityOpen || isUtilitySheetOpen ? 1 : 0,
+                originX: isUtilitySheetOpen ? 1 : 0,
               }}
               transition={centerPillTransition}
             >
@@ -1325,7 +1323,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     }}
                   >
                     {actionsForTab.map((action, actionIndex) => {
-                      const isFilter = action.label === "Filter";
+                      const isFilter = action.isFilter === true;
                       const isEngaged =
                         !isFilter && activeAction === action.label;
                       return (
@@ -1422,18 +1420,17 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           )}
 
           {/* RIGHT: Action button (Chat/AI) */}
-          {showRightButton && rightButton && (
+          {showUtilityButton && utilityAction && (
             <motion.div
               className="relative h-14 flex items-center"
               style={{
                 // Disabled the moment a utility transition begins — the
                 // surface owns the interaction until it closes.
                 pointerEvents:
-                  isTabMenuOpen ||
+                  isNavigationMenuOpen ||
                   isCollapsed ||
                   isSearchOpen ||
                   isFilterExpanded ||
-                  isUtilityOpen ||
                   isActionSheetOpen ||
                   isUtilitySheetOpen
                     ? "none"
@@ -1442,14 +1439,14 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               animate={{
                 // Filter expansion vacates the button's space entirely —
                 // the strip widens into it (width collapses only after the
-                // undot fade; see rightButtonTransition).
+                // undot fade; see utilityButtonTransition).
                 width: isCollapsed || isSearchOpen || isFilterExpanded ? 0 : 56,
                 // Hidden states shrink it slightly as it fades, so every
                 // return reads as a pop-in — dotting the horizontal "i".
                 scale:
                   isCollapsed ||
                   isSearchOpen ||
-                  isTabMenuOpen ||
+                  isNavigationMenuOpen ||
                   isFilterExpanded
                     ? 0.7
                     : 1,
@@ -1461,22 +1458,20 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   // contracts back into it.
                   isCollapsed ||
                   isSearchOpen ||
-                  isTabMenuOpen ||
+                  isNavigationMenuOpen ||
                   isFilterExpanded ||
                   isActionSheetOpen ||
                   isUtilitySheetOpen
                     ? 0
                     : 1,
               }}
-              transition={rightButtonTransition}
+              transition={utilityButtonTransition}
             >
               <motion.button
-                ref={rightButtonRef}
+                ref={utilityButtonRef}
                 type="button"
-                onClick={onRightButtonClick}
-                aria-label={rightButton.label}
-                aria-expanded={isUtilityOpen || undefined}
-                disabled={isUtilityOpen}
+                onClick={onUtilityClick}
+                aria-label={utilityAction.label}
                 className="group relative w-14 h-14 rounded-full flex items-center justify-center pointer-events-auto"
                 whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.93 }}
@@ -1506,7 +1501,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 />
                 <span className="relative z-10 flex items-center justify-center">
                   <NavIcon
-                    Icon={rightButton.Icon}
+                    Icon={utilityAction.Icon}
                     size={22}
                     strokeWidth={2}
                     className="text-[color:var(--gray-900)]"

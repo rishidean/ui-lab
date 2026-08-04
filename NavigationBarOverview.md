@@ -21,7 +21,7 @@ The component stays accessible while minimizing obstruction during scrolling.
 
 ## Structure
 
-### Left: Navigation (Nav Button or LHS Button)
+### Left: NavigationButton
 
 - Displays the icon for the current tab (a brand logo is the no-tab fallback).
 - Opens the primary navigation menu when pressed.
@@ -29,11 +29,11 @@ The component stays accessible while minimizing obstruction during scrolling.
   at the circle's center — and highlights the current tab.
 - Selecting a tab closes the menu and navigates to that view.
 
-### Center: Contextual Action (Action Bar)
+### Center: ContextualActionBar
 
 The center region changes based on the current view.
 
-#### Workflow Actions (Action Button)
+#### Workflow Actions (ActionButtons)
 
 - Contains one or more actions, such as Deposit and Withdraw.
 - Action chips are **text-only verbs** — icons belong to the circular
@@ -52,7 +52,7 @@ The center region changes based on the current view.
 - Selecting it expands the filter options in place.
 - The chosen filter applies directly to the current view.
 
-### Right: Utility (Utility Button, or RHS)
+### Right: UtilityButton
 
 Contains one high-value, contextual utility per tab, such as:
 
@@ -99,7 +99,7 @@ One grammar governs every transition:
 
 ### Navigation
 
-#### Opening the Navigation menu
+#### Opening the NavigationMenu
 
 - The Utility button fades out.
 - The Action Bar collapses right-to-left, absorbed into the left circle.

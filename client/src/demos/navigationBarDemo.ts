@@ -1,13 +1,14 @@
 /**
  * NavigationBar demo data — a fintech wallet scenario that exercises the
  * component's full breadth: per-tab contextual actions, in-place filter
- * expansion, and a right-side button that changes with the active tab.
+ * expansion, and a UtilityButton whose action changes with the active tab.
  */
 import type { ComponentType, SVGProps } from "react";
 import type {
-  ActionDef,
+  Action,
   FilterOption,
-  TabDef,
+  Tab,
+  UtilityAction,
 } from "@/components/navigation-bar";
 import {
   ArrowDownToLine,
@@ -30,7 +31,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-export const navigationTabs: TabDef[] = [
+export const navigationTabs: Tab[] = [
   { id: "home", label: "Home", Icon: Home },
   { id: "spend", label: "Spend", Icon: CreditCard },
   { id: "trade", label: "Trade", Icon: TrendingUp },
@@ -40,7 +41,7 @@ export const navigationTabs: TabDef[] = [
 // Center-pill actions are text-only by design (showIcon: false) — icons
 // belong to the left/right circular buttons. The Icon still feeds a11y
 // and any consumer that opts icons back on.
-export const navigationActions: Record<string, ActionDef[]> = {
+export const navigationContextualActions: Record<string, Action[]> = {
   home: [
     { Icon: ArrowDownToLine, label: "Deposit", showIcon: false },
     { Icon: ArrowUpFromLine, label: "Withdraw", showIcon: false },
@@ -58,7 +59,9 @@ export const navigationActions: Record<string, ActionDef[]> = {
     { Icon: Coins, label: "Stake", showIcon: false },
     { Icon: Repeat, label: "Convert", showIcon: false },
   ],
-  transactions: [{ Icon: Filter, label: "Filter", showIcon: false }],
+  transactions: [
+    { Icon: Filter, label: "Filter", showIcon: false, isFilter: true },
+  ],
 };
 
 export const navigationFilters: FilterOption[] = [
@@ -67,11 +70,8 @@ export const navigationFilters: FilterOption[] = [
   { id: "scheduled", label: "Scheduled" },
 ];
 
-/** The right-side button changes with the active tab. */
-export const navigationRightButtons: Record<
-  string,
-  { Icon: ComponentType<SVGProps<SVGSVGElement>>; label: string }
-> = {
+/** The UtilityButton's action changes with the active tab. */
+export const navigationUtilityActions: Record<string, UtilityAction> = {
   home: { Icon: Sparkles, label: "AI" },
   spend: { Icon: ScanLine, label: "Scan" },
   trade: { Icon: Search, label: "Search" },
