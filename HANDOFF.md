@@ -147,6 +147,15 @@ internals stay in-file constants, configure only app-critical surfaces.)
 
 ## Gotchas learned the hard way
 
+- AnimatePresence resolves an exiting child's `exit` prop from its last
+  render BEFORE removal — a conditional exit keyed on the state change
+  that CAUSED the removal reads the stale (false) branch, silently, and
+  only from the second occurrence onward. Use `custom` on both
+  AnimatePresence and the child with a dynamic exit variant (see the
+  actions row's label-hold). Corollary: never trust a single mount-time
+  measurement of geometry that animates — the filter highlight tracks
+  its option with a ResizeObserver until layout settles.
+
 - Never combine framer's `layout`/`layoutId` with manual scaleX/origin
   animation on these surfaces (FLIP fights, origin hijacking). Measure and
   animate x/width instead.

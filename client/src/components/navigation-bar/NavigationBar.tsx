@@ -637,16 +637,37 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     setFilterHighlight({ x: el.offsetLeft, w: el.offsetWidth });
   }, [isFilterExpanded, activeFilter, filterOptions]);
 
+  // The strip may still be WIDENING into the UtilityButton's space when
+  // the options mount, so a single mount-time measurement can capture a
+  // mid-animation layout. A ResizeObserver on the active option keeps
+  // the highlight tracking the real geometry until it settles (and
+  // through any later reflow).
+  const filterHighlightObserver = useRef<ResizeObserver | null>(null);
   const measureFilterOption = (id: string, el: HTMLButtonElement | null) => {
     filterOptionRefs.current[id] = el;
     if (el && isFilterExpanded && id === activeFilter) {
-      setFilterHighlight(prev =>
-        prev && prev.x === el.offsetLeft && prev.w === el.offsetWidth
-          ? prev
-          : { x: el.offsetLeft, w: el.offsetWidth }
-      );
+      const apply = () => {
+        const target = filterOptionRefs.current[id];
+        if (!target) return;
+        setFilterHighlight(prev =>
+          prev && prev.x === target.offsetLeft && prev.w === target.offsetWidth
+            ? prev
+            : { x: target.offsetLeft, w: target.offsetWidth }
+        );
+      };
+      apply();
+      filterHighlightObserver.current?.disconnect();
+      if (typeof ResizeObserver !== "undefined") {
+        const ro = new ResizeObserver(apply);
+        ro.observe(el);
+        filterHighlightObserver.current = ro;
+      }
     }
   };
+  useEffect(() => {
+    if (!isFilterExpanded) filterHighlightObserver.current?.disconnect();
+  }, [isFilterExpanded]);
+  useEffect(() => () => filterHighlightObserver.current?.disconnect(), []);
 
   const activeTabDef = tabs.find(t => t.id === activeTab) ?? tabs[0];
   const otherTabs = tabs.filter(t => t.id !== activeTabDef?.id);
@@ -1202,7 +1223,15 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               }}
               transition={centerPillTransition}
             >
-              <AnimatePresence mode="wait">
+              {/* `custom` feeds the CURRENT filter state to exiting
+                  children — AnimatePresence otherwise resolves an exiting
+                  child's props from its last render BEFORE removal, where
+                  isFilterExpanded was still false, and the label-hold
+                  delay silently vanishes from the second open onward. */}
+              <AnimatePresence
+                mode="wait"
+                custom={isFilterExpanded && hasFilterAction}
+              >
                 {isSearchOpen ? (
                   /* Search mode: wipes in right-to-left from the trigger,
                      slightly after the left control begins receding, so the
@@ -1378,19 +1407,24 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     /* Exiting to the filter strip: the label HOLDS while the
                        right button undots and the strip widens, then fades —
                        geometry before label, per the serial-beats grammar.
-                       (mode="wait" then mounts the options after this.) */
-                    exit={
-                      isFilterExpanded && hasFilterAction
-                        ? {
-                            opacity: 0,
-                            transition: {
-                              duration: dur(0.12),
-                              ease: EASE_IN,
-                              delay: del(FILTER_DELAYS.labelFade),
-                            },
-                          }
-                        : { opacity: 0 }
-                    }
+                       (mode="wait" then mounts the options after this.)
+                       The exit variant resolves against AnimatePresence's
+                       `custom`, so it sees the CURRENT exit reason. */
+                    custom={isFilterExpanded && hasFilterAction}
+                    variants={{
+                      exit: (toFilter: boolean) =>
+                        toFilter
+                          ? {
+                              opacity: 0,
+                              transition: {
+                                duration: dur(0.12),
+                                ease: EASE_IN,
+                                delay: del(FILTER_DELAYS.labelFade),
+                              },
+                            }
+                          : { opacity: 0 },
+                    }}
+                    exit="exit"
                     transition={centerIconsTransition}
                     ref={actionsRowFade.ref}
                     onScroll={actionsRowFade.onScroll}
