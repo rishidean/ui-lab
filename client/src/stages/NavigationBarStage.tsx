@@ -487,7 +487,6 @@ export default function NavigationBarStage() {
             origin={utilityOrigin}
             ariaLabel="Scanner"
             onClose={closeUtility}
-            growDuration={0.28}
             reducedMotion={!!prefersReducedMotion}
           >
             <ScanView onClose={closeUtility} />

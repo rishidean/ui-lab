@@ -45,14 +45,20 @@ export type UtilityModalProps = {
 };
 
 const EASE = [0.2, 0, 0, 1] as const;
-const EASE_OUT = [0, 0, 0.2, 1] as const;
 const EASE_IN = [0.4, 0, 1, 1] as const;
+
+// Small beat before the circle starts growing: the button-sized circle
+// registers over its (fading) origin control, so the reveal reads as
+// the control unfolding rather than a cut. The grow itself uses the
+// symmetric ease — an ease-out here front-loads the motion and the
+// origin moment is gone within two frames.
+const REVEAL_DELAY = 0.06;
 
 export const UtilityModal: React.FC<UtilityModalProps> = ({
   origin,
   ariaLabel,
   onClose,
-  growDuration = 0.28,
+  growDuration = 0.42,
   reducedMotion,
   className,
   children,
@@ -95,7 +101,7 @@ export const UtilityModal: React.FC<UtilityModalProps> = ({
         initial: { clipPath: `circle(28px at ${at})` },
         animate: { clipPath: `circle(${R}px at ${at})` },
         exit: { clipPath: `circle(28px at ${at})` },
-        transition: { duration: grow, ease: EASE_OUT },
+        transition: { duration: grow, ease: EASE, delay: REVEAL_DELAY },
       };
 
   return (
@@ -112,7 +118,7 @@ export const UtilityModal: React.FC<UtilityModalProps> = ({
         transition={{
           duration: reduced ? 0.01 : 0.24,
           ease: EASE,
-          delay: reduced ? 0 : 0.06,
+          delay: reduced ? 0 : REVEAL_DELAY + 0.06,
         }}
         onClick={onClose}
       />
@@ -130,16 +136,19 @@ export const UtilityModal: React.FC<UtilityModalProps> = ({
           },
         }}
       >
-        {/* Destination content reveals after ~60% of the growth. */}
+        {/* Destination content is visible from the FIRST frame — the
+            button-sized circle shows a porthole of the surface, and the
+            growth stays legible the whole way. (Fading content in late
+            makes most of the reveal invisible.) */}
         <motion.div
           className="utility-modal__content"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{
-            duration: reduced ? 0.01 : 0.16,
-            ease: EASE_OUT,
-            delay: reduced ? 0 : grow * 0.6,
+            duration: reduced ? 0.01 : 0.12,
+            ease: EASE,
+            delay: reduced ? 0 : REVEAL_DELAY,
           }}
         >
           {children}

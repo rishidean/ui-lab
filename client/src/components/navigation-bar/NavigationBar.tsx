@@ -934,6 +934,25 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   WebkitBackdropFilter: "saturate(1.5) blur(var(--blur-lg))",
                 }}
               />
+              {/* Aurora hover glow — same affordance as the UtilityButton,
+                  so both circles answer the cursor identically. */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                style={{
+                  boxShadow:
+                    "0 0 20px -2px color-mix(in oklab, var(--aurora-lilac) 48%, transparent)",
+                }}
+              />
+              {/* Pressed fill — a visible commit on top of the tap scale. */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-150 group-active:opacity-100"
+                style={{
+                  background:
+                    "color-mix(in oklab, var(--iris-700) 14%, transparent)",
+                }}
+              />
 
               <motion.button
                 ref={navigationButtonRef}
@@ -1497,6 +1516,16 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   style={{
                     boxShadow:
                       "0 0 20px -2px color-mix(in oklab, var(--aurora-lilac) 48%, transparent)",
+                  }}
+                />
+                {/* Pressed fill — a visible commit on top of the tap
+                    scale, matching the NavigationButton. */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-150 group-active:opacity-100"
+                  style={{
+                    background:
+                      "color-mix(in oklab, var(--iris-700) 14%, transparent)",
                   }}
                 />
                 <span className="relative z-10 flex items-center justify-center">
