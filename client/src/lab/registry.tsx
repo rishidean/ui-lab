@@ -7,8 +7,10 @@
 import type { ComponentType } from "react";
 import NavigationBarStage from "@/stages/NavigationBarStage";
 import PressAndSlidePickerStage from "@/stages/PressAndSlidePickerStage";
+import BottomSheetStage from "@/stages/BottomSheetStage";
 import navigationBarSource from "@/components/navigation-bar/NavigationBar.tsx?raw";
 import pressAndSlidePickerSource from "@/components/press-and-slide-picker/PressAndSlidePicker.tsx?raw";
+import bottomSheetSource from "@/components/bottom-sheet/BottomSheet.tsx?raw";
 
 export const LAB_NAME = "Rishi's UI Lab";
 export const LAB_TAGLINE =
@@ -147,6 +149,42 @@ const [status, setStatus] = useState("todo");
  * scale variables — scope them per-page to restyle (see the demo's CSS).
  */`;
 
+const bottomSheetUsage = `import { useRef, useState } from "react";
+import { AnimatePresence } from "motion/react";
+import { BottomSheet, type SheetOrigin } from "@/components/bottom-sheet";
+
+const triggerRef = useRef<HTMLButtonElement | null>(null);
+const [origin, setOrigin] = useState<SheetOrigin | null>(null);
+
+<button
+  ref={triggerRef}
+  onClick={() => {
+    const r = triggerRef.current!.getBoundingClientRect();
+    setOrigin({ top: r.top, left: r.left, width: r.width,
+                height: r.height, bottom: r.bottom });
+  }}
+>
+  Open
+</button>
+
+{/* Mount inside your own AnimatePresence; unmount to close. The exit
+    choreography contracts the sheet back into the trigger, and
+    onExitComplete is your restore hook. */}
+<AnimatePresence onExitComplete={() => triggerRef.current?.focus()}>
+  {origin && (
+    <BottomSheet
+      origin={origin}        // the control the sheet grows out of
+      title="Details"
+      ariaLabel="Details"
+      height={0.6}           // fraction of viewport, px, or "auto"
+      expandable             // header control + drag: initial ↔ full
+      onClose={() => setOrigin(null)}
+    >
+      {/* body */}
+    </BottomSheet>
+  )}
+</AnimatePresence>`;
+
 export const labComponents: LabComponent[] = [
   {
     slug: "navigation-bar",
@@ -205,6 +243,35 @@ export const labComponents: LabComponent[] = [
       "Press Escape mid-gesture to bail out without committing",
     ],
     aliases: ["picker"],
+  },
+  {
+    slug: "bottom-sheet",
+    name: "Bottom Sheet",
+    tagline:
+      "A sheet that grows out of the control that owns it — two stops: yours, and full screen.",
+    description:
+      "A floating bottom sheet with origin-aware choreography: it starts as a clone of its trigger, widens, then stretches to a configurable initial height in strictly serial beats. One control (and the grab-bar drag) extends it to full screen — still a floating card, never welded to the edge. Exactly two stops, no mid heights. Extracted from the Navigation Bar's workflow and utility sheets, which now consume it.",
+    tags: ["overlay", "mobile", "motion", "glassmorphism"],
+    status: "stable",
+    accent: "linear-gradient(135deg, #a5b4fc 0%, #c4b5fd 45%, #fbcfe8 100%)",
+    Stage: BottomSheetStage,
+    source: bottomSheetSource,
+    sourceFile: "BottomSheet.tsx",
+    dependencies: [
+      "react",
+      "motion",
+      "lucide-react",
+      "clsx + tailwind-merge (cn)",
+    ],
+    usage: bottomSheetUsage,
+    tryIt: [
+      "Tap a trigger — the sheet grows out of the button that owns it",
+      "Tap the chevrons (or drag the grab bar up) to extend to full screen",
+      "Drag down to snap back to the initial height; drag down again to dismiss",
+      "Escape and the scrim dismiss too; watch the sheet contract back into its trigger",
+      "Quick actions is an auto-height sheet — it still extends to full",
+    ],
+    aliases: ["sheet"],
   },
 ];
 

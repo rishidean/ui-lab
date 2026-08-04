@@ -172,6 +172,20 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         aria-modal="true"
         aria-label={ariaLabel}
         className={cn("bottom-sheet", className)}
+        // Reduced motion animates opacity only — the sheet's geometry is
+        // then applied statically here, or it would render unpositioned.
+        style={
+          reduced
+            ? {
+                left: finalLeft,
+                width: finalWidth,
+                bottom: 12,
+                height: sheetHeight === "auto" ? undefined : sheetHeight,
+                borderRadius: 28,
+                boxShadow: sheetState.boxShadow,
+              }
+            : undefined
+        }
         initial={reduced ? { opacity: 0 } : originState}
         animate={reduced ? { opacity: 1 } : sheetState}
         // Drag is a dismissal affordance on every sheet; snapping UP to
