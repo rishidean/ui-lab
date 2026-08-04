@@ -27,3 +27,7 @@
 .utility-modal__content > * {
   pointer-events: auto;
 }
+
+.utility-modal:focus {
+  outline: none;
+}

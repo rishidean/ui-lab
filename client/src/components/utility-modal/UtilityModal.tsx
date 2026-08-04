@@ -18,9 +18,10 @@
  * clip); your children supply the full-screen surface and its close
  * control.
  */
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { useInertOutside } from "@/lib/a11y";
 import "./UtilityModal.css";
 
 /** Center point of the control the modal expands from — capture at
@@ -80,6 +81,18 @@ export const UtilityModal: React.FC<UtilityModalProps> = ({
   );
   const at = `${origin.x}px ${origin.y}px`;
 
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  const scrimRef = useRef<HTMLButtonElement | null>(null);
+  // Everything outside the modal + scrim is inert while mounted — focus
+  // cannot escape, the page is hidden from screen readers, and the exit
+  // choreography stays covered until unmount.
+  useInertOutside(true, modalRef, scrimRef);
+  // Initial focus: the dialog itself, so its aria-label announces without
+  // disturbing the entrance beats.
+  useEffect(() => {
+    modalRef.current?.focus({ preventScroll: true });
+  }, []);
+
   // The modal owns its dismissal paths: scrim tap and Escape.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -109,8 +122,10 @@ export const UtilityModal: React.FC<UtilityModalProps> = ({
       {/* Backdrop dims after the surface begins growing; the page
           beneath stays rendered as context until the circle covers it. */}
       <motion.button
+        ref={scrimRef}
         type="button"
-        aria-label="Close"
+        aria-hidden="true"
+        tabIndex={-1}
         className="utility-modal__scrim"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -123,6 +138,8 @@ export const UtilityModal: React.FC<UtilityModalProps> = ({
         onClick={onClose}
       />
       <motion.div
+        ref={modalRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}

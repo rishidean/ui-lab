@@ -37,6 +37,22 @@ const EASE = [0.2, 0, 0, 1] as const;
 const EASE_OUT = [0, 0, 0.2, 1] as const;
 const EASE_IN = [0.4, 0, 1, 1] as const;
 
+// AnimatePresence's onExitComplete fires a beat before the exiting
+// tree's own unmount effects (e.g. useInertOutside's cleanup) commit —
+// a same-tick focus() call on the origin control can land while it's
+// still under an `inert` ancestor and silently no-op. Poll a few
+// animation frames for the inert lid to lift before focusing, rather
+// than guessing a fixed delay.
+function focusWhenClear(el: HTMLElement | null, attempts = 5) {
+  if (!el) return;
+  if (!el.closest("[inert]")) {
+    el.focus({ preventScroll: true });
+    return;
+  }
+  if (attempts <= 0) return;
+  requestAnimationFrame(() => focusWhenClear(el, attempts - 1));
+}
+
 // Scroll hysteresis: collapsing requires a decisive downward pull (48–72px
 // band); expanding only a small upward nudge (12–24px band). Movements under
 // ~10px are ignored, and a short cooldown prevents rapid toggling when the
@@ -477,8 +493,13 @@ export default function NavigationBarStage() {
           setUtilityClosing(false);
           setUtilityOrigin(null);
           setUtilSheetPrep(false); // button, bar, and circle fade back in
-          // Focus returns to the origin control.
-          utilityButtonRef.current?.focus();
+          // Focus returns to the origin control. onExitComplete fires a
+          // beat before the exiting tree's unmount effects (which lift
+          // the surrounding inert) actually commit — a same-tick focus
+          // call lands while the button is still inert and silently
+          // no-ops. Poll a few frames for the inert lid to lift before
+          // focusing, rather than guessing a fixed delay.
+          focusWhenClear(utilityButtonRef.current);
         }}
       >
         {utility && utilityOrigin && (
