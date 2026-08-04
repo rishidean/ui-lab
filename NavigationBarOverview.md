@@ -147,6 +147,11 @@ Closing the Action Sheet reverses this order: content out, drop to bar
 height, narrow back onto the bar's footprint, then the labels and circles
 return.
 
+(The sheet surface itself is the lab's shared `BottomSheet` component —
+`client/src/components/bottom-sheet/` — which owns the scrim, morph
+beats, Escape, and drag; the bar contributes only its clear-out and the
+origin rect.)
+
 ### Filtering
 
 The filter strip claims the RIGHT button's space — the left navigation
@@ -217,9 +222,12 @@ Closing or completing the workflow invokes the sequence in reverse: the
 sheet lands back on the button as the button fades in beneath it, the bar
 regrows out of the right side, and the navigation circle returns last.
 
-The AI Assistant sheet additionally drags between half and full height
-(drag enabled only after the entrance completes); dragging down past the
-threshold at half height dismisses it.
+Utility sheets are `BottomSheet` instances too (Export at auto height,
+the Assistant at 62%), so both carry the component's two-stop model: a
+chevron header control and the grab-bar drag extend them to full screen
+(94%, still a floating card) and back — no mid heights. Drag arms only
+after the entrance completes; dragging down past the threshold at the
+initial height dismisses.
 
 ### Utility Modal
 

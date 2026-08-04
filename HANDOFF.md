@@ -87,28 +87,30 @@ the two morph components in the stage (raw seconds, no TEMPO).
 
 ## NEXT UP (the reason for this handoff)
 
-1. **Bottom Sheet as a first-class component.** The sheet morph logic now
-   exists twice in the stage (`ActionSheetMorph`, `UtilitySheetMorph`) with
-   identical beat structure. Extract into a reusable `BottomSheet` (or
-   `SheetMorph`) component — likely a new lab registry entry with its own
-   stage — parameterized by origin rect, final width/height, beat timings,
-   and title/body slots. Decide with Rishi whether it ships as its own
-   registry component or stays internal to NavigationBar's demo.
+1. **Accessibility pass** — focus trapping in sheets/modals, focus return
+   (partially done: onExitComplete focuses the origin control), aria audit,
+   keyboard paths for every surface.
 
-(Filter choreography — the previous item 1 — landed and is verified
-frame-by-frame; see Choreography specs #6 above and the Overview's
-Filtering section, no longer marked SPEC.)
+(Both previous items landed, frame-verified: Filter choreography — see
+Choreography specs #6 and the Overview's Filtering section — and the
+**BottomSheet extraction**: `client/src/components/bottom-sheet/` is a
+public registry entry (`/bottom-sheet`, spec in
+`docs/superpowers/specs/2026-08-03-bottom-sheet-design.md`) that owns
+scrim/Escape/morph beats/drag; two stops only, configurable initial +
+full (94%, floating card), chevron header control + drag snapping.
+`ActionSheetMorph`/`UtilitySheetMorph` are deleted — the workflow sheet,
+Export (now expandable), and Assistant mount `<BottomSheet>` inside the
+stage's AnimatePresence; the bar's clear-out props are unchanged. Design
+rule from Rishi: lab components are drop-in-first — prop-driven, motion
+internals stay in-file constants, configure only app-critical surfaces.)
 
 ## Remaining roadmap after that
 
-2. **Accessibility pass** — focus trapping in sheets/modals, focus return
-   (partially done: onExitComplete focuses the origin control), aria audit,
-   keyboard paths for every surface.
-3. **Code cleanup + on-page instructions** — surface the registry `tryIt`
+2. **Code cleanup + on-page instructions** — surface the registry `tryIt`
    hints on the Preview tab; prune the now-unused `isUtilityOpen` absorb
    branches if Rishi agrees the old grammar is dead; update the registry
    `usage` snippet (it still documents `isUtilityOpen`).
-4. **Site description** (About/landing copy).
+3. **Site description** (About/landing copy).
 
 ## Housekeeping
 
