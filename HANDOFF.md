@@ -13,6 +13,21 @@ Railway via the Dockerfile). Owner: Rishi (rishidean).
   read the screenshots → commit → push.
 - `client/src/lab/registry.tsx` is the single source of truth for the site
   (names, usage snippets, tryIt hints). Keep it in sync with behavior changes.
+- **Canonical vocabulary (2026-08-04 consumer refactor, spec in
+  docs/superpowers/specs/):** NavigationButton / NavigationMenu(Item) /
+  Tab / ContextualActionBar / ActionButton / FilterOptionSet /
+  UtilityButton / UtilityAction. Props renamed to match (utilityAction,
+  contextualActions, actionBarRef, utilityButtonRef, onUtilityClick,
+  onCollapsedClick); the filter chip is marked by `Action.isFilter`;
+  `isUtilityOpen` is fully pruned. NavigationBar exports
+  ACTION_SHEET_CLEAROUT_MS / UTILITY_CLEAROUT_MS — the stage's sheet
+  launch timers derive from them (never hardcode clear-out waits).
+- **Theme system:** `client/src/theme/theme.css` is the component token
+  contract — Aurora (light, :root) and Ink (dark, .dark) presets, glass
+  classes included. Shell has a sun/moon toggle (ThemeContext,
+  localStorage). Animated shadows stay literal in components (framer
+  can't interpolate var() strings). PressAndSlidePicker deliberately
+  untouched by all of this.
 
 ## The flagship: NavigationBar
 
@@ -60,8 +75,8 @@ Railway via the Dockerfile). Owner: Rishi (rishidean).
 4. **Modal takeovers (Scan):** SAME clear-out as sheets, then the modal
    expands as a circle from the button's CENTER POINT (`UtilitySurface`
    clipPath). Close: circle contracts to the point, then restore. The legacy
-   `isUtilityOpen` absorb path is no longer driven by the stage (prop still
-   exists on the component).
+   legacy `isUtilityOpen` absorb path has since been REMOVED entirely
+   (2026-08-04).
 5. **Search:** bar morphs into the field right-to-left (unchanged this
    round). Scroll collapse/expand: absorb/regrow with hysteresis (unchanged).
 6. **Filter strip (Transactions):** serial beats per the Overview spec —
@@ -106,10 +121,10 @@ internals stay in-file constants, configure only app-critical surfaces.)
 
 ## Remaining roadmap after that
 
-2. **Code cleanup + on-page instructions** — surface the registry `tryIt`
-   hints on the Preview tab; prune the now-unused `isUtilityOpen` absorb
-   branches if Rishi agrees the old grammar is dead; update the registry
-   `usage` snippet (it still documents `isUtilityOpen`).
+2. **On-page instructions + deferred app polish** — surface the registry
+   `tryIt` hints on the Preview tab; README updates (Bottom Sheet row,
+   Theming section); dark pass on Home/landing. (The isUtilityOpen prune
+   and usage-snippet rewrite are done.)
 3. **Site description** (About/landing copy).
 
 ## Housekeeping
