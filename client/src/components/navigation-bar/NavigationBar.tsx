@@ -450,6 +450,45 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   }, [isFilterExpanded]);
   const filterClosing = !isFilterExpanded && prevFilterExpandedRef.current;
 
+  // ── Absorb pulse: when the ContextualActionBar finishes collapsing
+  //    into the NavigationButton (menu open or scroll collapse), the
+  //    circle's border flares briefly and settles — a visual "caught it"
+  //    as the bar lands in the circle. Keyed so every landing retriggers.
+  const [absorbPulse, setAbsorbPulse] = useState(0);
+  const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const schedulePulse = (delaySeconds: number) => {
+    if (prefersReducedMotion) return;
+    if (pulseTimer.current) clearTimeout(pulseTimer.current);
+    pulseTimer.current = setTimeout(
+      () => setAbsorbPulse(k => k + 1),
+      Math.round(Math.max(0, delaySeconds) * 1000)
+    );
+  };
+  useEffect(
+    () => () => {
+      if (pulseTimer.current) clearTimeout(pulseTimer.current);
+    },
+    []
+  );
+  // Menu open: the bar absorbs right-to-left and lands at
+  // centerSquish + direct; the flare starts a breath early so its peak
+  // coincides with the landing.
+  useEffect(() => {
+    if (isNavigationMenuOpen) {
+      schedulePulse(del(OPEN_DELAYS.centerSquish + DUR.direct - 0.05));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNavigationMenuOpen]);
+  // Scroll collapse: same cue when the bar lands in the collapsed circle.
+  useEffect(() => {
+    if (isCollapsed) {
+      schedulePulse(
+        del(SCROLL_COLLAPSE_DELAYS.centerCollapse + DUR.collapse - 0.05)
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCollapsed]);
+
   const navRef = useRef<HTMLDivElement | null>(null);
   const navigationMenuContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -953,6 +992,27 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     "color-mix(in oklab, var(--iris-700) 14%, transparent)",
                 }}
               />
+              {/* Absorb pulse — the border flares as the bar lands in the
+                  circle, then settles. Remounted per landing (key) so the
+                  keyframes re-run; sits above the glass, below the icon. */}
+              {absorbPulse > 0 && (
+                <motion.span
+                  key={absorbPulse}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{
+                    boxShadow:
+                      "0 0 18px 4px color-mix(in oklab, var(--aurora-lilac) 60%, transparent), inset 0 0 0 1.5px color-mix(in oklab, var(--iris-700) 45%, transparent)",
+                  }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0, 1, 0] }}
+                  transition={{
+                    duration: dur(0.34),
+                    times: [0, 0.3, 1],
+                    ease: EASE,
+                  }}
+                />
+              )}
 
               <motion.button
                 ref={navigationButtonRef}

@@ -68,6 +68,8 @@ button.
 
 - The Utility button fades out first ("undotting the i").
 - The Action Bar collapses right-to-left, absorbed into the left circle.
+- As the bar lands, the NavigationButton's border emits a brief glow and
+  settles — the circle visibly "catches" the absorbed bar.
 - The Navigation button continues to display the current tab icon.
 - A small upward scroll expands the full control; a tap on the collapsed
   circle expands it too (opening the menu then requires a second,
@@ -103,6 +105,8 @@ One grammar governs every transition:
 
 - The Utility button fades out.
 - The Action Bar collapses right-to-left, absorbed into the left circle.
+- As the bar lands, the NavigationButton's border pulses briefly (the
+  same absorb cue as the scroll collapse).
 - The Navigation menu expands out of the left button as the bar finishes —
   origin-based reveal (upward expansion, corner-radius settle, elevation
   rising as it clears the button).

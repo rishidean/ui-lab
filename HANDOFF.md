@@ -85,7 +85,11 @@ Railway via the Dockerfile). Owner: Rishi (rishidean).
    contracts to the point, then restore. The legacy `isUtilityOpen`
    absorb path has been REMOVED entirely (2026-08-04).
 5. **Search:** bar morphs into the field right-to-left (unchanged this
-   round). Scroll collapse/expand: absorb/regrow with hysteresis (unchanged).
+   round). Scroll collapse/expand: absorb/regrow with hysteresis; on ANY
+   absorb into the NavigationButton (menu open or scroll collapse) the
+   circle's border pulses briefly as the bar lands (`absorbPulse` keyed
+   flare, timed to centerSquish/centerCollapse + travel − 0.05; skipped
+   under reduced motion).
 6. **Filter strip (Transactions):** serial beats per the Overview spec —
    chip pressed feedback → RHS undots → its width collapses so the strip
    widens into the vacated space (left circle FIXED) → label fades after
