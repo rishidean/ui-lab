@@ -74,7 +74,7 @@ Railway via the Dockerfile). Owner: Rishi (rishidean).
    (enabled only after entrance, `opened` state).
 4. **Modal takeovers (Scan):** SAME clear-out as sheets, then the modal
    expands as a circle from the button's CENTER POINT (`UtilitySurface`
-   clipPath). Close: circle contracts to the point, then restore. The legacy
+   clipPath). Close: circle contracts to the point, then restore. The
    legacy `isUtilityOpen` absorb path has since been REMOVED entirely
    (2026-08-04).
 5. **Search:** bar morphs into the field right-to-left (unchanged this
