@@ -20,9 +20,10 @@
  * close. Exit choreography runs on unmount; use onExitComplete to restore
  * the origin control (regrow, focus return).
  */
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { useInertOutside } from "@/lib/a11y";
 import { ChevronsDown, ChevronsUp } from "lucide-react";
 import "./BottomSheet.css";
 
@@ -107,6 +108,18 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 
   const [isFull, setIsFull] = useState(false);
 
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const scrimRef = useRef<HTMLButtonElement | null>(null);
+  // Everything outside the sheet + scrim is inert while mounted — focus
+  // cannot escape, the page is hidden from screen readers, and the exit
+  // choreography stays covered until unmount.
+  useInertOutside(true, sheetRef, scrimRef);
+  // Initial focus: the dialog itself, so its aria-label announces without
+  // disturbing the entrance beats (skeleton bodies have no controls).
+  useEffect(() => {
+    sheetRef.current?.focus({ preventScroll: true });
+  }, []);
+
   // Fractions resolve to px — framer interpolates numbers, never px↔dvh.
   const initialHeight =
     height === "auto"
@@ -157,8 +170,10 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       {/* Backdrop dims as the vertical stretch begins; the page beneath
           stays rendered as context. */}
       <motion.button
+        ref={scrimRef}
         type="button"
-        aria-label="Close"
+        aria-hidden="true"
+        tabIndex={-1}
         className="bottom-sheet__scrim"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -171,6 +186,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         onClick={onClose}
       />
       <motion.div
+        ref={sheetRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}

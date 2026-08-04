@@ -141,3 +141,9 @@
   flex: 1 1 auto;
   min-height: 0;
 }
+
+/* The dialog container takes initial focus (tabIndex -1) so its label
+   announces; it is not an interactive control, so no ring. */
+.bottom-sheet:focus {
+  outline: none;
+}
