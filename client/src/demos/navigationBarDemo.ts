@@ -72,8 +72,8 @@ export const navigationFilters: FilterOption[] = [
 
 /** The UtilityButton's action changes with the active tab. */
 export const navigationUtilityActions: Record<string, UtilityAction> = {
-  home: { Icon: Sparkles, label: "AI" },
-  spend: { Icon: ScanLine, label: "Scan" },
+  home: { Icon: Sparkles, label: "AI", opensDialog: true },
+  spend: { Icon: ScanLine, label: "Scan", opensDialog: true },
   trade: { Icon: Search, label: "Search" },
-  transactions: { Icon: Download, label: "Export" },
+  transactions: { Icon: Download, label: "Export", opensDialog: true },
 };

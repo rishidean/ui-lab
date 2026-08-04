@@ -111,6 +111,9 @@ export type Action = {
 export type UtilityAction = {
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   label: string;
+  /** Marks the action as opening a modal surface (sheet or takeover) —
+   *  drives aria-haspopup="dialog" on the UtilityButton. */
+  opensDialog?: boolean;
 };
 
 export type FilterOption = {
@@ -307,8 +310,10 @@ export type NavigationBarProps = {
   /** Fired on Enter with the current query; the field then closes. */
   onSearchSubmit?: (query: string) => void;
   /** Exposes the UtilityButton element — the shared origin that utility
-   *  surfaces grow out of and contract back into. */
-  utilityButtonRef?: React.Ref<HTMLButtonElement>;
+   *  surfaces grow out of and contract back into. Typed as a RefObject
+   *  (not the broader React.Ref) so the search-close and focus-return
+   *  effects can read `.current` directly. */
+  utilityButtonRef?: React.RefObject<HTMLButtonElement | null>;
   /** Exposes the ContextualActionBar element — the shared origin that
    *  workflow sheets grow out of on action press. */
   actionBarRef?: React.Ref<HTMLDivElement>;
@@ -430,12 +435,23 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       // Focus only once the field has reached most of its final width, so
       // the mobile keyboard doesn't jump the viewport mid-morph.
       const t = setTimeout(
-        () => searchInputRef.current?.focus(),
+        () => searchInputRef.current?.focus({ preventScroll: true }),
         prefersReducedMotion ? 0 : 220 * TEMPO
       );
       return () => clearTimeout(t);
     }
   }, [isSearchOpen, prefersReducedMotion]);
+
+  // Search close (Cancel, Escape, Enter-submit): focus returns to the
+  // utility button that opened it.
+  const prevSearchOpenRef = useRef(isSearchOpen);
+  useEffect(() => {
+    const was = prevSearchOpenRef.current;
+    prevSearchOpenRef.current = isSearchOpen;
+    if (was && !isSearchOpen) {
+      utilityButtonRef?.current?.focus({ preventScroll: true });
+    }
+  }, [isSearchOpen, utilityButtonRef]);
 
   // A sheet surface is exclusive: it closes the NavigationMenu and the
   // FilterOptionSet, and the bar's own controls lock as soon as the
@@ -446,6 +462,24 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       setIsFilterExpanded(false);
     }
   }, [isActionSheetOpen, isUtilitySheetOpen]);
+
+  // The chip that launched the workflow sheet gets focus back when the
+  // bar's clear-out lifts (isActionSheetOpen falls in onExitComplete,
+  // after the sheet is gone and inert is restored).
+  const actionChipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const lastEngagedActionRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (activeAction) lastEngagedActionRef.current = activeAction;
+  }, [activeAction]);
+  const prevActionSheetOpenRef = useRef(isActionSheetOpen);
+  useEffect(() => {
+    const was = prevActionSheetOpenRef.current;
+    prevActionSheetOpenRef.current = isActionSheetOpen;
+    if (was && !isActionSheetOpen) {
+      const label = lastEngagedActionRef.current;
+      if (label) actionChipRefs.current[label]?.focus({ preventScroll: true });
+    }
+  }, [isActionSheetOpen]);
 
   const prevUtilitySheetRef = useRef(isUtilitySheetOpen);
   useEffect(() => {
@@ -1385,6 +1419,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                      (search band); exit is a direct interaction. */
                   <motion.div
                     key="search"
+                    role="search"
                     initial={{ clipPath: "inset(0 0 0 100%)" }}
                     animate={{ clipPath: "inset(0 0 0 0%)" }}
                     exit={{ clipPath: "inset(0 0 0 100%)", opacity: 0 }}
@@ -1404,6 +1439,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     <input
                       ref={searchInputRef}
                       type="text"
+                      aria-label="Search"
                       value={searchQuery}
                       placeholder={searchPlaceholder}
                       onChange={e => {
@@ -1428,7 +1464,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                         onClick={() => {
                           setSearchQuery("");
                           onSearchChange?.("");
-                          searchInputRef.current?.focus();
+                          searchInputRef.current?.focus({ preventScroll: true });
                         }}
                         aria-label="Clear search"
                         className="shrink-0 rounded-full p-1.5 transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
@@ -1613,7 +1649,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           )}
                           <motion.button
                             type="button"
-                            ref={isFilter ? setFilterChipRef : undefined}
+                            ref={el => {
+                              actionChipRefs.current[action.label] = el;
+                              if (isFilter) setFilterChipRef(el);
+                            }}
                             aria-expanded={isFilter ? isFilterExpanded : undefined}
                             onClick={() => {
                               if (isFilter) {
@@ -1743,6 +1782,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 type="button"
                 onClick={onUtilityClick}
                 aria-label={utilityAction.label}
+                aria-haspopup={utilityAction.opensDialog ? "dialog" : undefined}
+                aria-expanded={isUtilitySheetOpen || !!isSearchOpen}
                 className="group relative w-14 h-14 rounded-full flex items-center justify-center pointer-events-auto"
                 whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.93 }}
