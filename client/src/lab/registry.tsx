@@ -88,11 +88,14 @@ const filterOptions = [
 
 // One UtilityAction per tab drives the UtilityButton (AI on Home,
 // Scan on Spend, Search on Trade, Export on Transactions).
+// opensDialog marks actions whose surface is a dialog (sheet/modal):
+// it drives aria-haspopup="dialog" on the UtilityButton. Search
+// morphs the bar itself — not a dialog, so it stays unmarked.
 const utilityActions = {
-  home: { Icon: Sparkles, label: "AI" },
-  spend: { Icon: ScanLine, label: "Scan" },
+  home: { Icon: Sparkles, label: "AI", opensDialog: true },
+  spend: { Icon: ScanLine, label: "Scan", opensDialog: true },
   trade: { Icon: Search, label: "Search" },
-  transactions: { Icon: Download, label: "Export" },
+  transactions: { Icon: Download, label: "Export", opensDialog: true },
 };
 
 <NavigationBar
@@ -145,7 +148,10 @@ const utilityActions = {
  * via useInertOutside (@/lib/a11y), which makes everything outside them
  * inert while open, and likewise return focus to their origin control
  * on close. :focus-visible rings are styled throughout every surface;
- * mouse/touch interaction stays ring-free.
+ * mouse/touch interaction stays ring-free — including the search input,
+ * whose ring is modality-gated (text inputs match :focus-visible on any
+ * focus, so the bar tracks keyboard vs pointer and applies the ring
+ * only to keyboard-driven focus).
  */
 
 /*
@@ -298,7 +304,7 @@ export const labComponents: LabComponent[] = [
       "theme/theme.css (token contract)",
       "@/components/bottom-sheet (sheet surfaces)",
       "@/components/utility-modal (modal takeovers)",
-      "@/lib/a11y (useInertOutside — dialog containment)",
+      "@/lib/a11y (focusWhenClear — focus return past inert)",
     ],
     usage: navigationBarUsage,
     tryIt: [
@@ -313,6 +319,7 @@ export const labComponents: LabComponent[] = [
       "On Transactions, tap Export — a compact sheet grows from the button and contracts back into it",
       "On Trade, five actions overflow the pill — swipe the row horizontally",
       "On Transactions, tap the filter chip to expand Pending / Complete / Scheduled in place",
+      "Pick a new filter value — the highlight slides over, the labels trade colors, and the strip contracts with the value committed",
     ],
     aliases: ["action-bar"],
   },

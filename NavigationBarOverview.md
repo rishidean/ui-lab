@@ -78,6 +78,11 @@ button.
   downward pull (~56px), expanding only a small upward nudge (~16px), with
   a jitter floor, a toggle cooldown, and an always-expanded zone near the
   top of the page.
+- When any regrow lands, the bar forces a one-frame invisible repaint of
+  the pill: its backdrop-filter keeps it permanently GPU-composited, and
+  because the labels fade in during the regrow, Chromium can otherwise
+  keep the mid-scale text raster (blurry labels) until an unrelated
+  repaint refreshes it.
 
 ## Motion System
 
@@ -176,6 +181,10 @@ button never moves — and the page dims behind it while it is open.
 #### Selecting a Filter
 
 - The selection highlight slides from the old value to the new value.
+- The option labels trade colors only once the pill lands — an immediate
+  recolor would make the slide's first frames read as "nothing moved."
+  (`aria-checked` updates immediately; only the coloring waits for the
+  choreography.)
 - It holds briefly on the new value for confirmation.
 - The option list fades out; the center label updates (to the new value)
   while the strip is still at full width.
@@ -200,6 +209,11 @@ When the right utility is Search:
 - The field receives focus and opens the keyboard — focus lands only after
   the field has reached most of its width, so the keyboard doesn't jump the
   viewport mid-morph.
+- The field's focus ring is modality-gated: text inputs match
+  `:focus-visible` on ANY focus (a browser heuristic, unlike buttons), so
+  the bar tracks the last input modality and shows the ring only for
+  keyboard-driven focus — pointer opens stay ring-free like every other
+  control.
 - Enter commits the query and closes the field.
 - Clearing or cancelling Search restores the navigation button and
   contextual action bar in reverse order.

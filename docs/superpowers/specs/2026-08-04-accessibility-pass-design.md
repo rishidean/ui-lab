@@ -91,6 +91,13 @@ New hook `useInertOutside(ref, active)` in `client/src/lib/a11y.ts`:
 - `:focus-visible` only — mouse/touch interaction visuals unchanged.
 - Rings must not alter layout (box-shadow or outline-offset, no border-width
   changes) so frame captures stay pixel-identical for pointer flows.
+- **Amended 2026-08-05:** the search input needs more than `:focus-visible`
+  alone — text inputs match it on ANY focus (browser heuristic), including
+  the bar's programmatic focus on open, so the ring showed on pointer flows.
+  The bar now tracks the last input modality (capture-phase keydown vs
+  pointerdown, ignoring framer's untrusted synthetic pointerdown from
+  keyboard press) and stamps `data-kbd` on the input at each focus; the
+  theme rule requires it. Pointer flows are ring-free again.
 
 ## 7. Announcements
 
