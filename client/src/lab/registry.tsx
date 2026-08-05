@@ -138,11 +138,14 @@ const utilityActions = {
  * Home/End, Enter/Space, Escape. The filter is a role="radiogroup" —
  * arrow keys rove the roving tabindex, Enter/Space selects. The
  * UtilityButton sets aria-haspopup="dialog" whenever the active
- * UtilityAction has opensDialog: true. Every dialog surface (menu,
- * filter, sheets, modal) contains focus via useInertOutside
- * (@/lib/a11y) and returns focus to its origin control on close;
- * :focus-visible rings are styled throughout, mouse/touch interaction
- * stays ring-free.
+ * UtilityAction has opensDialog: true. The menu and filter are plain
+ * popovers, not focus traps: roving tabindex + Escape + focus return
+ * to their origin control, no inert containment. The sheet and modal
+ * surfaces (BottomSheet, UtilityModal) go further — they contain focus
+ * via useInertOutside (@/lib/a11y), which makes everything outside them
+ * inert while open, and likewise return focus to their origin control
+ * on close. :focus-visible rings are styled throughout every surface;
+ * mouse/touch interaction stays ring-free.
  */
 
 /*

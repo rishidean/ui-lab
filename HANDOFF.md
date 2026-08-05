@@ -27,8 +27,11 @@ Everything below landed, frame-verified, and is pushed/deployed:
    (native `inert` containment for BottomSheet + UtilityModal, dialogs take
    initial focus, scrims are pointer-only) and `focusWhenClear` (bounded
    rAF-poll focus return that waits for `inert` to lift; used at every
-   `onExitComplete` focus-return site plus the filter chip's return — see
-   Gotchas). NavigationBar's tab menu is a proper APG menu (ArrowUp/Down,
+   `onExitComplete` focus-return site — see Gotchas). The menu and filter
+   are plain popovers, not inert-guarded, so their focus return is a
+   direct `.focus({ preventScroll: true })` (the filter chip's return in
+   particular — no inert involved there, so no need to wait for it to
+   lift). NavigationBar's tab menu is a proper APG menu (ArrowUp/Down,
    Home/End, Enter/Space, Escape); the filter is a radiogroup (roving
    arrow keys + Enter/Space). `UtilityAction` gained `opensDialog?:
    boolean`, driving `aria-haspopup="dialog"` on the UtilityButton.
@@ -167,9 +170,11 @@ stage's AnimatePresence; the bar's clear-out props are unchanged. Design
 rule from Rishi: lab components are drop-in-first — prop-driven, motion
 internals stay in-file constants, configure only app-critical surfaces.
 And the **Accessibility pass**: inert containment via `@/lib/a11y`
-`useInertOutside`, APG menu + radiogroup keyboard semantics, focus return
-everywhere via `focusWhenClear`, `:focus-visible` rings throughout — see
-the latest-session recap above for the full list.)
+`useInertOutside` (BottomSheet + UtilityModal), APG menu + radiogroup
+keyboard semantics with plain (non-inert) focus return for those two,
+`focusWhenClear` for every inert-guarded surface's focus return,
+`:focus-visible` rings throughout — see the latest-session recap above for
+the full list.)
 
 ## Remaining roadmap after that
 
@@ -216,6 +221,9 @@ the latest-session recap above for the full list.)
 - The filter's `AnimatePresence mode="wait"` remounts the chip only after
   the options finish exiting, so focus can't return to a ref that hasn't
   re-attached yet at close time. Pattern: set a `pendingFilterFocusReturn`
-  ref flag when the close begins, then consume it (and call
-  `focusWhenClear`) inside the chip's own `ref` callback once it
-  re-attaches — see `NavigationBar.tsx` around the filter close handler.
+  ref flag when the close begins, then consume it inside the chip's own
+  `ref` callback once it re-attaches, calling a plain
+  `.focus({ preventScroll: true })` there — the filter isn't inert-guarded
+  (see above), so `focusWhenClear`'s inert-polling isn't needed, only the
+  remount-timing workaround. See `NavigationBar.tsx` around the filter
+  close handler.
