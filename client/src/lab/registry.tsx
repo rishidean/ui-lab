@@ -134,6 +134,18 @@ const utilityActions = {
  */
 
 /*
+ * Keyboard contract: the tab menu is a role="menu" — ArrowUp/ArrowDown,
+ * Home/End, Enter/Space, Escape. The filter is a role="radiogroup" —
+ * arrow keys rove the roving tabindex, Enter/Space selects. The
+ * UtilityButton sets aria-haspopup="dialog" whenever the active
+ * UtilityAction has opensDialog: true. Every dialog surface (menu,
+ * filter, sheets, modal) contains focus via useInertOutside
+ * (@/lib/a11y) and returns focus to its origin control on close;
+ * :focus-visible rings are styled throughout, mouse/touch interaction
+ * stays ring-free.
+ */
+
+/*
  * Utility surfaces — the bar renders only the UtilityButton; WHICH
  * surface opens is your routing decision inside onUtilityClick:
  *
@@ -283,6 +295,7 @@ export const labComponents: LabComponent[] = [
       "theme/theme.css (token contract)",
       "@/components/bottom-sheet (sheet surfaces)",
       "@/components/utility-modal (modal takeovers)",
+      "@/lib/a11y (useInertOutside — dialog containment)",
     ],
     usage: navigationBarUsage,
     tryIt: [
@@ -342,6 +355,7 @@ export const labComponents: LabComponent[] = [
       "lucide-react",
       "clsx + tailwind-merge (cn)",
       "theme/theme.css (token contract)",
+      "@/lib/a11y (useInertOutside — dialog containment)",
     ],
     usage: bottomSheetUsage,
     tryIt: [
@@ -371,6 +385,7 @@ export const labComponents: LabComponent[] = [
       "motion",
       "clsx + tailwind-merge (cn)",
       "theme/theme.css (token contract)",
+      "@/lib/a11y (useInertOutside — dialog containment)",
     ],
     usage: utilityModalUsage,
     tryIt: [

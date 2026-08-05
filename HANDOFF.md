@@ -23,6 +23,19 @@ Everything below landed, frame-verified, and is pushed/deployed:
    from frame one); NavigationButton absorb pulse; filter-highlight
    second-open bug (stale AnimatePresence exit props + mid-widen
    measurement — see Gotchas).
+6. **Accessibility pass:** new `client/src/lib/a11y.ts` — `useInertOutside`
+   (native `inert` containment for BottomSheet + UtilityModal, dialogs take
+   initial focus, scrims are pointer-only) and `focusWhenClear` (bounded
+   rAF-poll focus return that waits for `inert` to lift; used at every
+   `onExitComplete` focus-return site plus the filter chip's return — see
+   Gotchas). NavigationBar's tab menu is a proper APG menu (ArrowUp/Down,
+   Home/End, Enter/Space, Escape); the filter is a radiogroup (roving
+   arrow keys + Enter/Space). `UtilityAction` gained `opensDialog?:
+   boolean`, driving `aria-haspopup="dialog"` on the UtilityButton.
+   `:focus-visible` rings added throughout the bar and both overlay
+   components; pointer/touch interaction stays ring-free. Full regression
+   sweep (a11y test suite + choreography frame captures) confirmed no
+   change to pointer-flow visuals or geometry.
 
 Design specs live in `docs/superpowers/specs/`, plans in
 `docs/superpowers/plans/`.
@@ -136,12 +149,13 @@ the two morph components in the stage (raw seconds, no TEMPO).
 
 ## NEXT UP (the reason for this handoff)
 
-1. **Accessibility pass** — focus trapping in sheets/modals, focus return
-   (partially done: onExitComplete focuses the origin control), aria audit,
-   keyboard paths for every surface.
+1. **On-page instructions + deferred app polish** — surface the registry
+   `tryIt` hints on the Preview tab; README updates (Bottom Sheet row,
+   Theming section); dark pass on Home/landing. (The isUtilityOpen prune
+   and usage-snippet rewrite are done.)
 
-(Both previous items landed, frame-verified: Filter choreography — see
-Choreography specs #6 and the Overview's Filtering section — and the
+(All previous items landed, frame-verified: Filter choreography — see
+Choreography specs #6 and the Overview's Filtering section — the
 **BottomSheet extraction**: `client/src/components/bottom-sheet/` is a
 public registry entry (`/bottom-sheet`, spec in
 `docs/superpowers/specs/2026-08-03-bottom-sheet-design.md`) that owns
@@ -151,15 +165,15 @@ full (94%, floating card), chevron header control + drag snapping.
 Export (now expandable), and Assistant mount `<BottomSheet>` inside the
 stage's AnimatePresence; the bar's clear-out props are unchanged. Design
 rule from Rishi: lab components are drop-in-first — prop-driven, motion
-internals stay in-file constants, configure only app-critical surfaces.)
+internals stay in-file constants, configure only app-critical surfaces.
+And the **Accessibility pass**: inert containment via `@/lib/a11y`
+`useInertOutside`, APG menu + radiogroup keyboard semantics, focus return
+everywhere via `focusWhenClear`, `:focus-visible` rings throughout — see
+the latest-session recap above for the full list.)
 
 ## Remaining roadmap after that
 
-2. **On-page instructions + deferred app polish** — surface the registry
-   `tryIt` hints on the Preview tab; README updates (Bottom Sheet row,
-   Theming section); dark pass on Home/landing. (The isUtilityOpen prune
-   and usage-snippet rewrite are done.)
-3. **Site description** (About/landing copy).
+2. **Site description** (About/landing copy).
 
 ## Housekeeping
 
@@ -192,3 +206,16 @@ internals stay in-file constants, configure only app-critical surfaces.)
 - Playwright scripts: write via the Write tool into /tmp/pw (heredocs inside
   compound commands fail silently), `node /tmp/pw/<script>.mjs`, view the
   PNGs directly.
+- `AnimatePresence onExitComplete` fires before `useInertOutside`'s cleanup
+  actually commits (its `removeAttribute("inert")` runs in the exiting
+  surface's own passive-effect teardown, a frame or more later). A
+  same-tick `.focus()` on the origin control inside `onExitComplete` can
+  therefore land on a still-`inert` element and silently no-op. Always
+  return focus via `focusWhenClear` (`@/lib/a11y`) — it polls up to 5 rAFs
+  waiting for `inert` to lift before focusing — never a raw `.focus()`.
+- The filter's `AnimatePresence mode="wait"` remounts the chip only after
+  the options finish exiting, so focus can't return to a ref that hasn't
+  re-attached yet at close time. Pattern: set a `pendingFilterFocusReturn`
+  ref flag when the close begins, then consume it (and call
+  `focusWhenClear`) inside the chip's own `ref` callback once it
+  re-attaches — see `NavigationBar.tsx` around the filter close handler.
