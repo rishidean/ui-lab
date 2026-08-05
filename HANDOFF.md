@@ -212,7 +212,11 @@ the full list.)
   `(PORT=4999 setsid nohup node dist/index.js > /tmp/server.log 2>&1 < /dev/null &)`.
 - Playwright scripts: write via the Write tool into /tmp/pw (heredocs inside
   compound commands fail silently), `node /tmp/pw/<script>.mjs`, view the
-  PNGs directly.
+  PNGs directly. The a11y regression suites are the exception — they live
+  IN the repo (`scripts/a11y/`, run with `pnpm test:a11y` against a build
+  on :4999, playwright is a devDependency; see scripts/a11y/README.md).
+  Run them before pushing anything that touches focus, aria, or the
+  surfaces' mount/unmount choreography.
 - `AnimatePresence onExitComplete` fires before `useInertOutside`'s cleanup
   actually commits (its `removeAttribute("inert")` runs in the exiting
   surface's own passive-effect teardown, a frame or more later). A
