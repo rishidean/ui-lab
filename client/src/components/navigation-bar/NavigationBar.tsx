@@ -639,14 +639,35 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // its close — the value is visibly committed before the control changes
   // shape. (Mirrors the menu's pressed-row confirmation hold.)
   const filterCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The color swap lags the slide: on selection the pill glides to the new
+  // value FIRST (DUR.direct), and only once it lands do the labels trade
+  // colors — an immediate recolor makes the slide's first frames read as
+  // "nothing moved". While the pill is in flight this holds the OLD value's
+  // id so the coloring stays put; aria-checked follows activeFilter
+  // immediately (semantics don't wait for choreography).
+  const [pendingFilterVisual, setPendingFilterVisual] = useState<string | null>(
+    null
+  );
+  const filterVisualTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
       if (filterCloseTimer.current) clearTimeout(filterCloseTimer.current);
+      if (filterVisualTimer.current) clearTimeout(filterVisualTimer.current);
     },
     []
   );
 
   const handleSelectFilter = (filterId: string) => {
+    if (filterId !== activeFilter) {
+      // Keep coloring whatever is currently shown as active (a mid-flight
+      // reselect keeps the visual it already had, not the aborted target).
+      setPendingFilterVisual(pendingFilterVisual ?? activeFilter);
+      if (filterVisualTimer.current) clearTimeout(filterVisualTimer.current);
+      filterVisualTimer.current = setTimeout(
+        () => setPendingFilterVisual(null),
+        Math.round(dur(DUR.direct) * 1000)
+      );
+    }
     onFilterChange?.(filterId);
     if (filterCloseTimer.current) clearTimeout(filterCloseTimer.current);
     filterCloseTimer.current = setTimeout(
@@ -694,6 +715,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     if (!filterClosing) return;
     setFilterFocusId(null);
     filterFocusApplied.current = false;
+    // A close can interrupt the slide (Escape mid-flight): drop the lagged
+    // coloring so a reopen starts clean on the committed value.
+    setPendingFilterVisual(null);
+    if (filterVisualTimer.current) clearTimeout(filterVisualTimer.current);
     const el = document.activeElement;
     const stillOwnedByStrip =
       el === document.body ||
@@ -787,6 +812,41 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     x: number;
     w: number;
   } | null>(null);
+
+  // The strip may still be WIDENING into the UtilityButton's space when
+  // the options mount, so a single mount-time measurement can capture a
+  // mid-animation layout. A ResizeObserver on the active option keeps
+  // the highlight tracking the real geometry until it settles (and
+  // through any later reflow).
+  const filterHighlightObserver = useRef<ResizeObserver | null>(null);
+  // Measure `id`'s option and keep the observer glued to IT. Called from
+  // both the mount-time ref callback AND the activeFilter layout effect:
+  // framer's motion.button hands the DOM one stable internal ref and only
+  // invokes our callback on mount/unmount, so a selection change never
+  // re-runs it — without the effect-side call the observer would stay on
+  // the open-time option, whose stale closure then snaps the pill BACK to
+  // the old value when the recolor reflows it (the "highlight never
+  // slides" bug).
+  const trackFilterOption = useCallback((id: string) => {
+    const apply = () => {
+      const target = filterOptionRefs.current[id];
+      if (!target) return;
+      setFilterHighlight(prev =>
+        prev && prev.x === target.offsetLeft && prev.w === target.offsetWidth
+          ? prev
+          : { x: target.offsetLeft, w: target.offsetWidth }
+      );
+    };
+    apply();
+    filterHighlightObserver.current?.disconnect();
+    const el = filterOptionRefs.current[id];
+    if (el && typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(apply);
+      ro.observe(el);
+      filterHighlightObserver.current = ro;
+    }
+  }, []);
+
   useLayoutEffect(() => {
     if (!isFilterExpanded) {
       setFilterHighlight(null);
@@ -795,36 +855,14 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     // Selection slides: on activeFilter change the buttons already exist.
     // (Initial placement happens in the option ref callback instead — the
     // options mount AFTER this flag flips, once the label has exited.)
-    const el = filterOptionRefs.current[activeFilter];
-    if (!el) return;
-    setFilterHighlight({ x: el.offsetLeft, w: el.offsetWidth });
-  }, [isFilterExpanded, activeFilter, filterOptions]);
+    if (!filterOptionRefs.current[activeFilter]) return;
+    trackFilterOption(activeFilter);
+  }, [isFilterExpanded, activeFilter, filterOptions, trackFilterOption]);
 
-  // The strip may still be WIDENING into the UtilityButton's space when
-  // the options mount, so a single mount-time measurement can capture a
-  // mid-animation layout. A ResizeObserver on the active option keeps
-  // the highlight tracking the real geometry until it settles (and
-  // through any later reflow).
-  const filterHighlightObserver = useRef<ResizeObserver | null>(null);
   const measureFilterOption = (id: string, el: HTMLButtonElement | null) => {
     filterOptionRefs.current[id] = el;
     if (el && isFilterExpanded && id === activeFilter) {
-      const apply = () => {
-        const target = filterOptionRefs.current[id];
-        if (!target) return;
-        setFilterHighlight(prev =>
-          prev && prev.x === target.offsetLeft && prev.w === target.offsetWidth
-            ? prev
-            : { x: target.offsetLeft, w: target.offsetWidth }
-        );
-      };
-      apply();
-      filterHighlightObserver.current?.disconnect();
-      if (typeof ResizeObserver !== "undefined") {
-        const ro = new ResizeObserver(apply);
-        ro.observe(el);
-        filterHighlightObserver.current = ro;
-      }
+      trackFilterOption(id);
       if (!filterFocusApplied.current) {
         filterFocusApplied.current = true;
         el.focus({ preventScroll: true });
@@ -863,7 +901,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     const current = Math.max(0, ids.indexOf(menuFocusId ?? activeTab));
     let next: number | null = null;
     if (e.key === "ArrowDown") next = (current + 1) % ids.length;
-    else if (e.key === "ArrowUp") next = (current - 1 + ids.length) % ids.length;
+    else if (e.key === "ArrowUp")
+      next = (current - 1 + ids.length) % ids.length;
     else if (e.key === "Home") next = 0;
     else if (e.key === "End") next = ids.length - 1;
     if (next !== null) {
@@ -1501,7 +1540,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                         onClick={() => {
                           setSearchQuery("");
                           onSearchChange?.("");
-                          searchInputRef.current?.focus({ preventScroll: true });
+                          searchInputRef.current?.focus({
+                            preventScroll: true,
+                          });
                         }}
                         aria-label="Clear search"
                         className="nav-search-control shrink-0 rounded-full p-1.5 transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
@@ -1585,6 +1626,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     )}
                     {filterOptions.map((option, index) => {
                       const isActive = option.id === activeFilter;
+                      // Coloring lags selection by the pill's slide (see
+                      // pendingFilterVisual); aria-checked does not.
+                      const isVisuallyActive =
+                        option.id === (pendingFilterVisual ?? activeFilter);
                       return (
                         <motion.button
                           key={option.id}
@@ -1618,7 +1663,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           className={cn(
                             "nav-filter-option relative z-10 flex-[1_1_0%] min-w-fit h-[34px] px-4 rounded-full text-[13px] font-medium whitespace-nowrap",
                             "transition-colors duration-200",
-                            isActive
+                            isVisuallyActive
                               ? "text-[color:var(--select-fg)]"
                               : "nav-action-chip text-[color:var(--text-secondary)]"
                           )}
@@ -1687,7 +1732,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           <motion.button
                             type="button"
                             ref={getActionChipRef(action.label, isFilter)}
-                            aria-expanded={isFilter ? isFilterExpanded : undefined}
+                            aria-expanded={
+                              isFilter ? isFilterExpanded : undefined
+                            }
                             onClick={() => {
                               if (isFilter) {
                                 handleFilterClick();
