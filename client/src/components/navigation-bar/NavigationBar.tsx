@@ -956,6 +956,48 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const currentFilterOption = filterOptions.find(f => f.id === activeFilter);
 
+  // The pill (glass-nav) is permanently composited by its backdrop-filter,
+  // and the labels fade in DURING the regrow (labelFadeIn overlaps
+  // centerExpand by design) — so Chromium can capture the layer's raster
+  // mid-scale and keep the blurry version after the transform settles,
+  // until any repaint (hover) refreshes it. When a regrow lands
+  // (scaleX → 1), nudge an inherited paint property for one frame to
+  // force a fresh raster at scale 1. Invisible: a zero-offset, zero-blur,
+  // transparent text-shadow.
+  const pillElRef = useRef<HTMLDivElement | null>(null);
+  const setPillRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      pillElRef.current = el;
+      if (typeof actionBarRef === "function") actionBarRef(el);
+      else if (actionBarRef)
+        (actionBarRef as React.MutableRefObject<HTMLDivElement | null>).current =
+          el;
+    },
+    [actionBarRef]
+  );
+  const repaintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (repaintTimer.current) clearTimeout(repaintTimer.current);
+    },
+    []
+  );
+  const repaintPillText = () => {
+    const nudge = () => {
+      const el = pillElRef.current;
+      if (!el) return;
+      el.style.textShadow = "0 0 0 rgba(0, 0, 0, 0)";
+      requestAnimationFrame(() => {
+        el.style.textShadow = "";
+      });
+    };
+    nudge();
+    // The labels' own fade can tail out ~30ms after the pill's scale lands
+    // (scroll expand); a second nudge covers rasters settled in that gap.
+    if (repaintTimer.current) clearTimeout(repaintTimer.current);
+    repaintTimer.current = setTimeout(nudge, 200);
+  };
+
   // Transition helpers — per-property timing so containers move first and
   // opacities follow, keeping the three controls on one continuous path.
   // Interrupted input (rapid open/close) has one behavior everywhere:
@@ -1473,7 +1515,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           {/* CENTER: Actions pill / Filter expansion */}
           {hasActions && (
             <motion.div
-              ref={actionBarRef}
+              ref={setPillRef}
               className={cn(
                 "relative flex-1 h-12 rounded-full overflow-hidden pointer-events-auto z-10 min-w-0",
                 "glass-nav",
@@ -1505,6 +1547,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 originX: isUtilitySheetOpen ? 1 : 0,
               }}
               transition={centerPillTransition}
+              onAnimationComplete={definition => {
+                // Every regrow path (scroll expand, menu close, utility
+                // close) ends at scaleX 1 — re-raster once it lands.
+                if ((definition as { scaleX?: number }).scaleX === 1)
+                  repaintPillText();
+              }}
             >
               {/* `custom` feeds the CURRENT filter state to exiting
                   children — AnimatePresence otherwise resolves an exiting
