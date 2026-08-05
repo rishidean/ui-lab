@@ -721,7 +721,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // Stable identity: this ref only ever targets the one filter chip, so it
   // doesn't need the per-item closures the menu rows / filter options use.
   // Keeping it memoized avoids detach/reattach churn on every render, and
-  // gives Task 5 a single spot to fold an `actionChipRefs` assignment into.
+  // gives the chip ref map below a single spot to fold an `actionChipRefs`
+  // assignment into.
   const setFilterChipRef = useCallback((el: HTMLButtonElement | null) => {
     filterChipRef.current = el;
     if (el && pendingFilterFocusReturn.current) {
@@ -729,6 +730,32 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       el.focus({ preventScroll: true });
     }
   }, []);
+
+  // Per-label ref callbacks for the action chips, cached so each chip gets
+  // a stable function identity across renders instead of a fresh inline
+  // arrow every time. Keyed on label + isFilter (not label alone) so two
+  // different tabs reusing the same action label with different isFilter
+  // values can't hand back a stale closure. The filter chip's callback
+  // also folds in `setFilterChipRef` so `filterChipRef` + the
+  // pending-focus-return flow above stay wired exactly as before.
+  const actionChipRefCallbacks = useRef<
+    Record<string, (el: HTMLButtonElement | null) => void>
+  >({});
+  const getActionChipRef = useCallback(
+    (label: string, isFilter: boolean) => {
+      const key = `${label}:${isFilter}`;
+      let callback = actionChipRefCallbacks.current[key];
+      if (!callback) {
+        callback = (el: HTMLButtonElement | null) => {
+          actionChipRefs.current[label] = el;
+          if (isFilter) setFilterChipRef(el);
+        };
+        actionChipRefCallbacks.current[key] = callback;
+      }
+      return callback;
+    },
+    [setFilterChipRef]
+  );
 
   const handleFilterKeyDown = (e: React.KeyboardEvent) => {
     const ids = filterOptions.map(o => o.id);
@@ -828,6 +855,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   }, [isNavigationMenuOpen]);
 
   const handleMenuKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab") {
+      closeMenu(false);
+      return;
+    }
     const ids = menuTabs.map(t => t.id);
     const current = Math.max(0, ids.indexOf(menuFocusId ?? activeTab));
     let next: number | null = null;
@@ -1320,6 +1351,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                         <React.Fragment key={tab.id}>
                           {isActive && (
                             <div
+                              role="separator"
                               className="h-px my-1 mx-2"
                               style={{ background: "var(--border-subtle)" }}
                             />
@@ -1654,10 +1686,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           )}
                           <motion.button
                             type="button"
-                            ref={el => {
-                              actionChipRefs.current[action.label] = el;
-                              if (isFilter) setFilterChipRef(el);
-                            }}
+                            ref={getActionChipRef(action.label, isFilter)}
                             aria-expanded={isFilter ? isFilterExpanded : undefined}
                             onClick={() => {
                               if (isFilter) {

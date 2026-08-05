@@ -25,6 +25,18 @@ import type React from "react";
  * `onExitComplete` can therefore land on a still-inert element and
  * silently no-op. Use `focusWhenClear` below to return focus safely
  * instead of calling `.focus()` directly.
+ *
+ * Contract bounds: this is not refcounted, so it only supports one
+ * inert-guarded surface active at a time. Two overlapping callers (A
+ * inerts X, B mounts and skips X because it is already inert, A's
+ * cleanup un-inerts X while B is still up) will interleave badly — don't
+ * run two of these concurrently. Multiple `keepRefs` passed to a single
+ * call are only safe as siblings (or ancestor/descendant of each other);
+ * the climb starts from `kept[0]` alone, so a non-sibling second ref
+ * gets protected from removal but doesn't seed its own climb. Finally,
+ * the inert set is a snapshot of the DOM taken when the effect runs at
+ * mount — nodes that mount into the tree afterward, while `active` stays
+ * true, are never inerted.
  */
 export function useInertOutside(
   active: boolean,

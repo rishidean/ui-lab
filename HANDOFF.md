@@ -14,7 +14,9 @@ Everything below landed, frame-verified, and is pushed/deployed:
 3. Consumer refactor: canonical naming (breaking prop renames),
    attribution headers, theme.css token contract with Aurora/Ink presets
    - shell toggle, isUtilityOpen pruned, `Action.isFilter`, exported
-     clear-out constants.
+     clear-out constants. Also breaking: `utilityButtonRef` narrowed from
+     `React.Ref` to `React.RefObject<HTMLButtonElement | null>` — callback
+     refs are no longer accepted.
 4. UtilityModal extracted (`/utility-modal`); all demo sheets are
    multi-level with shimmer skeletons; usage docs explain surface
    routing + file dependencies.
