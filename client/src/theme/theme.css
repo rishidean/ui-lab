@@ -230,6 +230,28 @@
   outline-offset: -2px;
 }
 
+/* Keyboard focus rings — :focus-visible only, outline-based so pointer
+   flows stay pixel-identical. Circles ring outside; inset surfaces ring
+   inside their own radius. */
+.nav-circle-trigger:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--iris-700) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: 9999px;
+}
+
+.nav-menu-item:focus-visible,
+.nav-filter-option:focus-visible,
+.nav-search-control:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--iris-700) 34%, transparent);
+  outline-offset: -2px;
+}
+
+.nav-search-input:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--iris-700) 34%, transparent);
+  outline-offset: -2px;
+  border-radius: 9999px;
+}
+
 /* Divider between resting action labels — slightly stronger than a
    hairline so the halves read as separately pressable. */
 .nav-action-divider {

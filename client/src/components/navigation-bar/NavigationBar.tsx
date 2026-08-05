@@ -1210,7 +1210,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 ref={navigationButtonRef}
                 type="button"
                 onClick={handleNavigationButtonClick}
-                className="absolute inset-[2px] rounded-full flex items-center justify-center transition-colors"
+                className="nav-circle-trigger absolute inset-[2px] rounded-full flex items-center justify-center transition-colors"
                 style={{ color: "var(--iris-700)" }}
                 aria-label={isCollapsed ? "Open controls" : undefined}
                 title={isCollapsed ? "Open controls" : undefined}
@@ -1458,7 +1458,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           onSearchClose?.();
                         }
                       }}
-                      className="min-w-0 flex-1 bg-transparent text-[14px] font-medium outline-none placeholder:text-[color:var(--text-quaternary)]"
+                      className="nav-search-input min-w-0 flex-1 bg-transparent text-[14px] font-medium outline-none placeholder:text-[color:var(--text-quaternary)]"
                       style={{ color: "var(--text-primary)" }}
                     />
                     {/* Clear resets the query; Cancel exits search. Two
@@ -1472,7 +1472,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           searchInputRef.current?.focus({ preventScroll: true });
                         }}
                         aria-label="Clear search"
-                        className="shrink-0 rounded-full p-1.5 transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
+                        className="nav-search-control shrink-0 rounded-full p-1.5 transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
                       >
                         <X
                           className="h-4 w-4"
@@ -1484,7 +1484,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     <button
                       type="button"
                       onClick={onSearchClose}
-                      className="shrink-0 rounded-full px-2.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
+                      className="nav-search-control shrink-0 rounded-full px-2.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
                       style={{ color: "var(--select-fg)" }}
                     >
                       Cancel
@@ -1789,7 +1789,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 aria-label={utilityAction.label}
                 aria-haspopup={utilityAction.opensDialog ? "dialog" : undefined}
                 aria-expanded={isUtilitySheetOpen || !!isSearchOpen}
-                className="group relative w-14 h-14 rounded-full flex items-center justify-center pointer-events-auto"
+                className="nav-circle-trigger group relative w-14 h-14 rounded-full flex items-center justify-center pointer-events-auto"
                 whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.93 }}
                 transition={{ duration: dur(0.18), ease: EASE }}
