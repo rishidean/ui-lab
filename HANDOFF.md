@@ -4,7 +4,52 @@ Working doc for continuing the lab's component work in a fresh session.
 Repo: `github.com/rishidean/ui-lab` (push to `main` auto-deploys on
 Railway via the Dockerfile). Owner: Rishi (rishidean).
 
-## Latest session (2026-08-04) — recap
+## Latest session (2026-08-05) — recap
+
+**NavigationBar is DONE** (Rishi's call). Everything below landed,
+verified, and is pushed/deployed:
+
+1. **Filter highlight slide fix + sequencing** (`63237b1`): the sliding
+   highlight never moved on selection — framer's `motion.button` invokes
+   ref callbacks only on mount/unmount (stable internal ref), so the
+   selection-time re-measure never ran and the stale ResizeObserver
+   snapped the pill back (see Gotchas). `trackFilterOption` now re-points
+   the observer from both the mount ref callback and the activeFilter
+   layout effect. New sequencing per Rishi: pill slides first
+   (DUR.direct), THEN labels trade colors (`pendingFilterVisual` lags
+   activeFilter), then confirm hold + close. aria-checked immediate.
+2. **Modality-gated search focus ring** (`d80c264`): text inputs match
+   `:focus-visible` on ANY focus (browser heuristic), so the a11y pass's
+   ring showed on pointer opens. The bar tracks last input modality
+   (capture-phase keydown/pointerdown, ignoring framer's untrusted
+   synthetic pointerdown — see Gotchas) and stamps `data-kbd` on the
+   input at each focus; the theme rule requires it.
+3. **Blurry action labels after scroll regrow** (`cfb81df`): the pill is
+   permanently composited (glass-nav backdrop-filter) and labels fade in
+   DURING the regrow, so Chromium kept a mid-scale text raster until any
+   repaint (hover fixed it). `onAnimationComplete` on the pill now nudges
+   an invisible inherited paint property (transparent text-shadow) when
+   any regrow lands at scaleX 1 — twice (immediate + 200ms tail).
+   Headless Chromium software-rasterizes and can NOT repro this; it was
+   verified by driving Rishi's real Chrome (claude-in-chrome). Rishi's
+   own Chrome still showed blur afterward while a fresh Safari was clean
+   — unresolved whether that's per-site page zoom or profile state; the
+   fix is confirmed good in a clean Chrome profile/tab.
+4. **Docs/copy sync** (`2e1f9ed`): Overview documents the filter
+   color-lag beat, gated search ring, and re-raster nudge; a11y design
+   spec gained a dated amendment; registry fixed the bar's @/lib/a11y
+   dependency line (focusWhenClear, NOT useInertOutside), usage utility
+   actions carry opensDialog, tryIt gained the filter-selection hint.
+5. **The four deferred a11y minors** (`05c7435`): menu rows are
+   `menuitemradio` + `aria-checked` (committed tab, not the hold
+   highlight); UtilityButton `aria-expanded` gated on `opensDialog` like
+   `aria-haspopup` (Search carries neither); themed white
+   `:focus-visible` ring on ScanView's close control; a11y-menu.mjs
+   covers ArrowUp + checked-row assertions, a11y-triggers asserts the
+   Search gate, all `menuitem` selectors → `menuitemradio`. Suite is now
+   63 assertions, 0 failures.
+
+## Previous session (2026-08-04) — recap
 
 Everything below landed, frame-verified, and is pushed/deployed:
 
@@ -154,21 +199,15 @@ the two morph components in the stage (raw seconds, no TEMPO).
 
 ## NEXT UP (the reason for this handoff)
 
-Rishi's ordering for the next session (2026-08-04 wrap-up):
+The 2026-08-05 session closed out the old item 1 entirely (sweep fixes +
+all four deferred a11y minors — see the latest-session recap) and the
+NavigationBar-scoped parts of items 2–3 (Overview/spec sync, registry
+copy/usage/tryIt corrections). **NavigationBar is done.** What remains
+is site-wide, not component work:
 
-1. **Full sweep test + fix pass** — Rishi drives every surface end to end
-   (like the last sweep that produced the hover/pressed/absorb-pulse
-   fixes); fix what falls out. Fold in the a11y minors deferred from the
-   final branch review: menu rows should convey the current tab to AT
-   (`role="menuitemradio"` + `aria-checked`, or `aria-current`); gate the
-   UtilityButton's `aria-expanded` the way `aria-haspopup` already is
-   (unconditional today — a one-shot utility action would permanently
-   announce "collapsed"); themed `:focus-visible` rings for ScanView's
-   close control (browser-default today); an ArrowUp assertion in
-   `scripts/a11y/a11y-menu.mjs` (ArrowDown/Home/End are covered).
-2. **Update site copy** — About/landing description plus a general copy
+1. **Site copy pass** — About/landing description plus a general copy
    pass (subsumes the old "Site description" roadmap item).
-3. **Update site code + dependency links** — the registry `dependencies`
+2. **Site code + dependency links** — the registry `dependencies`
    arrays are prose today; make each entry link to its file/source. Also
    still open from the previous roadmap: surface the registry `tryIt`
    hints on the Preview tab; README updates (Bottom Sheet row, Theming
@@ -255,3 +294,35 @@ building):
   (see above), so `focusWhenClear`'s inert-polling isn't needed, only the
   remount-timing workaround. See `NavigationBar.tsx` around the filter
   close handler.
+- Framer's `motion.*` components hand the DOM ONE stable internal ref and
+  invoke your ref callback only on mount/unmount — never because the
+  inline callback's identity (or captured state) changed. Any "re-measure
+  when X changes" logic must live in an effect keyed on X and share code
+  with the mount-time callback (see `trackFilterOption`). A ResizeObserver
+  attached inside a motion ref callback silently stays on the old element
+  across selection changes.
+- Framer's keyboard-press support (Enter/Space on a motion button)
+  dispatches a SYNTHETIC `pointerdown` (`isTrusted: false`,
+  `pointerType: ""`) before the click. Any input-modality tracker must
+  ignore untrusted pointer events or every keyboard activation
+  reclassifies as pointer one millisecond later.
+- Text inputs match `:focus-visible` on ANY focus — pointer clicks and
+  programmatic `.focus()` included (browser heuristic for keyboard-input
+  elements). A keyboard-only ring on an input needs an explicit modality
+  gate (`data-kbd`, see the search field); `:focus-visible` alone is only
+  sufficient for buttons.
+- A permanently composited surface (backdrop-filter, will-change) that
+  scale-animates while text fades in inside it can keep the mid-scale
+  raster after the transform settles — blurry text until an unrelated
+  repaint. GPU-only: headless Chromium software-rasterizes and will NOT
+  reproduce it; drive a real Chrome (claude-in-chrome) to verify. Fix
+  pattern: on animation-complete at scale 1, toggle an invisible
+  inherited paint property (transparent text-shadow) for one frame.
+- Fix verification races the Railway deploy AND the browser tab: a
+  just-pushed fix takes minutes to deploy, and an already-open SPA tab
+  keeps running its old bundle until a reload — "still broken" right
+  after a push usually means stale bundle, not failed fix. Check the
+  deployed asset hash (`curl … | grep assets/index-`) and grep the bundle
+  for a signature of the change before re-opening the investigation.
+  Persistent text blur in ONE Chrome profile only (clean profile/Safari
+  fine) suggests per-site page zoom ≠ 100% — no code fix applies.
