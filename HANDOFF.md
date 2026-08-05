@@ -154,10 +154,25 @@ the two morph components in the stage (raw seconds, no TEMPO).
 
 ## NEXT UP (the reason for this handoff)
 
-1. **On-page instructions + deferred app polish** — surface the registry
-   `tryIt` hints on the Preview tab; README updates (Bottom Sheet row,
-   Theming section); dark pass on Home/landing. (The isUtilityOpen prune
-   and usage-snippet rewrite are done.)
+Rishi's ordering for the next session (2026-08-04 wrap-up):
+
+1. **Full sweep test + fix pass** — Rishi drives every surface end to end
+   (like the last sweep that produced the hover/pressed/absorb-pulse
+   fixes); fix what falls out. Fold in the a11y minors deferred from the
+   final branch review: menu rows should convey the current tab to AT
+   (`role="menuitemradio"` + `aria-checked`, or `aria-current`); gate the
+   UtilityButton's `aria-expanded` the way `aria-haspopup` already is
+   (unconditional today — a one-shot utility action would permanently
+   announce "collapsed"); themed `:focus-visible` rings for ScanView's
+   close control (browser-default today); an ArrowUp assertion in
+   `scripts/a11y/a11y-menu.mjs` (ArrowDown/Home/End are covered).
+2. **Update site copy** — About/landing description plus a general copy
+   pass (subsumes the old "Site description" roadmap item).
+3. **Update site code + dependency links** — the registry `dependencies`
+   arrays are prose today; make each entry link to its file/source. Also
+   still open from the previous roadmap: surface the registry `tryIt`
+   hints on the Preview tab; README updates (Bottom Sheet row, Theming
+   section); dark pass on Home/landing.
 
 (All previous items landed, frame-verified: Filter choreography — see
 Choreography specs #6 and the Overview's Filtering section — the
@@ -180,12 +195,19 @@ the full list.)
 
 ## Remaining roadmap after that
 
-2. **Site description** (About/landing copy).
+**Possible new EPIC: Site Fixes** (Rishi, 2026-08-04 — spec before
+building):
+
+- **Mobile/desktop toggle** — view any component in different viewport
+  contexts from the Preview tab.
+- **Record mode** — a mode for recording walkthrough videos of a
+  component (driving its choreography for capture).
 
 ## Housekeeping
 
-- Rishi should revoke the `ghp_…` push token when iteration ends (he knows).
-  Pushes go: `git push https://rishidean:<token>@github.com/rishidean/ui-lab.git main`.
+- The `ghp_…` push token stays live until UI Lab v1 (Rishi's call,
+  2026-08-04) — no revoke reminders needed. Credentials are stored, so a
+  plain `git push origin main` works.
 - Commit trailer convention: `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`.
 - Custom domain (lab.rishidean.com) still pending in Railway → Networking.
 
