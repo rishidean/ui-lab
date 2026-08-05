@@ -428,6 +428,33 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Text inputs match :focus-visible however focus arrives (browser
+  // heuristic for keyboard-input elements) — including our programmatic
+  // focus on open — so the search field's keyboard-only ring can't lean on
+  // :focus-visible alone the way the buttons do. Track the last input
+  // modality by hand and stamp it on the input at each focus; the theme's
+  // ring rule requires data-kbd, keeping pointer flows pixel-identical.
+  const lastInputWasKeyboard = useRef(false);
+  useEffect(() => {
+    const onKeyDown = () => {
+      lastInputWasKeyboard.current = true;
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      // framer's keyboard-press support dispatches a synthetic pointerdown
+      // (isTrusted=false, pointerType "") when Enter/Space activates a
+      // motion button — only real pointers may reclassify the modality.
+      if (!e.isTrusted) return;
+      lastInputWasKeyboard.current = false;
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, []);
+  const [searchFocusRing, setSearchFocusRing] = useState(false);
+
   useEffect(() => {
     if (isSearchOpen) {
       setIsNavigationMenuOpen(false);
@@ -1529,6 +1556,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           onSearchClose?.();
                         }
                       }}
+                      onFocus={() =>
+                        setSearchFocusRing(lastInputWasKeyboard.current)
+                      }
+                      data-kbd={searchFocusRing ? "true" : undefined}
                       className="nav-search-input min-w-0 flex-1 bg-transparent text-[14px] font-medium outline-none placeholder:text-[color:var(--text-quaternary)]"
                       style={{ color: "var(--text-primary)" }}
                     />
