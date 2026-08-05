@@ -9,6 +9,7 @@ const results = [];
 const active = () =>
   page.evaluate(() => ({
     role: document.activeElement?.getAttribute("role"),
+    checked: document.activeElement?.getAttribute("aria-checked"),
     text: document.activeElement?.textContent?.trim(),
     expanded: document
       .querySelector('[aria-haspopup="menu"]')
@@ -20,9 +21,20 @@ await page.locator('button[aria-haspopup="menu"]').click();
 await page.waitForTimeout(900);
 let a = await active();
 results.push(
-  ["focus on active menuitem", a.role === "menuitem" && a.text === "Home", a],
+  [
+    "focus on active menuitemradio",
+    a.role === "menuitemradio" && a.text === "Home",
+    a,
+  ],
+  ["active row aria-checked=true", a.checked === "true", a],
   ["trigger aria-expanded=true", a.expanded === "true", a]
 );
+const checkedCount = await page.evaluate(
+  () =>
+    document.querySelectorAll('[role="menuitemradio"][aria-checked="true"]')
+      .length
+);
+results.push(["exactly one checked row", checkedCount === 1, { checkedCount }]);
 
 // DOM/roving order is [Spend, Trade, Transactions, Home] — menuTabs puts
 // the active tab LAST (pre-existing design: otherTabs, then a divider,
@@ -33,6 +45,19 @@ results.push(
 for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowDown");
 a = await active();
 results.push(["ArrowDown wraps to Home", a.text === "Home", a]);
+// ArrowUp from Home (last row) steps back to Transactions; roving moves
+// focus only — the checked row must not change until Enter commits.
+await page.keyboard.press("ArrowUp");
+a = await active();
+results.push(
+  ["ArrowUp → previous item", a.text === "Transactions", a],
+  ["arrow does NOT select", a.checked === "false", a]
+);
+// From the first row, ArrowUp wraps backward to the last (Home).
+await page.keyboard.press("Home");
+await page.keyboard.press("ArrowUp");
+a = await active();
+results.push(["ArrowUp wraps from first to last", a.text === "Home", a]);
 await page.keyboard.press("End");
 a = await active();
 results.push(["End → last item", a.text === "Home", a]);

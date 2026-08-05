@@ -101,8 +101,8 @@ let menuItemOutline = await page.evaluate(() => {
   };
 });
 results.push([
-  "Menu item reached via ArrowDown has role=menuitem",
-  menuItemOutline.role === "menuitem",
+  "Menu item reached via ArrowDown has role=menuitemradio",
+  menuItemOutline.role === "menuitemradio",
   menuItemOutline,
 ]);
 results.push([
@@ -111,7 +111,7 @@ results.push([
   menuItemOutline,
 ]);
 await zoomedScreenshot(
-  '[role="menuitem"]:focus',
+  '[role="menuitemradio"]:focus',
   "scripts/a11y/shots/ring-menu-item.png"
 );
 
@@ -119,7 +119,8 @@ await page.keyboard.press("Escape");
 await page.waitForTimeout(700);
 
 // ---------------------------------------------------------------------
-// (c) Utility button — ref={utilityButtonRef}, aria-expanded={isUtilitySheetOpen || !!isSearchOpen}.
+// (c) Utility button — ref={utilityButtonRef}; aria-expanded only when the
+// action opensDialog (gated like aria-haspopup).
 // On Home this is the "AI" utility button. Tab to it with real keypresses.
 // ---------------------------------------------------------------------
 const reachedUtilityButton = await tabUntil(() => {
@@ -156,7 +157,9 @@ await page.waitForTimeout(300);
 
 // "Home chip area" = the Deposit action chip, visible on the Home tab
 // (Home itself is the active tab label, not an action chip).
-const homeChip = page.locator(".nav-action-chip", { hasText: "Deposit" }).first();
+const homeChip = page
+  .locator(".nav-action-chip", { hasText: "Deposit" })
+  .first();
 await homeChip.click();
 await page.waitForTimeout(400);
 

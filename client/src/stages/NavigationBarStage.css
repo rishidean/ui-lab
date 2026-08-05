@@ -293,6 +293,14 @@
   height: 1.1rem;
 }
 
+/* Keyboard ring for the scan takeover's close control — the surface is
+   always dark, so the ring is white-based rather than the iris used on
+   the bar's light glass. :focus-visible only, like every other ring. */
+.navigation-demo__scan-close:focus-visible {
+  outline: 2px solid rgb(255 255 255 / 0.8);
+  outline-offset: 2px;
+}
+
 .navigation-demo__scan-card {
   width: min(100% - 3rem, 20rem);
   border-radius: 1.25rem;

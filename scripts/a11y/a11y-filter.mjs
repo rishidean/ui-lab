@@ -9,7 +9,7 @@ await page.waitForTimeout(1500);
 await page.locator('button[aria-haspopup="menu"]').click();
 await page.waitForTimeout(900);
 await page
-  .locator('[role="menuitem"]', { hasText: "Transactions" })
+  .locator('[role="menuitemradio"]', { hasText: "Transactions" })
   .click();
 await page.waitForTimeout(1900);
 await page
@@ -26,9 +26,11 @@ const active = () =>
   }));
 
 let a = await active();
-results.push(
-  ["focus on selected radio", a.role === "radio" && a.text === "Pending", a]
-);
+results.push([
+  "focus on selected radio",
+  a.role === "radio" && a.text === "Pending",
+  a,
+]);
 const group = await page.evaluate(() => ({
   count: document.querySelectorAll('[role="radiogroup"] [role="radio"]').length,
 }));

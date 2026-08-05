@@ -41,15 +41,25 @@ results.push([
 //    aria-haspopup. Click it → role=search exists, focus on the input.
 await page.locator('button[aria-haspopup="menu"]').click();
 await page.waitForTimeout(900);
-await page.locator('[role="menuitem"]', { hasText: "Trade" }).click();
+await page.locator('[role="menuitemradio"]', { hasText: "Trade" }).click();
 await page.waitForTimeout(1900);
 let searchBtn = await page.evaluate(() => {
   const btn = document.querySelector('button[aria-label="Search"]');
-  return { haspopup: btn?.getAttribute("aria-haspopup") };
+  return {
+    haspopup: btn?.getAttribute("aria-haspopup"),
+    expanded: btn?.getAttribute("aria-expanded"),
+  };
 });
 results.push([
   "Trade utility button (Search) has no aria-haspopup",
   searchBtn.haspopup === null,
+  searchBtn,
+]);
+// aria-expanded is gated the same way — a non-dialog action must not
+// carry (and permanently announce) a collapsed/expanded state.
+results.push([
+  "Trade utility button (Search) has no aria-expanded",
+  searchBtn.expanded === null,
   searchBtn,
 ]);
 
@@ -84,14 +94,20 @@ results.push(
     afterSearchClose.focusIsUtilityButton,
     afterSearchClose,
   ],
-  ["role=search removed after close", afterSearchClose.regionGone, afterSearchClose]
+  [
+    "role=search removed after close",
+    afterSearchClose.regionGone,
+    afterSearchClose,
+  ]
 );
 
 // 5. Reopen Export path: menu → Transactions; click Export → dialog open,
 //    aria-expanded=true; Escape → focus back on Export button.
 await page.locator('button[aria-haspopup="menu"]').click();
 await page.waitForTimeout(900);
-await page.locator('[role="menuitem"]', { hasText: "Transactions" }).click();
+await page
+  .locator('[role="menuitemradio"]', { hasText: "Transactions" })
+  .click();
 await page.waitForTimeout(1900);
 await page.locator('button[aria-label="Export"]').click();
 await page.waitForTimeout(1800);
@@ -104,7 +120,11 @@ let exportOpen = await page.evaluate(() => {
 });
 results.push(
   ["Export dialog open", exportOpen.dialogOpen, exportOpen],
-  ["Export utility button aria-expanded=true", exportOpen.expanded === "true", exportOpen]
+  [
+    "Export utility button aria-expanded=true",
+    exportOpen.expanded === "true",
+    exportOpen,
+  ]
 );
 
 await page.keyboard.press("Escape");

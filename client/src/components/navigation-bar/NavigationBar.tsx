@@ -970,8 +970,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       pillElRef.current = el;
       if (typeof actionBarRef === "function") actionBarRef(el);
       else if (actionBarRef)
-        (actionBarRef as React.MutableRefObject<HTMLDivElement | null>).current =
-          el;
+        (
+          actionBarRef as React.MutableRefObject<HTMLDivElement | null>
+        ).current = el;
     },
     [actionBarRef]
   );
@@ -1466,7 +1467,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           )}
                           <motion.button
                             type="button"
-                            role="menuitem"
+                            /* menuitemradio: exactly one tab is current, and
+                               AT should say so — aria-checked follows the
+                               COMMITTED tab (not the confirmation-hold
+                               highlight, which is visual choreography). */
+                            role="menuitemradio"
+                            aria-checked={isActive}
                             ref={el => {
                               menuItemRefs.current[rowIndex] = el;
                             }}
@@ -1943,7 +1949,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 onClick={onUtilityClick}
                 aria-label={utilityAction.label}
                 aria-haspopup={utilityAction.opensDialog ? "dialog" : undefined}
-                aria-expanded={isUtilitySheetOpen || !!isSearchOpen}
+                /* Gated like aria-haspopup: a one-shot utility action must
+                   not permanently announce "collapsed". Search isn't a
+                   dialog and unmounts this button while open, so it carries
+                   no expanded state either. */
+                aria-expanded={
+                  utilityAction.opensDialog ? isUtilitySheetOpen : undefined
+                }
                 className="nav-circle-trigger group relative w-14 h-14 rounded-full flex items-center justify-center pointer-events-auto"
                 whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.93 }}
