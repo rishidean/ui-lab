@@ -20,6 +20,38 @@ export const LAB_TAGLINE =
 export const GITHUB_URL = "https://github.com/rishidean/ui-lab";
 export const AUTHOR_URL = "https://rishidean.com";
 
+export type PropRow = {
+  name: string;
+  type: string;
+  def: string;
+  note: string;
+};
+
+/** One narrated step of a component's presentation-mode walkthrough. */
+export type PresentationBeat = {
+  title: string;
+  sub: string;
+  /** Whether the option strip is out during this beat. */
+  open: boolean;
+  /** Committed option index shown on the trigger. */
+  sel: number;
+  /** Option index under the thumb (highlighted in the strip). */
+  active: number;
+};
+
+/** Content for the showcase page (lab/Showcase.tsx). */
+export type ShowcaseMeta = {
+  /** Breadcrumb after the number, e.g. "interaction / gesture". */
+  category: string;
+  /** Hero one-liner under the headline. */
+  lede: string;
+  problem: string;
+  solution: string;
+  propRows: PropRow[];
+  /** Presentation-mode beats; omit to hide the presentation stage. */
+  beats?: PresentationBeat[];
+};
+
 export type LabComponent = {
   slug: string;
   name: string;
@@ -34,8 +66,12 @@ export type LabComponent = {
   dependencies: string[];
   usage: string;
   tryIt: string[];
+  showcase: ShowcaseMeta;
   aliases?: string[];
 };
+
+/** Sidebar/grid rows the lab intends to fill — built + still in the oven. */
+export const PLANNED_COUNT = 9;
 
 const navigationBarUsage = `import {
   NavigationBar,
@@ -306,6 +342,94 @@ export const labComponents: LabComponent[] = [
       "@/components/utility-modal (modal takeovers)",
       "@/lib/a11y (focusWhenClear — focus return past inert)",
     ],
+    showcase: {
+      category: "navigation / motion",
+      lede: "Four bars' worth of controls. One surface that morphs instead of stacking.",
+      problem:
+        "Mobile apps stack a tab bar, an action row, a filter strip, and a search field — four layers of chrome before any content. Every new capability lands as another bar.",
+      solution:
+        "One glass pill owns the bottom edge. Tabs bloom into a menu, actions ride the center, filters expand in place, and search morphs the bar itself. Every surface grows out of the control that owns it.",
+      propRows: [
+        {
+          name: "tabs",
+          type: "Tab[]",
+          def: "—",
+          note: "Id, label, icon. Icons live on the circular buttons, never on chips.",
+        },
+        {
+          name: "contextualActions",
+          type: "Record<string, Action[]>",
+          def: "—",
+          note: "ActionButtons per tab. isFilter marks the filter chip.",
+        },
+        {
+          name: "utilityAction",
+          type: "UtilityAction | null",
+          def: "—",
+          note: "The right circle's action for the current tab. null hides it.",
+        },
+        {
+          name: "activeTab / onTabChange",
+          type: "string / (tab) => void",
+          def: "—",
+          note: "Controlled tab state.",
+        },
+        {
+          name: "activeAction",
+          type: "string | null",
+          def: "null",
+          note: "Engaged ActionButton gets the pill; resting actions stay ghost labels.",
+        },
+        {
+          name: "activeFilter / onFilterChange",
+          type: "string / (id) => void",
+          def: "—",
+          note: "Current filter value — the chip wears it, the option set commits it.",
+        },
+        {
+          name: "filterOptions",
+          type: "FilterOption[]",
+          def: "—",
+          note: "Options revealed when the filter chip expands in place.",
+        },
+        {
+          name: "isCollapsed / onCollapsedClick",
+          type: "boolean / () => void",
+          def: "false",
+          note: "Scroll-collapse state — drive it from your scroll direction.",
+        },
+        {
+          name: "isSearchOpen / onSearch…",
+          type: "boolean / handlers",
+          def: "false",
+          note: "The bar itself morphs into the search field; Enter submits, then closes.",
+        },
+        {
+          name: "isActionSheetOpen",
+          type: "boolean",
+          def: "false",
+          note: "Workflow-sheet clear-out. Flip, wait ACTION_SHEET_CLEAROUT_MS, mount.",
+        },
+        {
+          name: "isUtilitySheetOpen",
+          type: "boolean",
+          def: "false",
+          note: "Clear-out toward the UtilityButton. Flip, wait UTILITY_CLEAROUT_MS, mount.",
+        },
+        {
+          name: "utilityButtonRef / actionBarRef",
+          type: "RefObject",
+          def: "—",
+          note: "Shared origins that sheets and modals grow out of.",
+        },
+        {
+          name: "onUtilityClick",
+          type: "() => void",
+          def: "—",
+          note: "Your surface routing: search, bottom sheet, or modal takeover.",
+        },
+      ],
+    },
     usage: navigationBarUsage,
     tryIt: [
       "Scroll the canvas down to collapse the bar, up to expand it",
@@ -337,6 +461,95 @@ export const labComponents: LabComponent[] = [
     source: pressAndSlidePickerSource,
     sourceFile: "PressAndSlidePicker.tsx",
     dependencies: ["react", "clsx + tailwind-merge (cn)"],
+    showcase: {
+      category: "interaction / gesture",
+      lede: "A dropdown asks for three gestures to change one value. This asks for one.",
+      problem:
+        "I kept watching people tap a select, squint at a menu, tap again, and miss. On a phone that is a whole ceremony for picking “Weekly.”",
+      solution:
+        "Stole the gesture from the volume slider. Press, slide, let go. Your thumb never leaves the glass, and the value under it is always the one you are about to get.",
+      propRows: [
+        {
+          name: "options",
+          type: "PickerOption[]",
+          def: "—",
+          note: "Key, label, color, optional chip bg. Five or fewer feels best.",
+        },
+        {
+          name: "value",
+          type: "string",
+          def: "—",
+          note: "Key of the current selection.",
+        },
+        {
+          name: "onChange",
+          type: "(key: string) => void",
+          def: "—",
+          note: "Fires once, on release. Never mid-slide.",
+        },
+        {
+          name: "itemWidth",
+          type: "number",
+          def: "80",
+          note: "Pixels per option zone in the strip. Lower = twitchier.",
+        },
+        {
+          name: "longPressDuration",
+          type: "number",
+          def: "275",
+          note: "Hold time before the strip springs out. A plain click opens the fallback listbox.",
+        },
+        {
+          name: "renderChip",
+          type: "(option, active) => ReactNode",
+          def: "—",
+          note: "Bring your own chip; the gesture stays.",
+        },
+        {
+          name: "disabled",
+          type: "boolean",
+          def: "false",
+          note: "Ignores the gesture and the fallback alike.",
+        },
+      ],
+      beats: [
+        {
+          title: "Three gestures.",
+          sub: "Tap the select. Read the menu. Tap again. Hope you hit the right row.",
+          open: false,
+          sel: 3,
+          active: 3,
+        },
+        {
+          title: "Press.",
+          sub: "Hold the chip. The options come to your thumb.",
+          open: true,
+          sel: 3,
+          active: 3,
+        },
+        {
+          title: "Slide.",
+          sub: "The value under your thumb is always the one you are about to get.",
+          open: true,
+          sel: 3,
+          active: 1,
+        },
+        {
+          title: "Release.",
+          sub: "One commit, on lift. Nothing fires mid-slide.",
+          open: true,
+          sel: 3,
+          active: 1,
+        },
+        {
+          title: "One gesture.",
+          sub: "Same control. A third of the work. Free to steal.",
+          open: false,
+          sel: 1,
+          active: 1,
+        },
+      ],
+    },
     usage: pressAndSlidePickerUsage,
     tryIt: [
       "Long-press the chip, keep holding, slide across the strip, release",
@@ -367,6 +580,70 @@ export const labComponents: LabComponent[] = [
       "theme/theme.css (token contract)",
       "@/lib/a11y (useInertOutside — dialog containment)",
     ],
+    showcase: {
+      category: "overlay / motion",
+      lede: "Sheets teleport in from the screen edge. This one grows out of the button you pressed.",
+      problem:
+        "Bottom sheets appear from nowhere, welded to the bottom of the screen, with a mush of half-open heights between closed and full.",
+      solution:
+        "This one starts as a clone of its trigger and grows in strictly serial beats — widen, then stretch. Exactly two stops, drag snapping between them, and on close it contracts back into the control that owns it.",
+      propRows: [
+        {
+          name: "origin",
+          type: "SheetOrigin",
+          def: "—",
+          note: "Rect of the control the sheet grows out of — and contracts back into.",
+        },
+        {
+          name: "title",
+          type: "ReactNode",
+          def: "—",
+          note: "Header title; a node so it can carry an icon.",
+        },
+        {
+          name: "ariaLabel",
+          type: "string",
+          def: "—",
+          note: "Accessible name for the dialog.",
+        },
+        {
+          name: "onClose",
+          type: "() => void",
+          def: "—",
+          note: "Done, scrim, Escape, and drag-down all call it; unmount to run the exit.",
+        },
+        {
+          name: "height",
+          type: 'number | "auto"',
+          def: '"auto"',
+          note: "≤ 1 → viewport fraction, > 1 → px, auto → content height.",
+        },
+        {
+          name: "expandable",
+          type: "boolean",
+          def: "false",
+          note: "Chevron control + drag snapping to the full-screen stop.",
+        },
+        {
+          name: "doneLabel",
+          type: "string",
+          def: '"Done"',
+          note: "Header commit label.",
+        },
+        {
+          name: "headerExtra",
+          type: "ReactNode",
+          def: "—",
+          note: "Slot rendered in the header before the Done button.",
+        },
+        {
+          name: "reducedMotion",
+          type: "boolean",
+          def: "system",
+          note: "Override only; defaults to the OS preference.",
+        },
+      ],
+    },
     usage: bottomSheetUsage,
     tryIt: [
       "Tap a trigger — the sheet grows out of the button that owns it",
@@ -397,6 +674,46 @@ export const labComponents: LabComponent[] = [
       "theme/theme.css (token contract)",
       "@/lib/a11y (useInertOutside — dialog containment)",
     ],
+    showcase: {
+      category: "overlay / takeover",
+      lede: "A full-screen takeover that unfolds from the button's center point.",
+      problem:
+        "Full-screen tasks — a scanner, an editor — usually hard-cut to a new screen. The jump severs the thread back to the control that opened them.",
+      solution:
+        "The modal expands as a circle from the trigger's center and contracts back to the same point, so the surface reads as the control itself unfolding. Chrome only: scrim, clip, Escape. Your children supply the screen.",
+      propRows: [
+        {
+          name: "origin",
+          type: "ModalOrigin",
+          def: "—",
+          note: "Center point the circle expands from — and contracts back to.",
+        },
+        {
+          name: "ariaLabel",
+          type: "string",
+          def: "—",
+          note: "Accessible name for the dialog.",
+        },
+        {
+          name: "onClose",
+          type: "() => void",
+          def: "—",
+          note: "Scrim and Escape call it; unmount to run the exit choreography.",
+        },
+        {
+          name: "growDuration",
+          type: "number",
+          def: "0.42",
+          note: "Circle-grow seconds; the contraction runs at 0.7×.",
+        },
+        {
+          name: "reducedMotion",
+          type: "boolean",
+          def: "system",
+          note: "Override only; defaults to the OS preference.",
+        },
+      ],
+    },
     usage: utilityModalUsage,
     tryIt: [
       "Tap the trigger — the takeover expands as a circle from the button's center",
