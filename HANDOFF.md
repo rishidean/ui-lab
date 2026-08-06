@@ -4,7 +4,57 @@ Working doc for continuing the lab's component work in a fresh session.
 Repo: `github.com/rishidean/ui-lab` (push to `main` auto-deploys on
 Railway via the Dockerfile). Owner: Rishi (rishidean).
 
-## Latest session (2026-08-05) — recap
+## Latest session (2026-08-06) — recap
+
+**Showcase redesign shipped** — the component pages now render the "lab
+bench" design from Rishi's Claude Design project (design source archived
+at `docs/superpowers/specs/2026-08-06-showcase-redesign.dc.html`;
+implemented from the uploaded export since /design-login isn't available
+in remote sessions):
+
+1. **`lab/Showcase.tsx` + `Showcase.css`** replace `ComponentPage` (and
+   `CodeBlock`, both deleted) on every component route. Framed card:
+   header (logo / built·planned count / faux ⌘K / theme toggle /
+   Present), 288px index sidebar filled to `PLANNED_COUNT` (9) with
+   "in the oven" rows, hero, Demo/Code/Props tabs + Desktop/Mobile
+   viewport toggle, tryIt hints under the canvas, problem / "what I did"
+   columns, fair-warning banner, "rest of the lab" grid, footer.
+   Space Grotesk + JetBrains Mono (added to index.html), pink accent,
+   dark/light `--lab-*` palettes keyed off the existing ThemeContext
+   (site default stays light until Home gets its dark pass).
+2. **Registry `showcase` metadata** — category, lede, problem, solution,
+   real `propRows` for all four components, presentation `beats` (picker
+   only). Copy for the picker is verbatim from the design; the other
+   three are authored in the same voice.
+3. **Demo canvas strategy:** the picker gets a bespoke in-page demo
+   (digest-frequency card hosting the REAL PressAndSlidePicker + live
+   readout; mobile = 390px card with handle) in `lab/PickerShowcase.tsx`.
+   The other components embed their own route in an `<iframe
+src="/{slug}?embed=1">` — a true nested viewport, so the stages'
+   `position: fixed` choreography and rect-measured morphs run
+   untouched (they'd break under a transformed wrapper; no portals
+   anywhere, so the frame contains everything). Desktop = full-width
+   640px frame, Mobile = 390×720 device frame. The iframe remounts on
+   theme change (localStorage is shared) but NOT on view change.
+4. **Bare-stage fallback:** `?embed=1`, recording mode (H key), and
+   viewports <1024px all render just the Stage full-viewport (plus a
+   small "← index" chip when it's a human, not an iframe/recording).
+   Phones get the components themselves, and the a11y suites — which
+   all run at 390×844 — see the same DOM as before: **63/63 PASS**.
+5. **Presentation mode** (the old "Record mode" roadmap item): shown for
+   components with `beats` — 1920×1080 stage scaled to fit, 5 narrated
+   picker beats driving a scripted strip replica (horizontal, true to
+   the real gesture — the design's vertical fan misrepresented the
+   component), beat dots, play/pause at 2600ms, click-to-take-control,
+   ← / → / Space stepping, Escape releases. The Mobile/Desktop toggle
+   closes the other roadmap item; tryIt hints now surface on the Demo
+   tab (old "surface tryIt on Preview" item).
+
+Home/NotFound keep the old LabShell chrome — the Home redesign
+("UI Lab - Home.dc.html" in the same design project) is NOT implemented
+yet and is the obvious next step.
+
+## Previous session (2026-08-05) — recap
 
 **NavigationBar is DONE** (Rishi's call). Everything below landed,
 verified, and is pushed/deployed:
@@ -81,7 +131,7 @@ Everything below landed, frame-verified, and is pushed/deployed:
    lift). NavigationBar's tab menu is a proper APG menu (ArrowUp/Down,
    Home/End, Enter/Space, Escape); the filter is a radiogroup (roving
    arrow keys + Enter/Space). `UtilityAction` gained `opensDialog?:
-   boolean`, driving `aria-haspopup="dialog"` on the UtilityButton.
+boolean`, driving `aria-haspopup="dialog"` on the UtilityButton.
    `:focus-visible` rings added throughout the bar and both overlay
    components; pointer/touch interaction stays ring-free. Full regression
    sweep (a11y test suite + choreography frame captures) confirmed no
@@ -205,13 +255,16 @@ NavigationBar-scoped parts of items 2–3 (Overview/spec sync, registry
 copy/usage/tryIt corrections). **NavigationBar is done.** What remains
 is site-wide, not component work:
 
-1. **Site copy pass** — About/landing description plus a general copy
-   pass (subsumes the old "Site description" roadmap item).
+1. **Home redesign** — implement "UI Lab - Home.dc.html" from the same
+   design project so the landing page matches the new showcase (this
+   also subsumes the old "site copy pass" and "dark pass on Home"
+   items). Until then Home keeps the old LabShell chrome.
 2. **Site code + dependency links** — the registry `dependencies`
-   arrays are prose today; make each entry link to its file/source. Also
-   still open from the previous roadmap: surface the registry `tryIt`
-   hints on the Preview tab; README updates (Bottom Sheet row, Theming
-   section); dark pass on Home/landing.
+   arrays are prose today; make each entry link to its file/source.
+   Also still open: README updates (Bottom Sheet row, Theming section).
+   (2026-08-06 closed: tryIt hints now render under the showcase demo
+   canvas; Mobile/Desktop toggle and presentation/record mode shipped
+   with the showcase redesign.)
 
 (All previous items landed, frame-verified: Filter choreography — see
 Choreography specs #6 and the Overview's Filtering section — the
@@ -234,13 +287,14 @@ the full list.)
 
 ## Remaining roadmap after that
 
-**Possible new EPIC: Site Fixes** (Rishi, 2026-08-04 — spec before
-building):
+**Site Fixes epic — SHIPPED 2026-08-06** with the showcase redesign
+(the .dc.html design served as the spec):
 
-- **Mobile/desktop toggle** — view any component in different viewport
-  contexts from the Preview tab.
-- **Record mode** — a mode for recording walkthrough videos of a
-  component (driving its choreography for capture).
+- ~~**Mobile/desktop toggle**~~ — the showcase's Desktop/Mobile views
+  (device-framed iframe for stage-hosted components).
+- ~~**Record mode**~~ — presentation mode with narrated beats (picker
+  has the first beat script; add `beats` + a beat visual to give other
+  components one). The old H-key recording mode also still works.
 
 ## Housekeeping
 

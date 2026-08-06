@@ -1,0 +1,1019 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="./support.js"></script>
+  </head>
+  <body>
+    <x-dc>
+      <helmet>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+          rel="stylesheet"
+        />
+        <style>
+          *,
+          *::before,
+          *::after {
+            box-sizing: border-box;
+          }
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+          }
+          a {
+            text-decoration: none;
+          }
+          @keyframes rise {
+            from {
+              opacity: 0;
+              transform: translateY(18px);
+            }
+            to {
+              opacity: 1;
+              transform: none;
+            }
+          }
+          @keyframes fanIn {
+            from {
+              opacity: 0;
+              transform: translateY(10px) scale(0.98);
+            }
+            to {
+              opacity: 1;
+              transform: none;
+            }
+          }
+          @keyframes beatIn {
+            from {
+              opacity: 0;
+              transform: translateY(24px);
+            }
+            to {
+              opacity: 1;
+              transform: none;
+            }
+          }
+        </style>
+      </helmet>
+
+      <div
+        style="min-height:100vh;background:{{ bg }};background-image:{{ dots }};background-size:22px 22px;font-family:'Space Grotesk',system-ui,sans-serif;color:{{ text }};"
+      >
+        <div
+          style="max-width: 1560px; margin: 0 auto; padding: 60px 60px 0 60px"
+        >
+          <div
+            style="background:{{ bg }};border:1px solid {{ line }};border-radius:10px;overflow:hidden;box-shadow:{{ cardShadow }};"
+          >
+            <div
+              style="display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid {{ line }};background:{{ panel }};"
+            >
+              <div style="display: flex; align-items: center; gap: 12px">
+                <div style="width:14px;height:14px;background:{{ acc }};"></div>
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 13px;
+                    letter-spacing: 0.18em;
+                    text-transform: uppercase;
+                  "
+                  >rishi's ui lab</span
+                >
+                <span
+                  style="font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:0.18em;text-transform:uppercase;color:{{ faint }};"
+                  >/ 03 built · 09 planned</span
+                >
+              </div>
+              <div style="display: flex; align-items: center; gap: 14px">
+                <span
+                  style="display:flex;align-items:center;gap:10px;height:32px;padding:0 12px;border:1px solid {{ line }};font-family:'JetBrains Mono',monospace;font-size:12px;color:{{ faint }};"
+                  >find component
+                  <span style="color:{{ muted }};">⌘K</span></span
+                >
+                <div
+                  onClick="{{ toggleTheme }}"
+                  tabindex="0"
+                  style="display:flex;align-items:center;gap:8px;height:32px;padding:0 14px;border:1px solid {{ line }};cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:{{ text }};transition:border-color 140ms,color 140ms;"
+                  style-hover="border-color:{{ acc }};color:{{ acc }};"
+                  style-focus="outline:2px solid {{ acc }};outline-offset:2px;"
+                >
+                  {{ themeLabel }}
+                </div>
+                <div
+                  onClick="{{ present }}"
+                  tabindex="0"
+                  style="display:flex;align-items:center;height:32px;padding:0 16px;background:{{ acc }};color:{{ accInk }};cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;font-weight:500;transition:transform 120ms;"
+                  style-hover="transform:translateY(-1px);"
+                  style-active="transform:translateY(0) scale(0.97);"
+                  style-focus="outline:2px solid {{ text }};outline-offset:2px;"
+                >
+                  present
+                </div>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 288px 1fr">
+              <div
+                style="border-right:1px solid {{ line }};background:{{ panel }};padding:26px 0;"
+              >
+                <div
+                  style="padding:0 26px 14px 26px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:{{ faint }};"
+                >
+                  index
+                </div>
+                <sc-for list="{{ comps }}" as="c" hint-placeholder-count="9">
+                  <div
+                    onClick="{{ c.on }}"
+                    tabindex="0"
+                    style="display:grid;grid-template-columns:34px 1fr;align-items:center;gap:8px;height:46px;padding:0 26px;cursor:pointer;border-left:2px solid {{ c.tick }};background:{{ c.bg }};font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:0.02em;color:{{ c.fg }};transition:background 120ms;"
+                    style-hover="background:{{ c.hoverBg }};"
+                    style-focus="outline:2px solid {{ acc }};outline-offset:-2px;z-index:1;"
+                  >
+                    <span style="color:{{ c.numFg }};">{{ c.num }}</span>
+                    <span
+                      style="
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                      "
+                      >{{ c.name }}</span
+                    >
+                  </div>
+                </sc-for>
+                <div
+                  style="margin:26px 26px 0 26px;padding-top:20px;border-top:1px solid {{ line }};display:flex;flex-direction:column;gap:10px;"
+                >
+                  <a
+                    href="https://rishidean.com"
+                    style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.1em;color:{{ acc }};"
+                    style-hover="text-decoration:underline;"
+                    style-focus="outline:2px solid {{ acc }};outline-offset:2px;"
+                    >rishidean.com →</a
+                  >
+                  <span
+                    style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:{{ faint }};"
+                    >mit · free forever</span
+                  >
+                </div>
+              </div>
+
+              <div>
+                <div style="padding: 52px 48px 0 48px">
+                  <div
+                    style="font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:0.22em;text-transform:uppercase;color:{{ faint }};animation:rise 380ms ease-out both;"
+                  >
+                    component 02 / interaction / gesture
+                  </div>
+                  <h1
+                    style="
+                      margin: 18px 0 0 0;
+                      font-size: 76px;
+                      font-weight: 700;
+                      letter-spacing: -0.035em;
+                      line-height: 1;
+                      max-width: 900px;
+                      text-wrap: balance;
+                      animation: rise 420ms 60ms ease-out both;
+                    "
+                  >
+                    Press &amp; slide picker
+                  </h1>
+                  <p
+                    style="margin:24px 0 0 0;font-size:22px;line-height:1.5;color:{{ muted }};max-width:700px;text-wrap:pretty;animation:rise 420ms 120ms ease-out both;"
+                  >
+                    A dropdown asks for three gestures to change one value. This
+                    asks for one.
+                  </p>
+                </div>
+
+                <div
+                  style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-top:44px;padding:0 48px;border-bottom:1px solid {{ line }};"
+                >
+                  <div style="display: flex; gap: 28px">
+                    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+                      <div
+                        onClick="{{ t.on }}"
+                        tabindex="0"
+                        style="padding:0 2px 14px 2px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12.5px;letter-spacing:0.18em;text-transform:uppercase;border-bottom:2px solid {{ t.bd }};color:{{ t.fg }};transition:color 120ms,border-color 120ms;"
+                        style-hover="color:{{ acc }};"
+                        style-focus="outline:2px solid {{ acc }};outline-offset:2px;"
+                      >
+                        {{ t.label }}
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="display: flex; gap: 20px">
+                    <sc-for
+                      list="{{ views }}"
+                      as="v"
+                      hint-placeholder-count="2"
+                    >
+                      <div
+                        onClick="{{ v.on }}"
+                        tabindex="0"
+                        style="padding:0 2px 14px 2px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12.5px;letter-spacing:0.18em;text-transform:uppercase;border-bottom:2px solid {{ v.bd }};color:{{ v.fg }};transition:color 120ms,border-color 120ms;"
+                        style-hover="color:{{ acc }};"
+                        style-focus="outline:2px solid {{ acc }};outline-offset:2px;"
+                      >
+                        {{ v.label }}
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="padding: 40px 48px 0 48px">
+                  <div
+                    style="border:1px solid {{ line }};background:{{ panel }};background-image:{{ dots }};background-size:22px 22px;padding:48px;min-height:600px;display:flex;align-items:center;justify-content:center;"
+                  >
+                    <sc-if
+                      value="{{ showDemo }}"
+                      hint-placeholder-val="{{ true }}"
+                    >
+                      <div
+                        style="display: flex; gap: 32px; align-items: stretch"
+                      >
+                        <div
+                          style="width:{{ stageW }};transition:width 300ms cubic-bezier(0.2,0.8,0.2,1);background:{{ raised }};border:1px solid {{ line }};border-radius:10px;padding:36px;position:relative;box-shadow:{{ demoShadow }};"
+                        >
+                          <sc-if value="{{ mobile }}"
+                            ><div
+                              style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:84px;height:5px;border-radius:3px;background:{{ line }};"
+                            ></div
+                          ></sc-if>
+                          <div
+                            style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:{{ faint }};margin-bottom:10px;"
+                          >
+                            digest frequency
+                          </div>
+                          <div
+                            style="
+                              font-size: 28px;
+                              font-weight: 600;
+                              letter-spacing: -0.02em;
+                              margin-bottom: 30px;
+                            "
+                          >
+                            How often should we write?
+                          </div>
+                          <div style="position: relative">
+                            <sc-if value="{{ press }}">
+                              <div
+                                style="position:absolute;bottom:calc(100% + 12px);left:0;width:100%;background:{{ pop }};border:1px solid {{ line }};border-radius:10px;box-shadow:{{ popShadow }};padding:6px;animation:fanIn 160ms cubic-bezier(0.2,0.8,0.2,1) both;"
+                              >
+                                <sc-for
+                                  list="{{ options }}"
+                                  as="o"
+                                  hint-placeholder-count="5"
+                                >
+                                  <div
+                                    style="display:flex;align-items:center;justify-content:space-between;height:46px;padding:0 14px;border-radius:6px;font-size:17px;font-weight:{{ o.weight }};background:{{ o.bg }};color:{{ o.fg }};"
+                                  >
+                                    <span>{{ o.label }}</span>
+                                    <span
+                                      style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.12em;color:{{ o.metaFg }};"
+                                      >{{ o.meta }}</span
+                                    >
+                                  </div>
+                                </sc-for>
+                              </div>
+                            </sc-if>
+                            <div
+                              onPointerDown="{{ down }}"
+                              tabindex="0"
+                              style="height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-radius:8px;border:1px solid {{ triggerBd }};background:{{ triggerBg }};cursor:grab;touch-action:none;user-select:none;transition:border-color 140ms;"
+                              style-hover="border-color:{{ acc }};"
+                              style-focus="outline:2px solid {{ acc }};outline-offset:2px;"
+                            >
+                              <span
+                                style="
+                                  font-size: 20px;
+                                  font-weight: 600;
+                                  letter-spacing: -0.01em;
+                                "
+                                >{{ selLabel }}</span
+                              >
+                              <span
+                                style="
+                                  display: flex;
+                                  flex-direction: column;
+                                  gap: 3px;
+                                  align-items: flex-end;
+                                "
+                              >
+                                <span
+                                  style="width:20px;height:2px;background:{{ acc }};"
+                                ></span>
+                                <span
+                                  style="width:14px;height:2px;background:{{ line }};"
+                                ></span>
+                                <span
+                                  style="width:20px;height:2px;background:{{ line }};"
+                                ></span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div
+                          style="width:240px;border:1px solid {{ line }};background:{{ readoutBg }};padding:24px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.04em;display:flex;flex-direction:column;gap:18px;"
+                        >
+                          <div
+                            style="letter-spacing:0.2em;text-transform:uppercase;color:{{ faint }};"
+                          >
+                            readout
+                          </div>
+                          <sc-for
+                            list="{{ readout }}"
+                            as="r"
+                            hint-placeholder-count="4"
+                          >
+                            <div
+                              style="
+                                display: flex;
+                                flex-direction: column;
+                                gap: 5px;
+                              "
+                            >
+                              <span
+                                style="color:{{ faint }};letter-spacing:0.16em;text-transform:uppercase;font-size:10.5px;"
+                                >{{ r.k }}</span
+                              >
+                              <span style="color:{{ r.fg }};font-size:14px;"
+                                >{{ r.v }}</span
+                              >
+                            </div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ showCode }}">
+                      <div
+                        style="width:100%;align-self:stretch;background:{{ bg }};border:1px solid {{ line }};padding:32px 36px;overflow:hidden;"
+                      >
+                        <div
+                          style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:0.18em;text-transform:uppercase;color:{{ faint }};"
+                        >
+                          <span>press-slide-picker.jsx</span>
+                          <span
+                            tabindex="0"
+                            style="color:{{ acc }};cursor:pointer;"
+                            style-hover="text-decoration:underline;"
+                            style-focus="outline:2px solid {{ acc }};outline-offset:2px;"
+                            >copy</span
+                          >
+                        </div>
+                        <pre
+                          style="margin:0;font-family:'JetBrains Mono',monospace;font-size:14px;line-height:1.8;color:{{ muted }};white-space:pre-wrap;"
+                        >
+import { useRef, useState } from "react";
+
+export function PressSlidePicker({ options, value, onChange, stepPx = 46 }) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(value);
+  const anchor = useRef(0);
+
+  function down(e) {
+    e.preventDefault();
+    anchor.current = e.clientY;
+    setActive(value);
+    setOpen(true);
+  }
+
+  function move(e) {
+    if (!open) return;
+    const step = Math.round((e.clientY - anchor.current) / stepPx);
+    setActive(Math.min(options.length - 1, Math.max(0, value + step)));
+  }
+
+  function up() {
+    setOpen(false);
+    onChange(active);
+  }
+
+  return (
+    &lt;div className="relative select-none touch-none"&gt;
+      {open &amp;&amp; &lt;Fan options={options} active={active} /&gt;}
+      &lt;button onPointerDown={down} onPointerMove={move} onPointerUp={up}
+        className="h-14 w-full rounded-lg border border-zinc-800 px-4 text-left"&gt;
+        {options[value]}
+      &lt;/button&gt;
+    &lt;/div&gt;
+  );
+}</pre>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ showProps }}">
+                      <div
+                        style="width:100%;align-self:stretch;border:1px solid {{ line }};background:{{ bg }};"
+                      >
+                        <div
+                          style="display:grid;grid-template-columns:200px 200px 120px 1fr;padding:16px 26px;border-bottom:1px solid {{ line }};font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:{{ faint }};"
+                        >
+                          <span>prop</span><span>type</span><span>default</span
+                          ><span>notes</span>
+                        </div>
+                        <sc-for
+                          list="{{ propRows }}"
+                          as="p"
+                          hint-placeholder-count="5"
+                        >
+                          <div
+                            style="display:grid;grid-template-columns:200px 200px 120px 1fr;padding:20px 26px;border-bottom:1px solid {{ line }};align-items:baseline;font-family:'JetBrains Mono',monospace;"
+                          >
+                            <span style="font-size: 14px">{{ p.name }}</span>
+                            <span style="font-size:13px;color:{{ acc }};"
+                              >{{ p.type }}</span
+                            >
+                            <span style="font-size:13px;color:{{ muted }};"
+                              >{{ p.def }}</span
+                            >
+                            <span
+                              style="font-family:'Space Grotesk',sans-serif;font-size:16px;line-height:1.45;color:{{ muted }};"
+                              >{{ p.note }}</span
+                            >
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </div>
+                </div>
+
+                <div
+                  style="
+                    padding: 64px 48px 0 48px;
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 48px;
+                  "
+                >
+                  <div style="border-top:1px solid {{ acc }};padding-top:22px;">
+                    <div
+                      style="font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:0.2em;text-transform:uppercase;color:{{ faint }};margin-bottom:16px;"
+                    >
+                      the problem
+                    </div>
+                    <p
+                      style="
+                        margin: 0;
+                        font-size: 20px;
+                        line-height: 1.55;
+                        text-wrap: pretty;
+                      "
+                    >
+                      I kept watching people tap a select, squint at a menu, tap
+                      again, and miss. On a phone that is a whole ceremony for
+                      picking "Weekly."
+                    </p>
+                  </div>
+                  <div style="border-top:1px solid {{ acc }};padding-top:22px;">
+                    <div
+                      style="font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:0.2em;text-transform:uppercase;color:{{ faint }};margin-bottom:16px;"
+                    >
+                      what I did
+                    </div>
+                    <p
+                      style="
+                        margin: 0;
+                        font-size: 20px;
+                        line-height: 1.55;
+                        text-wrap: pretty;
+                      "
+                    >
+                      Stole the gesture from the volume slider. Press, slide,
+                      let go. Your thumb never leaves the glass, and the value
+                      under it is always the one you are about to get.
+                    </p>
+                  </div>
+                </div>
+
+                <sc-if
+                  value="{{ showCaveat }}"
+                  hint-placeholder-val="{{ true }}"
+                >
+                  <div style="padding: 44px 48px 0 48px">
+                    <div
+                      style="border:1px solid {{ line }};background:{{ accdim }};padding:32px 36px;display:flex;gap:28px;align-items:flex-start;"
+                    >
+                      <div
+                        style="flex:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:{{ acc }};padding-top:6px;"
+                      >
+                        fair warning
+                      </div>
+                      <p
+                        style="
+                          margin: 0;
+                          font-size: 21px;
+                          line-height: 1.5;
+                          letter-spacing: -0.01em;
+                          text-wrap: pretty;
+                        "
+                      >
+                        I am not a frontend developer. I vibe-coded this out of
+                        my head because I wanted to feel it, not argue about it.
+                        It works. Steal it, break it, ship it better.
+                      </p>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <div style="padding: 64px 48px 0 48px">
+                  <div
+                    style="font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:0.2em;text-transform:uppercase;color:{{ faint }};margin-bottom:18px;"
+                  >
+                    the rest of the lab
+                  </div>
+                  <div
+                    style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:{{ line }};border:1px solid {{ line }};"
+                  >
+                    <sc-for
+                      list="{{ comps }}"
+                      as="c"
+                      hint-placeholder-count="9"
+                    >
+                      <div
+                        onClick="{{ c.on }}"
+                        tabindex="0"
+                        style="background:{{ c.cardBg }};padding:24px;cursor:pointer;min-height:126px;display:flex;flex-direction:column;justify-content:space-between;transition:box-shadow 120ms;"
+                        style-hover="box-shadow:inset 0 0 0 1px {{ acc }};"
+                        style-focus="outline:2px solid {{ acc }};outline-offset:-2px;z-index:1;"
+                      >
+                        <div
+                          style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:{{ c.statusFg }};"
+                        >
+                          <span>{{ c.num }}</span><span>{{ c.status }}</span>
+                        </div>
+                        <div
+                          style="font-size:19px;font-weight:600;letter-spacing:-0.01em;color:{{ c.cardFg }};"
+                        >
+                          {{ c.name }}
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div
+                  style="margin-top:64px;padding:28px 48px;border-top:1px solid {{ line }};display:flex;align-items:center;justify-content:space-between;"
+                >
+                  <span
+                    style="font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:{{ faint }};"
+                    >free · mit · no attribution needed</span
+                  >
+                  <a
+                    href="https://rishidean.com"
+                    style="font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:0.08em;color:{{ acc }};"
+                    style-hover="text-decoration:underline;"
+                    style-focus="outline:2px solid {{ acc }};outline-offset:2px;"
+                    >more of my thinking at rishidean.com →</a
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            style="display:flex;align-items:center;gap:14px;margin:56px 0 20px 0;font-family:'JetBrains Mono',monospace;font-size:14px;letter-spacing:0.14em;text-transform:uppercase;color:{{ faint }};"
+          >
+            <span>Presentation mode · 1920 × 1080</span>
+          </div>
+
+          <div
+            onClick="{{ present }}"
+            style="width:1440px;height:810px;overflow:hidden;border:1px solid {{ line }};border-radius:10px;cursor:pointer;box-shadow:{{ cardShadow }};margin-bottom:60px;"
+          >
+            <div
+              style="width:1920px;height:1080px;transform:scale(0.75);transform-origin:top left;background:{{ bg }};background-image:{{ dots }};background-size:28px 28px;color:{{ text }};position:relative;display:grid;grid-template-columns:900px 1fr;align-items:center;padding:0 110px;"
+            >
+              <div
+                style="position:absolute;top:64px;left:110px;display:flex;align-items:center;gap:14px;font-family:'JetBrains Mono',monospace;font-size:17px;letter-spacing:0.2em;text-transform:uppercase;color:{{ faint }};"
+              >
+                <span
+                  style="width:16px;height:16px;background:{{ acc }};"
+                ></span>
+                <span>rishi's ui lab / component 02</span>
+              </div>
+              <div
+                style="position:absolute;top:64px;right:110px;font-family:'JetBrains Mono',monospace;font-size:17px;letter-spacing:0.16em;text-transform:uppercase;color:{{ liveFg }};"
+              >
+                {{ liveLabel }}
+              </div>
+
+              <div>
+                <div
+                  style="width:72px;height:4px;background:{{ acc }};margin-bottom:40px;"
+                ></div>
+                <div style="min-height: 420px">
+                  <h2
+                    key="{{ beatKey }}"
+                    style="
+                      margin: 0;
+                      font-size: 132px;
+                      font-weight: 700;
+                      letter-spacing: -0.04em;
+                      line-height: 0.94;
+                      text-wrap: balance;
+                      animation: beatIn 420ms cubic-bezier(0.2, 0.8, 0.2, 1)
+                        both;
+                    "
+                  >
+                    {{ beatTitle }}
+                  </h2>
+                  <p
+                    style="margin:34px 0 0 0;font-size:32px;line-height:1.4;color:{{ muted }};max-width:720px;text-wrap:pretty;"
+                  >
+                    {{ beatSub }}
+                  </p>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: center">
+                <div
+                  style="width:540px;background:{{ raised }};border:1px solid {{ line }};border-radius:12px;padding:44px;box-shadow:{{ demoShadow }};"
+                >
+                  <div
+                    style="font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:{{ faint }};margin-bottom:12px;"
+                  >
+                    digest frequency
+                  </div>
+                  <div
+                    style="
+                      font-size: 34px;
+                      font-weight: 600;
+                      letter-spacing: -0.02em;
+                      margin-bottom: 38px;
+                    "
+                  >
+                    How often should we write?
+                  </div>
+                  <div style="position: relative">
+                    <sc-if value="{{ pBeatOpen }}">
+                      <div
+                        style="position:absolute;bottom:calc(100% + 16px);left:0;width:100%;background:{{ pop }};border:1px solid {{ line }};border-radius:12px;box-shadow:{{ popShadow }};padding:8px;"
+                      >
+                        <sc-for
+                          list="{{ pOptions }}"
+                          as="o"
+                          hint-placeholder-count="5"
+                        >
+                          <div
+                            style="display:flex;align-items:center;justify-content:space-between;height:58px;padding:0 20px;border-radius:8px;font-size:22px;font-weight:{{ o.weight }};background:{{ o.bg }};color:{{ o.fg }};"
+                          >
+                            <span>{{ o.label }}</span>
+                            <span
+                              style="font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:0.12em;color:{{ o.metaFg }};"
+                              >{{ o.meta }}</span
+                            >
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                    <div
+                      style="height:78px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-radius:8px;border:1px solid {{ pTriggerBd }};background:{{ pTriggerBg }};"
+                    >
+                      <span
+                        style="
+                          font-size: 28px;
+                          font-weight: 600;
+                          letter-spacing: -0.02em;
+                        "
+                        >{{ pSelLabel }}</span
+                      >
+                      <span
+                        style="
+                          display: flex;
+                          flex-direction: column;
+                          gap: 4px;
+                          align-items: flex-end;
+                        "
+                      >
+                        <span
+                          style="width:26px;height:2.5px;background:{{ acc }};"
+                        ></span>
+                        <span
+                          style="width:18px;height:2.5px;background:{{ line }};"
+                        ></span>
+                        <span
+                          style="width:26px;height:2.5px;background:{{ line }};"
+                        ></span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style="
+                  position: absolute;
+                  bottom: 64px;
+                  left: 110px;
+                  right: 110px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                "
+              >
+                <div style="display: flex; gap: 10px; align-items: center">
+                  <sc-for
+                    list="{{ beatDots }}"
+                    as="d"
+                    hint-placeholder-count="5"
+                  >
+                    <div
+                      onClick="{{ d.on }}"
+                      tabindex="0"
+                      style="height:4px;width:{{ d.w }};background:{{ d.bg }};cursor:pointer;transition:width 260ms,background 260ms;"
+                      style-hover="background:{{ acc }};"
+                      style-focus="outline:2px solid {{ acc }};outline-offset:3px;"
+                    ></div>
+                  </sc-for>
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    gap: 10px;
+                    align-items: center;
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 14px;
+                    letter-spacing: 0.16em;
+                    text-transform: uppercase;
+                  "
+                >
+                  <div
+                    onClick="{{ playFn }}"
+                    tabindex="0"
+                    style="display:flex;align-items:center;height:48px;padding:0 22px;border:1px solid {{ line }};color:{{ text }};cursor:pointer;transition:border-color 120ms;"
+                    style-hover="border-color:{{ acc }};color:{{ acc }};"
+                    style-focus="outline:2px solid {{ acc }};outline-offset:2px;"
+                  >
+                    {{ playLabel }}
+                  </div>
+                  <div
+                    onClick="{{ prev }}"
+                    tabindex="0"
+                    style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border:1px solid {{ line }};color:{{ text }};cursor:pointer;transition:border-color 120ms;"
+                    style-hover="border-color:{{ acc }};color:{{ acc }};"
+                    style-focus="outline:2px solid {{ acc }};outline-offset:2px;"
+                  >
+                    ←
+                  </div>
+                  <div
+                    onClick="{{ next }}"
+                    tabindex="0"
+                    style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;background:{{ acc }};color:{{ accInk }};cursor:pointer;transition:transform 120ms;"
+                    style-hover="transform:translateY(-1px);"
+                    style-active="transform:scale(0.94);"
+                    style-focus="outline:2px solid {{ text }};outline-offset:2px;"
+                  >
+                    →
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div
+            style="margin-top:-46px;margin-bottom:80px;font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:{{ faint }};"
+          >
+            Click the stage, then use ← / → to step beats. Play runs it
+            hands-free for recording.
+          </div>
+        </div>
+      </div>
+    </x-dc>
+    <script
+      type="text/x-dc"
+      data-dc-script
+      data-props='{"showCaveat":{"editor":"boolean","default":false,"tsType":"boolean","section":"Content"},"accent":{"editor":"enum","default":"pink","options":["lime","pink","amber","sky"],"tsType":"string","section":"Theme"},"pickerOptions":{"editor":"text","default":"Never, Hourly, Daily, Weekly, Monthly","tsType":"string","section":"Demo"},"stepPx":{"editor":"range","default":46,"min":24,"max":90,"step":2,"unit":"px","tsType":"number","section":"Demo"},"beatMs":{"editor":"range","default":2600,"min":1200,"max":6000,"step":200,"unit":"ms","tsType":"number","section":"Presentation mode"}}'
+    >
+      class Component extends DCLogic {
+        state = {
+          theme: 'dark',
+          tab: 'demo', view: 'desktop',
+          press: false, active: 3, sel: 3, event: 'idle',
+          focus: null, beat: 0, playing: false
+        };
+
+        beats = [
+          { t: 'Three gestures.', s: 'Tap the select. Read the menu. Tap again. Hope you hit the right row.', open: false, sel: 3, active: 3 },
+          { t: 'Press.', s: 'Hold anywhere on the field. The options come to your thumb.', open: true, sel: 3, active: 3 },
+          { t: 'Slide.', s: 'The value under your thumb is always the one you are about to get.', open: true, sel: 3, active: 1 },
+          { t: 'Release.', s: 'One commit, on lift. Nothing fires mid-slide.', open: true, sel: 3, active: 1 },
+          { t: 'One gesture.', s: 'Same control. A third of the work. Free to steal.', open: false, sel: 1, active: 1 }
+        ];
+
+        palettes = {
+          dark: {
+            bg: '#131417', panel: '#191b1f', raised: '#21242a', pop: '#262a31',
+            line: '#2b2f36', text: '#e8e9ec', muted: '#9aa0a9', faint: '#61676f',
+            dots: 'radial-gradient(#2b2f36 1px, transparent 1px)',
+            cardShadow: '0 40px 90px rgba(0,0,0,0.35)', demoShadow: '0 24px 60px rgba(0,0,0,0.4)',
+            popShadow: '0 28px 60px rgba(0,0,0,0.55)', readoutBg: 'rgba(19,20,23,0.7)'
+          },
+          light: {
+            bg: '#fbfbf9', panel: '#f3f3ef', raised: '#ffffff', pop: '#ffffff',
+            line: '#e2e2dc', text: '#181a16', muted: '#5c5f56', faint: '#95988c',
+            dots: 'radial-gradient(#e2e2dc 1px, transparent 1px)',
+            cardShadow: '0 30px 70px rgba(20,20,10,0.08)', demoShadow: '0 18px 40px rgba(20,20,10,0.08)',
+            popShadow: '0 22px 50px rgba(20,20,10,0.16)', readoutBg: 'rgba(255,255,255,0.7)'
+          }
+        };
+
+        accents = {
+          lime:  { dark: '#b6f24a', light: '#4d7a12' },
+          pink:  { dark: '#ff5fa8', light: '#c22a75' },
+          amber: { dark: '#ffb84a', light: '#a05f00' },
+          sky:   { dark: '#5fc7ff', light: '#0b6fa0' }
+        };
+
+        hexToRgb(hex) {
+          const h = hex.replace('#', '');
+          return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+        }
+
+        accentVals(theme) {
+          const name = this.props.accent ?? 'lime';
+          const hex = (this.accents[name] || this.accents.lime)[theme];
+          const [r, g, b] = this.hexToRgb(hex);
+          const inkOnAcc = theme === 'dark' ? '#12140c' : '#ffffff';
+          return {
+            acc: hex, accInk: inkOnAcc,
+            accdim: `rgba(${r},${g},${b},${theme === 'dark' ? 0.12 : 0.08})`,
+            pressBg: `rgba(${r},${g},${b},0.06)`
+          };
+        }
+
+        componentDidMount() {
+          this.onKey = e => {
+            if (!this.state.focus) return;
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); this.stepBeat(1); }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); this.stepBeat(-1); }
+            else if (e.key === 'Escape') this.setState({ focus: null, playing: false });
+          };
+          window.addEventListener('keydown', this.onKey);
+        }
+
+        componentWillUnmount() {
+          window.removeEventListener('keydown', this.onKey);
+          clearInterval(this.timer);
+        }
+
+        stepBeat(dir) {
+          const n = this.beats.length;
+          this.setState(s => ({ beat: (s.beat + dir + n) % n }));
+        }
+
+        present() { this.setState({ focus: 'stage' }); }
+
+        play() {
+          const playing = !this.state.playing;
+          clearInterval(this.timer);
+          this.setState({ focus: 'stage', playing });
+          if (playing) this.timer = setInterval(() => this.stepBeat(1), this.props.beatMs ?? 2600);
+        }
+
+        opts() {
+          const raw = this.props.pickerOptions ?? 'Never, Hourly, Daily, Weekly, Monthly';
+          return String(raw).split(',').map(s => s.trim()).filter(Boolean);
+        }
+
+        step() { return this.props.stepPx ?? 46; }
+
+        down(e) {
+          e.preventDefault();
+          const startY = e.clientY;
+          const base = this.state.sel;
+          const max = this.opts().length - 1;
+          this.setState({ press: true, active: base, event: 'pointerdown' });
+          const move = ev => {
+            const i = Math.max(0, Math.min(max, base + Math.round((ev.clientY - startY) / this.step())));
+            if (i !== this.state.active) this.setState({ active: i, event: 'slide' });
+          };
+          const up = () => {
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', up);
+            this.setState(s => ({ press: false, sel: s.active, event: 'change' }));
+          };
+          window.addEventListener('pointermove', move);
+          window.addEventListener('pointerup', up);
+        }
+
+        comps(P) {
+          const built = ["Navigation bar", "Press & slide picker", "Bottom sheet"];
+          const rows = built.map(n => ({ name: n, shipped: true }));
+          for (let i = 0; i < 6; i++) rows.push({ name: "Unnamed", shipped: false });
+          return rows.map((r, i) => {
+            const isCur = r.name === "Press & slide picker";
+            const num = String(i + 1).padStart(2, '0');
+            return {
+              name: r.name, num, on: () => {},
+              tick: isCur ? P.acc : 'transparent',
+              bg: isCur ? P.pressBg : 'transparent',
+              hoverBg: isCur ? P.pressBg : P.raised,
+              fg: isCur ? P.text : (r.shipped ? P.muted : P.faint),
+              numFg: isCur ? P.acc : P.faint,
+              cardBg: isCur ? P.pressBg : P.panel,
+              cardFg: r.shipped ? P.text : P.faint,
+              statusFg: isCur ? P.acc : P.faint,
+              status: isCur ? 'active' : (r.shipped ? 'shipped' : 'in the oven')
+            };
+          });
+        }
+
+        seg(items, cur, key, P) {
+          return items.map(it => ({
+            label: it.label,
+            on: () => this.setState({ [key]: it.id }),
+            bd: it.id === cur ? P.acc : 'transparent',
+            fg: it.id === cur ? P.text : P.faint
+          }));
+        }
+
+        fan(P, active) {
+          return this.opts().map((label, i) => {
+            const on = i === active;
+            const meta = i === 0 ? 'off' : (i + 'x');
+            return { label, meta, weight: on ? 600 : 400,
+              bg: on ? P.acc : 'transparent',
+              fg: on ? P.accInk : P.muted,
+              metaFg: on ? 'rgba(0,0,0,0.45)' : P.faint };
+          });
+        }
+
+        dots(P) {
+          const cur = this.state.beat;
+          return this.beats.map((b, i) => ({
+            on: () => this.setState({ focus: 'stage', beat: i }),
+            w: i === cur ? '56px' : '18px',
+            bg: i === cur ? P.acc : P.line
+          }));
+        }
+
+        renderVals() {
+          const s = this.state;
+          const P = { ...this.palettes[s.theme], ...this.accentVals(s.theme) };
+          const o = this.opts();
+          const clamp = i => Math.max(0, Math.min(o.length - 1, i));
+          const B = this.beats[s.beat];
+          const tabItems = [{ id: 'demo', label: 'Demo' }, { id: 'code', label: 'Code' }, { id: 'props', label: 'Props' }];
+          const viewItems = [{ id: 'desktop', label: 'Desktop' }, { id: 'mobile', label: 'Mobile' }];
+
+          return {
+            ...P,
+            showCaveat: this.props.showCaveat ?? true,
+            themeLabel: s.theme === 'dark' ? '☾ dark' : '☀ light',
+            toggleTheme: () => this.setState({ theme: s.theme === 'dark' ? 'light' : 'dark' }),
+
+            comps: this.comps(P),
+            tabs: this.seg(tabItems, s.tab, 'tab', P),
+            views: this.seg(viewItems, s.view, 'view', P),
+
+            showDemo: s.tab === 'demo', showCode: s.tab === 'code', showProps: s.tab === 'props',
+            mobile: s.view === 'mobile',
+            stageW: s.view === 'mobile' ? '390px' : '520px',
+
+            press: s.press,
+            options: this.fan(P, clamp(s.active)),
+            selLabel: o[clamp(s.sel)],
+            triggerBd: s.press ? P.acc : P.line,
+            triggerBg: s.press ? P.pressBg : P.raised,
+
+            readout: [
+              { k: 'value', v: o[clamp(s.sel)], fg: P.acc },
+              { k: 'index', v: String(clamp(s.sel)) + ' / ' + (o.length - 1), fg: P.text },
+              { k: 'last event', v: s.event, fg: P.text },
+              { k: 'px per step', v: this.step() + 'px', fg: P.muted }
+            ],
+
+            down: e => this.down(e),
+
+            beatTitle: B.t, beatSub: B.s, beatKey: 'b' + s.beat,
+            pBeatOpen: B.open,
+            pOptions: this.fan(P, B.active),
+            pSelLabel: o[clamp(B.sel)],
+            pTriggerBd: B.open ? P.acc : P.line,
+            pTriggerBg: B.open ? P.pressBg : P.raised,
+            beatDots: this.dots(P),
+            present: () => this.present(),
+            next: () => this.stepBeat(1), prev: () => this.stepBeat(-1),
+            playFn: () => this.play(),
+            playLabel: s.playing ? 'pause' : 'play',
+            liveLabel: s.focus === 'stage' ? 'live · ← → to step' : 'click to take control',
+            liveFg: s.focus === 'stage' ? P.acc : P.faint,
+
+            propRows: [
+              { name: 'options', type: 'string[]', def: '—', note: 'Values, top to bottom. Five or fewer feels best.' },
+              { name: 'value', type: 'number', def: '0', note: 'Index of the current selection.' },
+              { name: 'onChange', type: '(i: number) => void', def: '—', note: 'Fires once, on release. Never mid-slide.' },
+              { name: 'stepPx', type: 'number', def: '46', note: 'Pixels of travel per option. Lower = twitchier.' },
+              { name: 'haptics', type: 'boolean', def: 'false', note: 'Taps the Vibration API as the active option changes.' }
+            ]
+          };
+        }
+      }
+    </script>
+  </body>
+</html>
