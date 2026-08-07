@@ -45,6 +45,8 @@ export type ShowcaseMeta = {
   category: string;
   /** Hero one-liner under the headline. */
   lede: string;
+  /** Short card blurb for the Home index grid. */
+  blurb: string;
   problem: string;
   solution: string;
   propRows: PropRow[];
@@ -344,6 +346,7 @@ export const labComponents: LabComponent[] = [
     ],
     showcase: {
       category: "navigation / motion",
+      blurb: "A scroll-aware bar that collapses to the essentials.",
       lede: "Four bars' worth of controls. One surface that morphs instead of stacking.",
       problem:
         "Mobile apps stack a tab bar, an action row, a filter strip, and a search field — four layers of chrome before any content. Every new capability lands as another bar.",
@@ -463,6 +466,7 @@ export const labComponents: LabComponent[] = [
     dependencies: ["react", "clsx + tailwind-merge (cn)"],
     showcase: {
       category: "interaction / gesture",
+      blurb: "Press, slide, release — one gesture instead of three.",
       lede: "A dropdown asks for three gestures to change one value. This asks for one.",
       problem:
         "I kept watching people tap a select, squint at a menu, tap again, and miss. On a phone that is a whole ceremony for picking “Weekly.”",
@@ -582,6 +586,7 @@ export const labComponents: LabComponent[] = [
     ],
     showcase: {
       category: "overlay / motion",
+      blurb: "A sheet that knows the difference between a flick and a drag.",
       lede: "Sheets teleport in from the screen edge. This one grows out of the button you pressed.",
       problem:
         "Bottom sheets appear from nowhere, welded to the bottom of the screen, with a mush of half-open heights between closed and full.",
@@ -676,6 +681,7 @@ export const labComponents: LabComponent[] = [
     ],
     showcase: {
       category: "overlay / takeover",
+      blurb: "A full-screen takeover that unfolds from the button you pressed.",
       lede: "A full-screen takeover that unfolds from the button's center point.",
       problem:
         "Full-screen tasks — a scanner, an editor — usually hard-cut to a new screen. The jump severs the thread back to the control that opened them.",

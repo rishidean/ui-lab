@@ -50,9 +50,16 @@ src="/{slug}?embed=1">` — a true nested viewport, so the stages'
    closes the other roadmap item; tryIt hints now surface on the Demo
    tab (old "surface tryIt on Preview" item).
 
-Home/NotFound keep the old LabShell chrome — the Home redesign
-("UI Lab - Home.dc.html" in the same design project) is NOT implemented
-yet and is the obvious next step.
+**Home redesign shipped too** (2026-08-07, same session): `pages/Home.tsx`
+rewritten per "UI Lab - Home.dc.html" — full-bleed header strip, the
+"Interactions worth stealing." hero (accent on the last word),
+"open the first one" CTA + built·planned chip, the 9-slot index grid
+(registry `showcase.blurb` card one-liners — design copy for the first
+three, Utility Modal authored to match), the "not a frontend developer"
+banner, and the footer. Responsive: grid 3→2→1 columns, clamped hero
+type, ⌘K chip hidden under 640px. Shared palette/rows moved to
+`lab/labTheme.ts` (Showcase imports it too); Home carries its own
+chrome, so LabShell now only wraps the 404. Suite re-run: 63/63 PASS.
 
 ## Previous session (2026-08-05) — recap
 
@@ -255,10 +262,10 @@ NavigationBar-scoped parts of items 2–3 (Overview/spec sync, registry
 copy/usage/tryIt corrections). **NavigationBar is done.** What remains
 is site-wide, not component work:
 
-1. **Home redesign** — implement "UI Lab - Home.dc.html" from the same
-   design project so the landing page matches the new showcase (this
-   also subsumes the old "site copy pass" and "dark pass on Home"
-   items). Until then Home keeps the old LabShell chrome.
+1. ~~**Home redesign**~~ — SHIPPED 2026-08-07 (see the latest-session
+   recap). The old "site copy pass" and "dark pass on Home" items went
+   with it. LabShell survives only for the 404 — fold it away whenever
+   NotFound gets the lab treatment.
 2. **Site code + dependency links** — the registry `dependencies`
    arrays are prose today; make each entry link to its file/source.
    Also still open: README updates (Bottom Sheet row, Theming section).

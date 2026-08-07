@@ -9,8 +9,8 @@ import { getComponent, labComponents } from "@/lab/registry";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/NotFound";
 
-// Component pages carry their own chrome (the showcase's framed lab
-// bench); LabShell wraps only the landing page and 404.
+// Home and the component pages carry their own chrome (the lab
+// redesign); LabShell only wraps the 404 fallback now.
 function ComponentRoute({ slug }: { slug: string }) {
   const component = getComponent(slug);
   if (!component)
@@ -25,11 +25,7 @@ function ComponentRoute({ slug }: { slug: string }) {
 function Router() {
   return (
     <Switch>
-      <Route path="/">
-        <LabShell>
-          <Home />
-        </LabShell>
-      </Route>
+      <Route path="/" component={Home} />
       {labComponents.flatMap(c =>
         [c.slug, ...(c.aliases ?? [])].map(path => (
           <Route key={path} path={`/${path}`}>
