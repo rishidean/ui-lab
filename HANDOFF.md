@@ -61,6 +61,21 @@ type, ⌘K chip hidden under 640px. Shared palette/rows moved to
 `lab/labTheme.ts` (Showcase imports it too); Home carries its own
 chrome, so LabShell now only wraps the 404. Suite re-run: 63/63 PASS.
 
+**Picker popover fix** (2026-08-07, post-merge): Rishi's phone repro —
+tapping the picker chip showed no options. Root cause predates the
+redesign: the stage's plinth `transform: scale(1.35)` on
+`.picker-demo__object` (since 2026-08-03) made it the containing block
+for the picker's `position: fixed` strip/listbox, which rendered
+in-tree — inline top/left were computed correctly but painted offset
+AND scaled (390×844: listbox at y≈993, w≈461 — fully off-screen).
+Fix in the component: strip, fallback listbox, and scrim now render via
+`createPortal(document.body)`, with the token contract
+(`--surface-overlay` etc.) forwarded from the chip's computed style so
+scoped theming survives the portal; fallback top also gains the missing
+viewport clamp (flips above the chip when there's no room below).
+Verified on phone bare stage (tap + long-press strip) and the showcase
+demo card; suite 63/63. See the new Gotcha at the bottom.
+
 ## Previous session (2026-08-05) — recap
 
 **NavigationBar is DONE** (Rishi's call). Everything below landed,
@@ -379,6 +394,16 @@ the full list.)
   reproduce it; drive a real Chrome (claude-in-chrome) to verify. Fix
   pattern: on animation-complete at scale 1, toggle an invisible
   inherited paint property (transparent text-shadow) for one frame.
+- A `position: fixed` element inside a transformed (or filtered /
+  will-change: transform) ancestor is NOT viewport-fixed — that ancestor
+  becomes its containing block, so correct inline top/left paint offset
+  and scaled. Inline-style inspection looks right while the rendered
+  rect is wrong; compare `el.style.top` against
+  `getBoundingClientRect()` to catch it. Any in-tree popover a consumer
+  might mount under a transform (demo plinths use `scale()`!) must
+  portal to document.body — and CSS custom properties don't follow: read
+  the token values off the anchor's `getComputedStyle` and re-apply them
+  on the portal wrapper (see PressAndSlidePicker's PORTAL_TOKEN_KEYS).
 - Fix verification races the Railway deploy AND the browser tab: a
   just-pushed fix takes minutes to deploy, and an already-open SPA tab
   keeps running its old bundle until a reload — "still broken" right

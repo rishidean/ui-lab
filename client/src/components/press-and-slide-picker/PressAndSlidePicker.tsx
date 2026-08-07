@@ -10,9 +10,11 @@ import {
   useRef,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 // ═══════════════════════════════════════════
@@ -112,6 +114,29 @@ const C = {
   animIn: "psp-in .22s cubic-bezier(.2,0,0,1) both",
   animOut: "psp-out .14s cubic-bezier(.2,0,0,1) both",
 };
+
+// ═══════════════════════════════════════════
+// Popover portal
+// ═══════════════════════════════════════════
+
+/**
+ * The strip and fallback listbox are position:fixed, so they must NOT
+ * render inside a transformed/filtered ancestor — any such ancestor
+ * becomes their containing block and drags the "fixed" popovers along
+ * with it (scaled demo plinths, animated cards). They render through a
+ * portal to document.body instead, and the token contract they style
+ * with is forwarded from the chip's scope so per-surface theming
+ * (e.g. a dark strip on a light page) survives the move.
+ */
+const PORTAL_TOKEN_KEYS = [
+  "--surface-overlay",
+  "--border-subtle",
+  "--shadow-lg",
+  "--text-primary",
+  "--text-secondary",
+  "--text-tertiary",
+  "--text-quaternary",
+] as const;
 
 // ═══════════════════════════════════════════
 // Viewport-aware positioning
@@ -662,11 +687,31 @@ export function PressAndSlidePicker({
     const rect = chipRef.current.getBoundingClientRect();
     const fbItemW = Math.max(72, itemWidth - 4);
     const fbW = options.length * fbItemW + (options.length - 1) * 4 + 12;
+    const fbH = 56 + 16 + 12; // option minHeight + its padding + container padding
     const chipCx = rect.left + rect.width / 2;
     let left = chipCx - fbW / 2;
     left = Math.max(C.vpPad, Math.min(left, window.innerWidth - fbW - C.vpPad));
-    setFallbackPos({ left, top: rect.bottom + 6 });
+    let top = rect.bottom + 6;
+    if (top + fbH > window.innerHeight - C.vpPad) {
+      top = Math.max(C.vpPad, rect.top - fbH - 6);
+    }
+    setFallbackPos({ left, top });
   }, [fallbackOpen, options.length, itemWidth]);
+
+  // Forward the chip scope's token overrides into the body-level portal
+  // (custom properties don't cross a portal on their own).
+  const overlayOpen = fallbackOpen || sliding || dismissing;
+  const [portalVars, setPortalVars] = useState<Record<string, string>>({});
+  useLayoutEffect(() => {
+    if (!overlayOpen || !chipRef.current) return;
+    const cs = getComputedStyle(chipRef.current);
+    const vars: Record<string, string> = {};
+    for (const key of PORTAL_TOKEN_KEYS) {
+      const value = cs.getPropertyValue(key);
+      if (value) vars[key] = value;
+    }
+    setPortalVars(vars);
+  }, [overlayOpen]);
 
   const chip = renderChip ? (
     renderChip(currentOption, sliding)
@@ -721,120 +766,135 @@ export function PressAndSlidePicker({
           {chip}
         </div>
       </div>
-      {fallbackOpen && !sliding && (
-        <div
-          role="listbox"
-          aria-orientation="horizontal"
-          className="psp-anim"
-          style={{
-            position: "fixed",
-            top: fallbackPos.top,
-            left: fallbackPos.left,
-            zIndex: 9999,
-            background: "var(--surface-overlay)",
-            backdropFilter: "saturate(1.5) blur(16px)",
-            WebkitBackdropFilter: "saturate(1.5) blur(16px)",
-            border: "1px solid var(--border-subtle)",
-            borderRadius: 12,
-            boxShadow: "var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.6)",
-            padding: 6,
-            display: "flex",
-            gap: 4,
-            minWidth: "max-content",
-            animation: C.animIn,
-          }}
-        >
-          {options.map((o, i) => {
-            const selected = i === currentIndex;
-            // Rendered as a div (not <button>) so the picker can be safely
-            // nested inside other interactive elements (e.g. card-as-button).
-            // Keyboard + a11y are preserved via role="option", tabIndex, and
-            // the existing keydown handler.
-            return (
+      {overlayOpen &&
+        createPortal(
+          <div
+            style={
+              { display: "contents", ...portalVars } as React.CSSProperties
+            }
+          >
+            {fallbackOpen && !sliding && (
               <div
-                key={o.key}
-                ref={el => {
-                  fallbackRefs.current[i] = el;
-                }}
-                role="option"
-                aria-selected={selected}
-                tabIndex={0}
-                onClick={e => {
-                  e.stopPropagation();
-                  selectFallback(o.key);
-                }}
-                onKeyDown={e => handleFallbackKeyDown(e, i)}
-                onMouseEnter={() => setFallbackFocusIdx(i)}
+                role="listbox"
+                aria-orientation="horizontal"
+                className="psp-anim"
                 style={{
-                  border: 0,
+                  position: "fixed",
+                  top: fallbackPos.top,
+                  left: fallbackPos.left,
+                  zIndex: 9999,
+                  background: "var(--surface-overlay)",
+                  backdropFilter: "saturate(1.5) blur(16px)",
+                  WebkitBackdropFilter: "saturate(1.5) blur(16px)",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: 12,
+                  boxShadow:
+                    "var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.6)",
+                  padding: 6,
                   display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
                   gap: 4,
-                  width: Math.max(72, itemWidth - 4),
-                  minHeight: 56,
-                  padding: "8px 10px",
-                  borderRadius: 10,
-                  cursor: "pointer",
-                  userSelect: "none",
-                  background: selected ? o.color : "transparent",
-                  color: selected
-                    ? "var(--text-primary)"
-                    : "var(--text-secondary)",
-                  outline:
-                    fallbackFocusIdx === i ? `2px solid ${o.color}` : "none",
-                  outlineOffset: 1,
-                  transition:
-                    "background .14s cubic-bezier(.2,0,0,1),color .14s cubic-bezier(.2,0,0,1)",
+                  minWidth: "max-content",
+                  animation: C.animIn,
                 }}
               >
-                <div
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: "50%",
-                    background: selected ? "rgba(255,255,255,.98)" : o.color,
-                    flexShrink: 0,
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    lineHeight: 1.15,
-                    fontFamily: "-apple-system,system-ui,sans-serif",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {o.label}
-                </span>
+                {options.map((o, i) => {
+                  const selected = i === currentIndex;
+                  // Rendered as a div (not <button>) so the picker can be safely
+                  // nested inside other interactive elements (e.g. card-as-button).
+                  // Keyboard + a11y are preserved via role="option", tabIndex, and
+                  // the existing keydown handler.
+                  return (
+                    <div
+                      key={o.key}
+                      ref={el => {
+                        fallbackRefs.current[i] = el;
+                      }}
+                      role="option"
+                      aria-selected={selected}
+                      tabIndex={0}
+                      onClick={e => {
+                        e.stopPropagation();
+                        selectFallback(o.key);
+                      }}
+                      onKeyDown={e => handleFallbackKeyDown(e, i)}
+                      onMouseEnter={() => setFallbackFocusIdx(i)}
+                      style={{
+                        border: 0,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 4,
+                        width: Math.max(72, itemWidth - 4),
+                        minHeight: 56,
+                        padding: "8px 10px",
+                        borderRadius: 10,
+                        cursor: "pointer",
+                        userSelect: "none",
+                        background: selected ? o.color : "transparent",
+                        color: selected
+                          ? "var(--text-primary)"
+                          : "var(--text-secondary)",
+                        outline:
+                          fallbackFocusIdx === i
+                            ? `2px solid ${o.color}`
+                            : "none",
+                        outlineOffset: 1,
+                        transition:
+                          "background .14s cubic-bezier(.2,0,0,1),color .14s cubic-bezier(.2,0,0,1)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          background: selected
+                            ? "rgba(255,255,255,.98)"
+                            : o.color,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          lineHeight: 1.15,
+                          fontFamily: "-apple-system,system-ui,sans-serif",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {o.label}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-      )}
-      {(sliding || dismissing) && (
-        <Strip
-          stripRef={stripRef}
-          anchor={stripState?.anchorRect ?? anchorRect.current}
-          options={options}
-          activeIndex={stripState?.activeIndex ?? activeIdx.current}
-          currentIndex={stripState?.currentIndex ?? currentIndex}
-          iw={itemWidth}
-          dismissing={dismissing}
-        />
-      )}
-      {fallbackOpen && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 9998 }}
-          onClick={e => {
-            e.stopPropagation();
-            closeFallback();
-          }}
-          aria-hidden="true"
-        />
-      )}
+            )}
+            {(sliding || dismissing) && (
+              <Strip
+                stripRef={stripRef}
+                anchor={stripState?.anchorRect ?? anchorRect.current}
+                options={options}
+                activeIndex={stripState?.activeIndex ?? activeIdx.current}
+                currentIndex={stripState?.currentIndex ?? currentIndex}
+                iw={itemWidth}
+                dismissing={dismissing}
+              />
+            )}
+            {fallbackOpen && (
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+                onClick={e => {
+                  e.stopPropagation();
+                  closeFallback();
+                }}
+                aria-hidden="true"
+              />
+            )}
+          </div>,
+          document.body
+        )}
     </>
   );
 }
