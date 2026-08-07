@@ -94,6 +94,22 @@ the mode="wait" mount of the input (54ms margin!) — it now rAF-polls
 for the mount, then applies the same most-of-final-width delay. Suite
 63/63.
 
+**UtilityModal luster pass** (2026-08-07, Rishi's mobile feedback —
+"something is happening but not really" on open, dismiss "feels like a
+flash"): the demo surface was `--bg-canvas` on `--bg-canvas`, so the
+circle revealed a sheet identical to the page it covered. Fixes, in
+component: (1) new `--surface-modal` token (Aurora #fdfcff / Ink
+#251f31, theme.css) painted by the modal itself under children —
+full-bleed children like Scan's camera simply cover it; the demo
+stage's surface went transparent. (2) A drop-shadow rim on the disc via
+a new `.utility-modal__halo` wrapper — filter must sit on an ANCESTOR
+of the clipped element (filter applies before clip-path on the same
+element, which clips the shadow away). (3) Close choreography: content
+no longer exit-fades (it stays painted and the circle clips it away —
+the early fade left an empty disc), contraction is 0.85× grow (was
+0.7×), and the scrim lifts only after the circle lands (exit delay
+0.75×shrink). Registry copy + prop notes updated. Suite 63/63.
+
 ## Previous session (2026-08-05) — recap
 
 **NavigationBar is DONE** (Rishi's call). Everything below landed,

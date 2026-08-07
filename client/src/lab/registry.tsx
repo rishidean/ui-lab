@@ -314,10 +314,10 @@ const [origin, setOrigin] = useState<ModalOrigin | null>(null);
 </AnimatePresence>
 
 /*
- * The modal is chrome-only (scrim + circle clip) — children supply the
- * surface. In the NavigationBar demo, Scan's permission / denied /
- * active states are exactly such children. Styling reads the token
- * contract in theme/theme.css.
+ * The modal supplies scrim, circle clip, and a --surface-modal sheet
+ * (theme/theme.css) under your content — children supply the surface
+ * and may cover the sheet entirely. In the NavigationBar demo, Scan's
+ * permission / denied / active states are exactly such children.
  */`;
 
 export const labComponents: LabComponent[] = [
@@ -665,7 +665,7 @@ export const labComponents: LabComponent[] = [
     tagline:
       "A full-screen takeover that expands as a circle from the control that owns it.",
     description:
-      "A modal takeover for focused tasks that temporarily replace the page — a camera scanner, a full-screen editor. It expands as a circle from its trigger's center point and contracts back to it on close, so the surface reads as the control itself unfolding. Chrome-only by design: scrim, circle clip, Escape, and dismissal are handled for you; your children supply the full-screen content. The Navigation Bar's Scan demo is a consumer.",
+      "A modal takeover for focused tasks that temporarily replace the page — a camera scanner, a full-screen editor. It expands as a circle from its trigger's center point and contracts back to it on close, so the surface reads as the control itself unfolding. Scrim, circle clip, a --surface-modal sheet, Escape, and dismissal are handled for you; your children supply the full-screen content and may paint over the sheet entirely. The Navigation Bar's Scan demo is a consumer.",
     tags: ["overlay", "mobile", "motion"],
     status: "stable",
     accent: "linear-gradient(135deg, #f0abfc 0%, #c4b5fd 50%, #93c5fd 100%)",
@@ -710,7 +710,7 @@ export const labComponents: LabComponent[] = [
           name: "growDuration",
           type: "number",
           def: "0.42",
-          note: "Circle-grow seconds; the contraction runs at 0.7×.",
+          note: "Circle-grow seconds; the contraction runs at 0.85×.",
         },
         {
           name: "reducedMotion",

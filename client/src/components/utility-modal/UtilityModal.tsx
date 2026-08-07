@@ -14,9 +14,11 @@
  * restore the origin control (fade it back in, return focus).
  *
  * Styling reads the token contract in theme/theme.css — copy that file
- * with this component. The modal itself is chrome-only (scrim + circle
- * clip); your children supply the full-screen surface and its close
- * control.
+ * with this component. The modal supplies the scrim, the circle clip,
+ * and a `--surface-modal` sheet under your content, so the takeover
+ * reads against the page even before children paint anything; your
+ * children supply the full-screen surface and its close control (and
+ * may paint over the sheet entirely, as a camera view would).
  */
 import React, { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "motion/react";
@@ -37,7 +39,7 @@ export type UtilityModalProps = {
    *  run the exit choreography. Give your content its own close control
    *  too — the scrim is fully covered once the circle lands. */
   onClose: () => void;
-  /** Circle-grow duration in seconds; the contraction runs at 0.7×. */
+  /** Circle-grow duration in seconds; the contraction runs at 0.85×. */
   growDuration?: number;
   /** Override only; defaults to the system preference. */
   reducedMotion?: boolean;
@@ -68,7 +70,9 @@ export const UtilityModal: React.FC<UtilityModalProps> = ({
   const reduced = reducedMotion ?? !!systemReduced;
 
   const grow = growDuration;
-  const shrink = grow * 0.7;
+  // Near-symmetric contraction: a fast (0.7×) shrink plus an instant
+  // scrim lift read as a flash on phones, not a close choreography.
+  const shrink = grow * 0.85;
 
   // Radius that covers the whole viewport from the origin point.
   const vw = typeof window !== "undefined" ? window.innerWidth : 400;
@@ -129,7 +133,17 @@ export const UtilityModal: React.FC<UtilityModalProps> = ({
         className="utility-modal__scrim"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        /* The scrim keeps dimming the page while the circle contracts,
+           and lifts only once the surface has landed back on the origin
+           — lifting it with the contraction reads as a hard cut. */
+        exit={{
+          opacity: 0,
+          transition: {
+            duration: reduced ? 0.01 : 0.2,
+            ease: EASE,
+            delay: reduced ? 0 : shrink * 0.75,
+          },
+        }}
         transition={{
           duration: reduced ? 0.01 : 0.24,
           ease: EASE,
@@ -137,40 +151,49 @@ export const UtilityModal: React.FC<UtilityModalProps> = ({
         }}
         onClick={onClose}
       />
-      <motion.div
-        ref={modalRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-label={ariaLabel}
-        className={cn("utility-modal", className)}
-        {...clipProps}
-        exit={{
-          ...clipProps.exit,
-          transition: {
-            duration: reduced ? 0.01 : shrink,
-            ease: EASE_IN,
-          },
-        }}
-      >
-        {/* Destination content is visible from the FIRST frame — the
-            button-sized circle shows a porthole of the surface, and the
-            growth stays legible the whole way. (Fading content in late
-            makes most of the reveal invisible.) */}
+      {/* The halo carries the disc's drop-shadow: filters are applied
+          BEFORE clip-path on the same element, so a shadow on the
+          clipped div itself would be clipped away — it must live on a
+          wrapper. (The wrapper is full-viewport, so the containing
+          block it creates for the fixed child changes nothing.) */}
+      <div className="utility-modal__halo">
         <motion.div
-          className="utility-modal__content"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{
-            duration: reduced ? 0.01 : 0.12,
-            ease: EASE,
-            delay: reduced ? 0 : REVEAL_DELAY,
+          ref={modalRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-label={ariaLabel}
+          className={cn("utility-modal", className)}
+          {...clipProps}
+          exit={{
+            ...clipProps.exit,
+            transition: {
+              duration: reduced ? 0.01 : shrink,
+              ease: EASE_IN,
+            },
           }}
         >
-          {children}
+          {/* Destination content is visible from the FIRST frame — the
+              button-sized circle shows a porthole of the surface, and the
+              growth stays legible the whole way. (Fading content in late
+              makes most of the reveal invisible.) Symmetrically, content
+              carries NO exit fade: it stays painted to the last frame and
+              the contracting circle clips it away — an early fade leaves
+              an empty disc shrinking against the page. */}
+          <motion.div
+            className="utility-modal__content"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{
+              duration: reduced ? 0.01 : 0.12,
+              ease: EASE,
+              delay: reduced ? 0 : REVEAL_DELAY,
+            }}
+          >
+            {children}
+          </motion.div>
         </motion.div>
-      </motion.div>
+      </div>
     </>
   );
 };

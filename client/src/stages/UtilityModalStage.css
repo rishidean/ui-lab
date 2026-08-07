@@ -71,11 +71,12 @@
 }
 
 /* Full-screen destination surface — skeleton content only; the demo is
-   the reveal, not a feature. */
+   the reveal, not a feature. Transparent: the UtilityModal's own
+   --surface-modal sheet is the background, so the circle reads against
+   the canvas it covers. */
 .modal-demo__surface {
   position: absolute;
   inset: 0;
-  background: var(--bg-canvas, #f6f4fb);
   padding: 4.5rem 1.5rem 2rem;
   display: flex;
   flex-direction: column;
