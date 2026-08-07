@@ -28,6 +28,7 @@ import {
   PLANNED_COUNT,
   type LabComponent,
   type PresentationBeat,
+  type PropRow,
 } from "@/lab/registry";
 import { useRecordingMode } from "@/lab/recording";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -95,6 +96,50 @@ function CopyChip({ text }: { text: string }) {
   );
 }
 
+/** Code tab body — the component source and its usage snippet. */
+function CodePanels({ component }: { component: LabComponent }) {
+  return (
+    <div className="lab-code-stack">
+      <div className="lab-code">
+        <div className="lab-code__head">
+          <span>{component.sourceFile}</span>
+          <CopyChip text={component.source} />
+        </div>
+        <pre className="lab-code__pre">{component.source}</pre>
+      </div>
+      <div className="lab-code">
+        <div className="lab-code__head">
+          <span>usage</span>
+          <CopyChip text={component.usage} />
+        </div>
+        <pre className="lab-code__pre">{component.usage}</pre>
+      </div>
+    </div>
+  );
+}
+
+/** Props tab body. */
+function PropsTable({ rows }: { rows: PropRow[] }) {
+  return (
+    <div className="lab-props">
+      <div className="lab-props__head" aria-hidden="true">
+        <span>prop</span>
+        <span>type</span>
+        <span>default</span>
+        <span>notes</span>
+      </div>
+      {rows.map(p => (
+        <div key={p.name} className="lab-props__row">
+          <span className="lab-props__name">{p.name}</span>
+          <span className="lab-props__type">{p.type}</span>
+          <span className="lab-props__def">{p.def}</span>
+          <span className="lab-props__note">{p.note}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Showcase({ component }: { component: LabComponent }) {
   const { theme, toggleTheme } = useTheme();
   const chromeHidden = useRecordingMode();
@@ -159,16 +204,105 @@ export function Showcase({ component }: { component: LabComponent }) {
 
   const { Stage } = component;
 
-  // Bare stage: phones, iframe embeds, and recording mode (H).
-  if (embedded || chromeHidden || !isDesktop) {
+  // Truly bare stage: iframe embeds and recording mode (H).
+  if (embedded || chromeHidden) {
     return (
       <div className="lab-bare">
         <Stage />
-        {!embedded && !chromeHidden && (
-          <Link href="/" className="lab-bare__back">
-            ← index
+      </div>
+    );
+  }
+
+  // Phone / portrait tablet: compact chrome — component index strip and
+  // Demo/Code/Props tabs — around the full-viewport stage. (No
+  // Desktop/Mobile view toggle: you're already on the device.)
+  if (!isDesktop) {
+    return (
+      <div
+        className="lab lab-mobile"
+        style={PALETTES[theme] as React.CSSProperties}
+      >
+        <header className="lab-mobile__header">
+          <Link href="/" className="lab-header__brand">
+            <span aria-hidden="true" className="lab-logo" />
+            <span className="lab-header__title">rishi's ui lab</span>
           </Link>
-        )}
+          {toggleTheme && (
+            <button
+              type="button"
+              className="lab-btn lab-header__theme"
+              onClick={toggleTheme}
+              aria-label={
+                theme === "dark"
+                  ? "Switch to light theme"
+                  : "Switch to dark theme"
+              }
+            >
+              {theme === "dark" ? "☾ dark" : "☀ light"}
+            </button>
+          )}
+        </header>
+
+        <nav className="lab-mobile__comps" aria-label="Components">
+          {labComponents.map((c, i) => {
+            const isCurrent = c.slug === component.slug;
+            return (
+              <Link
+                key={c.slug}
+                href={`/${c.slug}`}
+                className={`lab-mobile__comp ${
+                  isCurrent ? "lab-mobile__comp--current" : ""
+                }`}
+                aria-current={isCurrent ? "page" : undefined}
+              >
+                <span className="lab-mobile__comp-num">{pad2(i + 1)}</span>
+                {c.name}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div
+          className="lab-mobile__tabs"
+          role="tablist"
+          aria-label={`${component.name} views`}
+        >
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              className={`lab-btn lab-tab ${
+                tab === t.id ? "lab-tab--active" : ""
+              }`}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="lab-mobile__content">
+          {/* Stage stays mounted across tab switches. */}
+          <div
+            className={`lab-mobile__stage ${
+              tab === "demo" ? "" : "lab-mobile__stage--hidden"
+            }`}
+          >
+            <Stage />
+          </div>
+          {tab === "code" && (
+            <div className="lab-mobile__scroll">
+              <CodePanels component={component} />
+            </div>
+          )}
+          {tab === "props" && (
+            <div className="lab-mobile__scroll">
+              <PropsTable rows={component.showcase.propRows} />
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -350,43 +484,9 @@ export function Showcase({ component }: { component: LabComponent }) {
                     )}
                   </div>
 
-                  {tab === "code" && (
-                    <div className="lab-code-stack">
-                      <div className="lab-code">
-                        <div className="lab-code__head">
-                          <span>{component.sourceFile}</span>
-                          <CopyChip text={component.source} />
-                        </div>
-                        <pre className="lab-code__pre">{component.source}</pre>
-                      </div>
-                      <div className="lab-code">
-                        <div className="lab-code__head">
-                          <span>usage</span>
-                          <CopyChip text={component.usage} />
-                        </div>
-                        <pre className="lab-code__pre">{component.usage}</pre>
-                      </div>
-                    </div>
-                  )}
+                  {tab === "code" && <CodePanels component={component} />}
 
-                  {tab === "props" && (
-                    <div className="lab-props">
-                      <div className="lab-props__head" aria-hidden="true">
-                        <span>prop</span>
-                        <span>type</span>
-                        <span>default</span>
-                        <span>notes</span>
-                      </div>
-                      {meta.propRows.map(p => (
-                        <div key={p.name} className="lab-props__row">
-                          <span className="lab-props__name">{p.name}</span>
-                          <span className="lab-props__type">{p.type}</span>
-                          <span className="lab-props__def">{p.def}</span>
-                          <span className="lab-props__note">{p.note}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {tab === "props" && <PropsTable rows={meta.propRows} />}
                 </div>
 
                 {tab === "demo" && (

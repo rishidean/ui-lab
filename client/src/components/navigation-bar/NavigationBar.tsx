@@ -460,13 +460,29 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       setIsNavigationMenuOpen(false);
       setIsFilterExpanded(false);
       setSearchQuery("");
-      // Focus only once the field has reached most of its final width, so
-      // the mobile keyboard doesn't jump the viewport mid-morph.
-      const t = setTimeout(
-        () => searchInputRef.current?.focus({ preventScroll: true }),
-        prefersReducedMotion ? 0 : 220 * TEMPO
-      );
-      return () => clearTimeout(t);
+      // The input mounts only after the actions row's exit finishes
+      // (AnimatePresence mode="wait"), so a fixed timer from the open can
+      // fire before the ref exists and silently no-op. Poll for the mount,
+      // THEN wait until the field has reached most of its final width —
+      // focusing earlier jumps the viewport mid-morph on mobile keyboards.
+      let raf = 0;
+      let timer: number | undefined;
+      let tries = 0;
+      const arm = () => {
+        if (searchInputRef.current) {
+          timer = window.setTimeout(
+            () => searchInputRef.current?.focus({ preventScroll: true }),
+            prefersReducedMotion ? 0 : 220 * TEMPO
+          );
+        } else if (tries++ < 120) {
+          raf = requestAnimationFrame(arm);
+        }
+      };
+      arm();
+      return () => {
+        cancelAnimationFrame(raf);
+        if (timer !== undefined) window.clearTimeout(timer);
+      };
     }
   }, [isSearchOpen, prefersReducedMotion]);
 
@@ -1771,6 +1787,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                        `custom`, so it sees the CURRENT exit reason. */
                     custom={isFilterExpanded && hasFilterAction}
                     variants={{
+                      /* Both branches pin an explicit transition: a bare
+                         `{ opacity: 0 }` inherits the `transition` PROP as
+                         captured at the row's last render — if that render
+                         happened mid menu-close, the search-open exit
+                         silently carries menuClosing's 0.39s delay. */
                       exit: (toFilter: boolean) =>
                         toFilter
                           ? {
@@ -1781,7 +1802,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                                 delay: del(FILTER_DELAYS.labelFade),
                               },
                             }
-                          : { opacity: 0 },
+                          : {
+                              opacity: 0,
+                              transition: {
+                                duration: dur(0.14),
+                                ease: EASE_IN,
+                              },
+                            },
                     }}
                     exit="exit"
                     transition={centerIconsTransition}

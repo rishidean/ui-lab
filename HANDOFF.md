@@ -76,6 +76,24 @@ viewport clamp (flips above the chip when there's no room below).
 Verified on phone bare stage (tap + long-press strip) and the showcase
 demo card; suite 63/63. See the new Gotcha at the bottom.
 
+**Sticky headers + mobile component chrome** (2026-08-07, continued):
+site headers are sticky-glass (`overflow: clip` on the showcase card —
+NOT hidden, which would make it the sticky containing block;
+color-mix + backdrop-blur on both headers). Component pages <1024px get
+compact chrome instead of the bare stage: mini header, horizontally
+scrolling component-chip strip, Demo/Code/Props tabs (stacked props
+cards, no Desktop/Mobile toggle on-device); `?embed=1`/recording stay
+truly bare, the "← index" chip is gone. This surfaced TWO latent
+NavigationBar bugs, both fixed in-component: (1) the actions row's
+search-open exit was a bare `{ opacity: 0 }`, inheriting the
+`transition` PROP captured at its last render — mid menu-close that
+carries CLOSE_DELAYS.actionsFadeIn's 0.39s delay, slowing search-open
+~430ms (exit now pins explicit transitions in both variant branches);
+(2) the search-input focus ran on a fixed 286ms timer from open, racing
+the mode="wait" mount of the input (54ms margin!) — it now rAF-polls
+for the mount, then applies the same most-of-final-width delay. Suite
+63/63.
+
 ## Previous session (2026-08-05) — recap
 
 **NavigationBar is DONE** (Rishi's call). Everything below landed,
@@ -336,6 +354,15 @@ the full list.)
   actions row's label-hold). Corollary: never trust a single mount-time
   measurement of geometry that animates — the filter highlight tracks
   its option with a ResizeObserver until layout settles.
+- Same capture rule applies to the `transition` PROP: an exit variant
+  without its own transition (`exit: { opacity: 0 }`) inherits the
+  component's `transition` as of the LAST render — if that prop is
+  state-dependent (menuClosing/navCollapsing branches), the exit can
+  silently carry a stale multi-hundred-ms delay. Pin an explicit
+  transition inside every exit variant branch. Downstream hazard: under
+  `mode="wait"` the NEXT child's mount waits for that exit, so anything
+  scheduled on a fixed timer from the state flip (the search input's
+  focus) races it — poll for the mount instead.
 
 - Never combine framer's `layout`/`layoutId` with manual scaleX/origin
   animation on these surfaces (FLIP fights, origin hijacking). Measure and
