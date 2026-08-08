@@ -4,7 +4,59 @@ Working doc for continuing the lab's component work in a fresh session.
 Repo: `github.com/rishidean/ui-lab` (push to `main` auto-deploys on
 Railway via the Dockerfile). Owner: Rishi (rishidean).
 
-## Latest session (2026-08-05) — recap
+## Latest session (2026-08-08) — recap
+
+**NavigationBar assistant mode shipped** (Rishi's call — spec in
+`docs/superpowers/specs/2026-08-08-assistant-in-bar-design.md`). The AI
+utility on Home no longer opens a bottom sheet; pressing it morphs the
+bar itself into a chat input using the exact Search grammar, then
+stretches upward into a conversation card as messages accumulate.
+Everything below landed, verified, and is pushed/deployed:
+
+1. **Open + stretch choreography** (`0670434`, `7e0793d`, `d916eb2`,
+   `476ee96`): the assistant opens identically to Search (sparkle glyph,
+   "Ask anything…" placeholder, same focus-after-widen timing); on first
+   send the bar runs a real height animation on the center pill — never
+   `scaleY`, so text can't distort — growing from 48px toward
+   fit-content, capped at 62% of viewport height (the old Assistant
+   sheet's stop, now a hard ceiling on the chat card instead of a drag
+   stop). Past the cap the transcript scrolls internally, pinned to the
+   newest message, and re-clamps on window resize. Close runs three
+   serial beats (transcript fade → card contract → Search-style wipe);
+   reopen replays two beats (plain input lands, then the card
+   re-stretches to the preserved transcript a beat later).
+2. **Demo swap + BottomSheet deletion** (`bbd17d8`): the stage's AI
+   branch flips `isAssistantOpen` instead of calling
+   `openUtilitySheet("assistant")`; the assistant's ghost-bubble
+   `BottomSheet` block and its now-unused CSS are deleted. The stage
+   owns `assistantMessages` across close/reopen and fakes replies with a
+   canned delay (1.4s normal / 400ms reduced motion) so pending → reply
+   → stretch reads as three distinct beats.
+3. **Accessibility pass** (`07948d2`): new `a11y-assistant.mjs` covers
+   focus landing on open, `role="log"`/`aria-live="polite"` on the
+   transcript, the pending bubble's `aria-hidden`, Escape-to-close with
+   focus returned to the AI button, and transcript persistence on
+   reopen. The stale AI-sheet trigger assertions in `a11y-triggers.mjs`
+   are retired. Full suite: 9 files, 72 assertions, 0 failures.
+4. **Docs + programmatic verification** (this session):
+   `NavigationBarOverview.md` gained an Assistant motion-design section
+   (mirroring Search) and dropped every "AI Assistant (bottom sheet)"
+   reference; the Utility Action Sheet section is Export-only now, and
+   the 62% figure is called out as the chat card's height cap rather
+   than a `BottomSheet` stop. `registry.tsx`'s sample code reflects
+   `isAssistantOpen` (AI is bar-internal, not a dialog — `opensDialog`
+   examples now cite Scan/Export). A throwaway Playwright script
+   (`.superpowers/sdd/2026-08-08-assistant-in-bar/verify-task5.mjs`, not
+   committed) verified against a production build on `:4999`: monotonic
+   height growth capped at 62vh across 3+ exchanges, internal scroll
+   pinned to bottom past the cap, re-stretch on reopen without a new
+   submit, tab-change-while-open closing the assistant with transcript
+   restore on return to Home (via a native DOM click on the
+   NavigationButton, since it's intentionally inert during input mode —
+   a real user must Escape first), and reduced-motion open → submit →
+   reply. 11/11 checks passed; `pnpm check` clean.
+
+## Previous session (2026-08-05) — recap
 
 **NavigationBar is DONE** (Rishi's call). Everything below landed,
 verified, and is pushed/deployed:
@@ -48,44 +100,6 @@ verified, and is pushed/deployed:
    covers ArrowUp + checked-row assertions, a11y-triggers asserts the
    Search gate, all `menuitem` selectors → `menuitemradio`. Suite is now
    63 assertions, 0 failures.
-
-## Previous session (2026-08-04) — recap
-
-Everything below landed, frame-verified, and is pushed/deployed:
-
-1. Filter choreography (serial beats per the Overview spec).
-2. BottomSheet extracted as a public registry entry (`/bottom-sheet`);
-   NavigationBar's three sheets consume it.
-3. Consumer refactor: canonical naming (breaking prop renames),
-   attribution headers, theme.css token contract with Aurora/Ink presets
-   - shell toggle, isUtilityOpen pruned, `Action.isFilter`, exported
-     clear-out constants. Also breaking: `utilityButtonRef` narrowed from
-     `React.Ref` to `React.RefObject<HTMLButtonElement | null>` — callback
-     refs are no longer accepted.
-4. UtilityModal extracted (`/utility-modal`); all demo sheets are
-   multi-level with shimmer skeletons; usage docs explain surface
-   routing + file dependencies.
-5. Rishi's sweep fixes: hover/pressed states on NavigationButton /
-   UtilityButton / Done / expand; legible modal reveal (content visible
-   from frame one); NavigationButton absorb pulse; filter-highlight
-   second-open bug (stale AnimatePresence exit props + mid-widen
-   measurement — see Gotchas).
-6. **Accessibility pass:** new `client/src/lib/a11y.ts` — `useInertOutside`
-   (native `inert` containment for BottomSheet + UtilityModal, dialogs take
-   initial focus, scrims are pointer-only) and `focusWhenClear` (bounded
-   rAF-poll focus return that waits for `inert` to lift; used at every
-   `onExitComplete` focus-return site — see Gotchas). The menu and filter
-   are plain popovers, not inert-guarded, so their focus return is a
-   direct `.focus({ preventScroll: true })` (the filter chip's return in
-   particular — no inert involved there, so no need to wait for it to
-   lift). NavigationBar's tab menu is a proper APG menu (ArrowUp/Down,
-   Home/End, Enter/Space, Escape); the filter is a radiogroup (roving
-   arrow keys + Enter/Space). `UtilityAction` gained `opensDialog?:
-   boolean`, driving `aria-haspopup="dialog"` on the UtilityButton.
-   `:focus-visible` rings added throughout the bar and both overlay
-   components; pointer/touch interaction stays ring-free. Full regression
-   sweep (a11y test suite + choreography frame captures) confirmed no
-   change to pointer-flow visuals or geometry.
 
 Design specs live in `docs/superpowers/specs/`, plans in
 `docs/superpowers/plans/`.
@@ -200,10 +214,13 @@ the two morph components in the stage (raw seconds, no TEMPO).
 ## NEXT UP (the reason for this handoff)
 
 The 2026-08-05 session closed out the old item 1 entirely (sweep fixes +
-all four deferred a11y minors — see the latest-session recap) and the
-NavigationBar-scoped parts of items 2–3 (Overview/spec sync, registry
-copy/usage/tryIt corrections). **NavigationBar is done.** What remains
-is site-wide, not component work:
+all four deferred a11y minors) and the NavigationBar-scoped parts of
+items 2–3 (Overview/spec sync, registry copy/usage/tryIt corrections).
+The 2026-08-08 session then shipped the assistant-mode rework on top
+(see the latest-session recap above) — component work on NavigationBar
+that wasn't foreseen in the 08-05 handoff, but still component-scoped.
+**NavigationBar is done.** What remains is site-wide, not component
+work:
 
 1. **Site copy pass** — About/landing description plus a general copy
    pass (subsumes the old "Site description" roadmap item).
@@ -220,9 +237,12 @@ public registry entry (`/bottom-sheet`, spec in
 `docs/superpowers/specs/2026-08-03-bottom-sheet-design.md`) that owns
 scrim/Escape/morph beats/drag; two stops only, configurable initial +
 full (94%, floating card), chevron header control + drag snapping.
-`ActionSheetMorph`/`UtilitySheetMorph` are deleted — the workflow sheet,
-Export (now expandable), and Assistant mount `<BottomSheet>` inside the
-stage's AnimatePresence; the bar's clear-out props are unchanged. Design
+`ActionSheetMorph`/`UtilitySheetMorph` are deleted — the workflow sheet
+and Export (now expandable) mount `<BottomSheet>` inside the stage's
+AnimatePresence; the bar's clear-out props are unchanged. (The Assistant
+mounted `<BottomSheet>` too at the time this paragraph was written; the
+2026-08-08 session moved it off the sheet entirely into an in-bar chat
+morph — see the latest-session recap above.) Design
 rule from Rishi: lab components are drop-in-first — prop-driven, motion
 internals stay in-file constants, configure only app-critical surfaces.
 And the **Accessibility pass**: inert containment via `@/lib/a11y`

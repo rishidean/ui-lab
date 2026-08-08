@@ -89,10 +89,11 @@ const filterOptions = [
 // One UtilityAction per tab drives the UtilityButton (AI on Home,
 // Scan on Spend, Search on Trade, Export on Transactions).
 // opensDialog marks actions whose surface is a dialog (sheet/modal):
-// it drives aria-haspopup="dialog" on the UtilityButton. Search
-// morphs the bar itself — not a dialog, so it stays unmarked.
+// it drives aria-haspopup="dialog" on the UtilityButton. AI and Search
+// both morph the bar itself in place — not dialogs, so they stay
+// unmarked; Scan (modal) and Export (sheet) get opensDialog: true.
 const utilityActions = {
-  home: { Icon: Sparkles, label: "AI", opensDialog: true },
+  home: { Icon: Sparkles, label: "AI" },
   spend: { Icon: ScanLine, label: "Scan", opensDialog: true },
   trade: { Icon: Search, label: "Search" },
   transactions: { Icon: Download, label: "Export", opensDialog: true },
@@ -113,6 +114,15 @@ const utilityActions = {
   onSearchChange={setQuery}
   onSearchSubmit={runSearch}         // Enter commits, then the field closes
   searchPlaceholder="Search markets…"
+  isAssistantOpen={isAssistantOpen}  // AI on Home: bar morphs into a chat
+                                      // input (search grammar), then
+                                      // stretches upward as messages land
+  onAssistantClose={() => setIsAssistantOpen(false)}
+  onAssistantSubmit={sendToAssistant} // appends the message + reply; you
+                                       // own the transcript, so it persists
+                                       // across close/reopen
+  assistantMessages={assistantMessages}
+  assistantPlaceholder="Ask anything…"
   utilityButtonRef={utilityButtonRef} // shared origin: measure its bounds
                                       // and grow utility surfaces out of it
   actionBarRef={actionBarRef}         // shared origin for workflow sheets
@@ -158,6 +168,10 @@ const utilityActions = {
  * Utility surfaces — the bar renders only the UtilityButton; WHICH
  * surface opens is your routing decision inside onUtilityClick:
  *
+ *   AI     → set isAssistantOpen (bar-internal mode, like Search — no
+ *            clear-out, no dialog. The bar morphs into a chat input,
+ *            then stretches upward into a conversation card once you
+ *            append messages via onAssistantSubmit).
  *   Search → set isSearchOpen (the bar itself morphs into the field).
  *   Sheets → flip isUtilitySheetOpen, wait UTILITY_CLEAROUT_MS, then
  *            mount a BottomSheet (@/components/bottom-sheet) from the

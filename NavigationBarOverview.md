@@ -57,7 +57,8 @@ The center region changes based on the current view.
 Contains one high-value, contextual utility per tab, such as:
 
 - Search (the bar itself morphs into the field)
-- AI assistant (bottom sheet)
+- AI assistant (the bar itself morphs into a chat input, then stretches
+  upward into a conversation card)
 - Export (bottom sheet)
 - Scan (modal takeover)
 
@@ -218,10 +219,44 @@ When the right utility is Search:
 - Clearing or cancelling Search restores the navigation button and
   contextual action bar in reverse order.
 
+### Assistant
+
+When the right utility is AI, pressing it runs the identical Search
+morph — same choreography, timing bands, and focus behavior — with a
+sparkle glyph and an "Ask anything…" placeholder standing in for the
+magnifier. The assistant opens as a plain input, indistinguishable in
+shape from Search; the bar only starts to look like a chat surface once
+there's something to show.
+
+- On first send, the input clears and the bar itself runs a real height
+  animation — never `scaleY`, so text never distorts — growing from 48px
+  toward fit-content. Growth reads as upward because the bar is
+  bottom-anchored.
+- The transcript renders above the input row, inside the same glass
+  surface: the user's message right-aligned, a shimmer bubble on the
+  left for the pending reply, which resolves to text in place.
+- Each exchange re-measures the transcript and grows the card further,
+  capped at 62% of viewport height — the old Assistant sheet's stop,
+  kept on as the chat card's ceiling. Past the cap the transcript
+  scrolls internally, pinned to the newest message; the cap re-clamps on
+  window resize.
+- Closing runs three serial beats: the transcript fades, the card
+  contracts back down onto the input row, then the standard Search-close
+  wipe runs (row wipes out, circles return).
+- Escape closes from anywhere inside the pill — the input or a scrolled
+  transcript — a wider net than Search's input-only handler.
+- The conversation is preserved for the session: closing never discards
+  messages. Reopening replays two beats instead of one — the plain input
+  lands first, then, a beat later, the card stretches to fit the
+  restored transcript.
+
 ### Utility Action Sheet
 
 Some utility actions are performed in a Bottom Sheet — anything that
-benefits from staying attached to the current page (Export, AI Assistant).
+benefits from staying attached to the current page. Export is the
+remaining example; the Assistant used to share this surface but now
+morphs the bar directly (see Assistant, above) — a sibling of Search
+rather than a sheet.
 
 - The Utility button shows its pressed state.
 - The Navigation button fades out.
@@ -240,12 +275,13 @@ Closing or completing the workflow invokes the sequence in reverse: the
 sheet lands back on the button as the button fades in beneath it, the bar
 regrows out of the right side, and the navigation circle returns last.
 
-Utility sheets are `BottomSheet` instances too (Export at auto height,
-the Assistant at 62%), so both carry the component's two-stop model: a
-chevron header control and the grab-bar drag extend them to full screen
-(94%, still a floating card) and back — no mid heights. Drag arms only
-after the entrance completes; dragging down past the threshold at the
-initial height dismisses.
+Export is a `BottomSheet` instance too (auto height), so it carries the
+component's two-stop model: a chevron header control and the grab-bar
+drag extend it to full screen (94%, still a floating card) and back — no
+mid heights. Drag arms only after the entrance completes; dragging down
+past the threshold at the initial height dismisses. (This two-stop drag
+is specific to `BottomSheet`; the Assistant's card doesn't drag — its
+own 62% figure is a hard height cap, not a stop, per Assistant above.)
 
 ### Utility Modal
 
@@ -280,7 +316,8 @@ denied/unavailable, and the active viewfinder.
 - Workflow bottom sheet open
 - Filter menu open
 - Search active
-- Utility bottom sheet open (Export, Assistant)
+- Assistant active (input, then stretched into a conversation card)
+- Utility bottom sheet open (Export)
 - Utility modal open (Scan)
 
 ## Visual Rules
