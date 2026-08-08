@@ -1015,6 +1015,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     activeTab,
     actionsForTab.length,
     isSearchOpen,
+    isAssistantOpen,
     isFilterExpanded,
   ]);
   const filterRowFade = useScrollEdgeFade([
