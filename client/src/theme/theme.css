@@ -255,6 +255,61 @@
   border-radius: 9999px;
 }
 
+/* ── NavigationBar assistant mode ─────────────────────────────────────
+   Transcript bubbles inside the stretched pill. The pending shimmer is
+   visual-only (the bubble is aria-hidden until its text lands). */
+.nav-assistant-bubble {
+  max-width: 82%;
+  padding: 8px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+.nav-assistant-bubble--assistant {
+  align-self: flex-start;
+  border-bottom-left-radius: 6px;
+  background: color-mix(in oklab, var(--aurora-lilac) 14%, transparent);
+  border: 1px solid var(--border-subtle);
+}
+.nav-assistant-bubble--user {
+  align-self: flex-end;
+  border-bottom-right-radius: 6px;
+  background: var(--select-bg);
+  border: 1px solid var(--select-border);
+  color: var(--select-fg);
+}
+.nav-assistant-shimmer {
+  display: block;
+  width: 72px;
+  height: 14px;
+  border-radius: 7px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--aurora-lilac) 30%, transparent),
+    color-mix(in oklab, var(--aurora-lilac) 10%, transparent),
+    color-mix(in oklab, var(--aurora-lilac) 30%, transparent)
+  );
+  background-size: 200% 100%;
+  animation: nav-assistant-shimmer 1.2s ease-in-out infinite;
+}
+@keyframes nav-assistant-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-assistant-shimmer {
+    animation: none;
+  }
+}
+.dark .nav-assistant-bubble--assistant {
+  background: color-mix(in oklab, var(--aurora-lilac) 20%, transparent);
+}
+
 /* Divider between resting action labels — slightly stronger than a
    hairline so the halves read as separately pressable. */
 .nav-action-divider {

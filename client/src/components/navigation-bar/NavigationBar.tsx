@@ -549,6 +549,88 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     onAssistantSubmit?.(text);
   };
 
+  // ── Assistant stretch ──────────────────────────────────────────────
+  // The pill's height is a real height animation (never scaleY — text
+  // must not distort): input row + measured transcript, capped at 62% of
+  // the viewport, re-clamped on resize. Reopen-with-history runs two
+  // beats: the open morph lands the plain input first, then the card
+  // stretches to fit (assistantSurfaceReady gates the second beat).
+  const ASSISTANT_INPUT_ROW_PX = 48;
+  const ASSISTANT_HEIGHT_CAP = 0.62;
+
+  const [assistantContentH, setAssistantContentH] = useState(0);
+  const [viewportH, setViewportH] = useState(() =>
+    typeof window === "undefined" ? 800 : window.innerHeight
+  );
+  useEffect(() => {
+    const onResize = () => setViewportH(window.innerHeight);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
+  const transcriptObserver = useRef<ResizeObserver | null>(null);
+  const setTranscriptContentRef = useCallback((el: HTMLDivElement | null) => {
+    transcriptObserver.current?.disconnect();
+    if (el && typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(() =>
+        setAssistantContentH(el.offsetHeight)
+      );
+      ro.observe(el);
+      transcriptObserver.current = ro;
+      setAssistantContentH(el.offsetHeight);
+    }
+  }, []);
+  useEffect(() => () => transcriptObserver.current?.disconnect(), []);
+
+  const [assistantSurfaceReady, setAssistantSurfaceReady] = useState(false);
+  useEffect(() => {
+    if (!isAssistantOpen) {
+      setAssistantSurfaceReady(false);
+      return;
+    }
+    // Open morph is 0.24 + 0.06 delay; the stretch waits one extra beat.
+    const t = setTimeout(
+      () => setAssistantSurfaceReady(true),
+      prefersReducedMotion ? 0 : Math.round((0.24 + 0.06 + 0.1) * TEMPO * 1000)
+    );
+    return () => clearTimeout(t);
+  }, [isAssistantOpen, prefersReducedMotion]);
+
+  const hasTranscript = assistantMessages.length > 0;
+  const assistantStretched =
+    isAssistantOpen && assistantSurfaceReady && hasTranscript;
+  // +12 breathing room so the last bubble's shadow isn't clipped.
+  const assistantHeight = assistantStretched
+    ? Math.min(
+        ASSISTANT_INPUT_ROW_PX + assistantContentH + 12,
+        Math.round(viewportH * ASSISTANT_HEIGHT_CAP)
+      )
+    : 48;
+
+  // Ease selection follows the grammar: ease-out growing, ease-in
+  // shrinking. Track the previous target to know the direction.
+  const prevAssistantHeightRef = useRef(48);
+  const assistantGrowing = assistantHeight >= prevAssistantHeightRef.current;
+  useEffect(() => {
+    prevAssistantHeightRef.current = assistantHeight;
+  }, [assistantHeight]);
+
+  // Falling edge for close choreography (transcript fades, card
+  // contracts, THEN the wipe + circles return).
+  const prevAssistantOpenForCloseRef = useRef(isAssistantOpen);
+  useEffect(() => {
+    prevAssistantOpenForCloseRef.current = isAssistantOpen;
+  }, [isAssistantOpen]);
+  const assistantClosing =
+    !isAssistantOpen && prevAssistantOpenForCloseRef.current;
+
+  // Transcript pins to the newest message through growth and reflow.
+  useEffect(() => {
+    const el = transcriptScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [assistantMessages, assistantHeight]);
+
   // A sheet surface is exclusive: it closes the NavigationMenu and the
   // FilterOptionSet, and the bar's own controls lock as soon as the
   // transition begins.
@@ -1153,6 +1235,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     delay: del(UTILITY_SHEET_DELAYS.closeBarGrow),
                   }
                 : { duration: dur(DUR.direct), ease: EASE },
+    // Assistant stretch/contract — ease-out growing (transcript arrives
+    // or grows), ease-in shrinking (message list trims or the mode
+    // closes), matching the grammar used everywhere else in this file.
+    height: {
+      duration: dur(0.3),
+      ease: assistantGrowing ? EASE_OUT : EASE_IN,
+    },
   };
   const centerIconsTransition = navCollapsing
     ? {
@@ -1228,7 +1317,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               ? rightDotOut
               : filterClosing
                 ? rightDotIn(FILTER_DELAYS.closeRightDotIn)
-                : { duration: dur(0.16), ease: EASE },
+                : assistantClosing
+                  ? // Assistant close: the circles return late, after the
+                    // transcript has faded and the card has contracted.
+                    rightDotIn(0.3)
+                  : { duration: dur(0.16), ease: EASE },
     opacity: navCollapsing
       ? rightDotOut
       : navExpanding
@@ -1260,7 +1353,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           ease: EASE_OUT,
                           delay: del(UTILITY_SHEET_DELAYS.closeRightFadeIn),
                         }
-                      : { duration: dur(0.16), ease: EASE },
+                      : assistantClosing
+                        ? rightDotIn(0.3)
+                        : { duration: dur(0.16), ease: EASE },
   };
 
   return (
@@ -1349,7 +1444,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                         ease: EASE_OUT,
                         delay: del(UTILITY_SHEET_DELAYS.closeLeftFadeIn),
                       }
-                    : { duration: dur(0.25), ease: EASE }
+                    : assistantClosing
+                      ? // Assistant close: the circles return late, after
+                        // the transcript has faded and the card has
+                        // contracted.
+                        { duration: dur(0.25), ease: EASE, delay: del(0.3) }
+                      : { duration: dur(0.25), ease: EASE }
             }
           >
             <motion.div
@@ -1594,11 +1694,16 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             <motion.div
               ref={setPillRef}
               className={cn(
-                "relative flex-1 h-12 rounded-full overflow-hidden pointer-events-auto z-10 min-w-0",
+                "relative flex-1 overflow-hidden pointer-events-auto z-10 min-w-0",
                 "glass-nav",
                 "px-2.5 py-[5px]"
               )}
               style={{
+                // rounded-full (9999px) would turn a stretched, tall card
+                // into a lozenge — 24px reads identically at the resting
+                // 48px height and gives proper card corners once the
+                // assistant transcript grows it.
+                borderRadius: 24,
                 pointerEvents:
                   isNavigationMenuOpen ||
                   isCollapsed ||
@@ -1622,6 +1727,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 // frame. The bar absorbs toward whichever control owns the
                 // transition: left for menu/scroll, RIGHT for utilities.
                 originX: isUtilitySheetOpen ? 1 : 0,
+                // The assistant's transcript grows the card in place — a
+                // real height animation, never scaleY (text must not
+                // distort).
+                height: assistantHeight,
               }}
               transition={centerPillTransition}
               onAnimationComplete={definition => {
@@ -1645,7 +1754,26 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     key="assistant"
                     initial={{ clipPath: "inset(0 0 0 100%)" }}
                     animate={{ clipPath: "inset(0 0 0 0%)" }}
-                    exit={{ clipPath: "inset(0 0 0 100%)", opacity: 0 }}
+                    // Delayed wipe: the height contraction (assistantHeight
+                    // → 48) starts immediately on the flag flip and is
+                    // allowed to land first; the clip/opacity wipe follows
+                    // so closing reads transcript-fade → contract → wipe.
+                    exit={{
+                      clipPath: "inset(0 0 0 100%)",
+                      opacity: 0,
+                      transition: {
+                        clipPath: {
+                          duration: dur(0.2),
+                          ease: EASE_IN,
+                          delay: del(0.22),
+                        },
+                        opacity: {
+                          duration: dur(0.2),
+                          ease: EASE_IN,
+                          delay: del(0.22),
+                        },
+                      },
+                    }}
                     transition={{
                       duration: dur(0.24),
                       ease: EASE,
@@ -1658,6 +1786,61 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                       if (e.key === "Escape") onAssistantClose?.();
                     }}
                   >
+                    {hasTranscript && (
+                      <motion.div
+                        ref={transcriptScrollRef}
+                        role="log"
+                        aria-live="polite"
+                        aria-label="Assistant conversation"
+                        tabIndex={-1}
+                        // Fades ahead of the parent's delayed wipe — a
+                        // child exit inside an exiting AnimatePresence
+                        // subtree runs concurrently with it, so the
+                        // transcript is gone before the wipe even starts.
+                        exit={{
+                          opacity: 0,
+                          transition: { duration: dur(0.12), ease: EASE_IN },
+                        }}
+                        className="flex-1 min-h-0 overflow-y-auto px-2 pt-3"
+                        style={{ overscrollBehaviorY: "contain" }}
+                      >
+                        <div
+                          ref={setTranscriptContentRef}
+                          className="flex flex-col gap-2 pb-1"
+                        >
+                          {assistantMessages.map(m => (
+                            <motion.div
+                              key={m.id}
+                              aria-hidden={m.pending || undefined}
+                              initial={{
+                                opacity: 0,
+                                y: prefersReducedMotion ? 0 : 20,
+                              }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{
+                                duration: dur(DUR.direct),
+                                ease: EASE_OUT,
+                              }}
+                              className={cn(
+                                "nav-assistant-bubble",
+                                m.role === "user"
+                                  ? "nav-assistant-bubble--user"
+                                  : "nav-assistant-bubble--assistant"
+                              )}
+                            >
+                              {m.pending ? (
+                                <span
+                                  className="nav-assistant-shimmer"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                m.text
+                              )}
+                            </motion.div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
                     <div className="flex items-center gap-2 w-full h-12 shrink-0 px-2">
                       <Sparkles
                         aria-hidden="true"
