@@ -121,8 +121,17 @@ await page.waitForTimeout(700);
 // ---------------------------------------------------------------------
 // (c) Utility button — ref={utilityButtonRef}; aria-expanded only when the
 // action opensDialog (gated like aria-haspopup).
-// On Home this is the "AI" utility button. Tab to it with real keypresses.
+// On Home the utility button is "AI", which now opens an in-bar mode (like
+// Search) and carries neither attribute — switch to Transactions, where
+// "Export" still opensDialog, to exercise this gated ring.
 // ---------------------------------------------------------------------
+await page.locator('button[aria-haspopup="menu"]').click();
+await page.waitForTimeout(900);
+await page
+  .locator('[role="menuitemradio"]', { hasText: "Transactions" })
+  .click();
+await page.waitForTimeout(1900);
+
 const reachedUtilityButton = await tabUntil(() => {
   const btn = document.querySelector(
     'button[aria-expanded][aria-haspopup="dialog"]'
@@ -147,6 +156,12 @@ await zoomedScreenshot(
   'button[aria-expanded][aria-haspopup="dialog"]',
   "scripts/a11y/shots/ring-utility-button.png"
 );
+
+// Back to Home for the pointer-flow control below (needs the Deposit chip).
+await page.locator('button[aria-haspopup="menu"]').click();
+await page.waitForTimeout(900);
+await page.locator('[role="menuitemradio"]', { hasText: "Home" }).click();
+await page.waitForTimeout(1900);
 
 // ---------------------------------------------------------------------
 // Pointer-flow control: click the Home chip with the mouse. No ring

@@ -31,6 +31,7 @@ screenshots to `scripts/a11y/shots/` (gitignored) for visual reading.
 | `a11y-menu.mjs` | APG menu: roving arrows/Home/End, Enter select, Tab/Escape close + focus return |
 | `a11y-filter.mjs` | Filter radiogroup: roving without selecting, Enter select, chip focus return |
 | `a11y-triggers.mjs` | aria-haspopup/expanded on triggers, role=search, chip + button focus return |
+| `a11y-assistant.mjs` | Assistant mode: input focus on open, role=log/aria-live transcript, pending aria-hidden, Escape + focus return, session persistence |
 | `a11y-focus-rings.mjs` | :focus-visible rings on keyboard, none on pointer (reads screenshots) |
 | `a11y-utility-modal-stage.mjs` | /utility-modal stage: focus return via focusWhenClear |
 | `a11y-bottom-sheet-stage.mjs` | /bottom-sheet stage: focus return via focusWhenClear |

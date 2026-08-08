@@ -7,8 +7,8 @@ await page.waitForTimeout(1500);
 
 const results = [];
 
-// 1. On load (Home): utility button has aria-haspopup="dialog" and
-//    aria-expanded="false".
+// 1. On load (Home): the AI utility opens an in-bar mode (like Search),
+//    so it carries NO aria-haspopup and NO aria-expanded.
 let ai = await page.evaluate(() => {
   const btn = document.querySelector('button[aria-label="AI"]');
   return {
@@ -17,8 +17,8 @@ let ai = await page.evaluate(() => {
   };
 });
 results.push(
-  ["Home utility button aria-haspopup=dialog", ai.haspopup === "dialog", ai],
-  ["Home utility button aria-expanded=false", ai.expanded === "false", ai]
+  ["Home utility button has no aria-haspopup", ai.haspopup === null, ai],
+  ["Home utility button has no aria-expanded", ai.expanded === null, ai]
 );
 
 // 2. Click "Deposit", wait for sheet open; press Escape, wait → focus
