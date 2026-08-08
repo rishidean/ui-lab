@@ -598,8 +598,17 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   }, [isAssistantOpen, prefersReducedMotion]);
 
   const hasTranscript = assistantMessages.length > 0;
+  // Absorb states (scroll-collapse, action sheet, utility sheet) only kill
+  // the pill's transform/paint (scaleX/opacity) — height is real layout,
+  // so without this guard the wrapping row would stay transcript-tall
+  // (and the bar's footprint with it) while the pill sat invisible.
   const assistantStretched =
-    isAssistantOpen && assistantSurfaceReady && hasTranscript;
+    isAssistantOpen &&
+    assistantSurfaceReady &&
+    hasTranscript &&
+    !isCollapsed &&
+    !isUtilitySheetOpen &&
+    !isActionSheetOpen;
   // +12 breathing room so the last bubble's shadow isn't clipped.
   const assistantHeight = assistantStretched
     ? Math.min(
