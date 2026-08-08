@@ -29,7 +29,7 @@ import React, {
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { focusWhenClear } from "@/lib/a11y";
-import { ChevronDown, Search as SearchGlyph, X } from "lucide-react";
+import { ChevronDown, Search as SearchGlyph, Sparkles, X } from "lucide-react";
 
 // Default collapsed-state glyph: a small aurora dot. A brand mark, not a
 // placeholder icon — consumers pass `logo` to supply their own.
@@ -120,6 +120,16 @@ export type UtilityAction = {
 export type FilterOption = {
   id: string;
   label: string;
+};
+
+/** One transcript entry for assistant mode. The consumer owns the array;
+ *  a `pending` entry renders the shimmer bubble and stays aria-hidden
+ *  until its text lands. */
+export type AssistantMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  pending?: boolean;
 };
 
 // ─── Motion system ──────────────────────────────────────────────────────
@@ -310,6 +320,18 @@ export type NavigationBarProps = {
   searchPlaceholder?: string;
   /** Fired on Enter with the current query; the field then closes. */
   onSearchSubmit?: (query: string) => void;
+  /** Assistant mode: the bar morphs into a chat input with the exact
+   *  search grammar, then stretches upward into a conversation card as
+   *  messages accumulate. Controlled by the consumer, like search. */
+  isAssistantOpen?: boolean;
+  onAssistantClose?: () => void;
+  /** Fired with the trimmed draft on Enter/submit; empty drafts are
+   *  swallowed. The consumer appends the message (and its reply). */
+  onAssistantSubmit?: (text: string) => void;
+  /** The conversation. Persistence across close/reopen falls out of the
+   *  consumer owning this array. */
+  assistantMessages?: AssistantMessage[];
+  assistantPlaceholder?: string;
   /** Exposes the UtilityButton element — the shared origin that utility
    *  surfaces grow out of and contract back into. Typed as a RefObject
    *  (not the broader React.Ref) so the search-close and focus-return
@@ -354,6 +376,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   onSearchChange,
   searchPlaceholder = "Search…",
   onSearchSubmit,
+  isAssistantOpen = false,
+  onAssistantClose,
+  onAssistantSubmit,
+  assistantMessages = [],
+  assistantPlaceholder = "Ask anything…",
   utilityButtonRef,
   actionBarRef,
   isActionSheetOpen = false,
@@ -380,6 +407,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const prefersReducedMotion = useReducedMotion();
   const dur = (d: number) => (prefersReducedMotion ? 0 : d * TEMPO);
   const del = (d: number) => (prefersReducedMotion ? 0 : d * TEMPO);
+
+  // Search and assistant are the two bar-internal input modes: both recede
+  // the circles and hand the full row to the pill. Layout conditionals key
+  // off this; mode-specific behavior (focus, submit) stays per-mode.
+  const isBarInputMode = isSearchOpen || isAssistantOpen;
 
   useEffect(() => {
     if (!externalActiveTab) return;
@@ -480,6 +512,42 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       utilityButtonRef?.current?.focus({ preventScroll: true });
     }
   }, [isSearchOpen, utilityButtonRef]);
+
+  const assistantInputRef = useRef<HTMLInputElement | null>(null);
+  const [assistantDraft, setAssistantDraft] = useState("");
+  const [assistantFocusRing, setAssistantFocusRing] = useState(false);
+
+  // Assistant open mirrors search open: exclusive with menu/filter, draft
+  // reset, focus deferred until the field has mostly widened.
+  useEffect(() => {
+    if (isAssistantOpen) {
+      setIsNavigationMenuOpen(false);
+      setIsFilterExpanded(false);
+      setAssistantDraft("");
+      const t = setTimeout(
+        () => assistantInputRef.current?.focus({ preventScroll: true }),
+        prefersReducedMotion ? 0 : 220 * TEMPO
+      );
+      return () => clearTimeout(t);
+    }
+  }, [isAssistantOpen, prefersReducedMotion]);
+
+  // Close returns focus to the utility button, same as search.
+  const prevAssistantOpenRef = useRef(isAssistantOpen);
+  useEffect(() => {
+    const was = prevAssistantOpenRef.current;
+    prevAssistantOpenRef.current = isAssistantOpen;
+    if (was && !isAssistantOpen) {
+      utilityButtonRef?.current?.focus({ preventScroll: true });
+    }
+  }, [isAssistantOpen, utilityButtonRef]);
+
+  const handleAssistantSubmit = () => {
+    const text = assistantDraft.trim();
+    if (!text) return;
+    setAssistantDraft("");
+    onAssistantSubmit?.(text);
+  };
 
   // A sheet surface is exclusive: it closes the NavigationMenu and the
   // FilterOptionSet, and the bar's own controls lock as soon as the
@@ -1246,18 +1314,20 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             className="relative h-14 flex items-center"
             style={{
               pointerEvents:
-                isSearchOpen || isActionSheetOpen || isUtilitySheetOpen
+                isBarInputMode || isActionSheetOpen || isUtilitySheetOpen
                   ? "none"
                   : "auto",
             }}
             animate={{
-              width: isSearchOpen ? 0 : 56,
+              width: isBarInputMode ? 0 : 56,
               // Utility surfaces and the sheet fade phases fade the left
-              // control in place; search collapses it entirely. Filter
-              // expansion leaves it FIXED — the strip only claims the
-              // right button's space, and the page dims instead.
+              // control in place; search/assistant collapse it entirely.
+              // Filter expansion leaves it FIXED — the strip only claims
+              // the right button's space, and the page dims instead.
               opacity:
-                isSearchOpen || isActionSheetOpen || isUtilitySheetOpen ? 0 : 1,
+                isBarInputMode || isActionSheetOpen || isUtilitySheetOpen
+                  ? 0
+                  : 1,
             }}
             transition={
               // Action-sheet fade phase: both circles drop out together,
@@ -1569,7 +1639,78 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 mode="wait"
                 custom={isFilterExpanded && hasFilterAction}
               >
-                {isSearchOpen ? (
+                {isAssistantOpen ? (
+                  <motion.div
+                    key="assistant"
+                    initial={{ clipPath: "inset(0 0 0 100%)" }}
+                    animate={{ clipPath: "inset(0 0 0 0%)" }}
+                    exit={{ clipPath: "inset(0 0 0 100%)", opacity: 0 }}
+                    transition={{
+                      duration: dur(0.24),
+                      ease: EASE,
+                      delay: del(0.06),
+                    }}
+                    className="flex flex-col w-full h-full"
+                    onKeyDown={e => {
+                      // Escape closes from anywhere inside the pill (menu/filter
+                      // pattern) — the transcript is focusable-scrollable in Task 2.
+                      if (e.key === "Escape") onAssistantClose?.();
+                    }}
+                  >
+                    <div className="flex items-center gap-2 w-full h-12 shrink-0 px-2">
+                      <Sparkles
+                        aria-hidden="true"
+                        className="h-4 w-4 shrink-0"
+                        strokeWidth={2}
+                        style={{ color: "var(--text-tertiary)" }}
+                      />
+                      <input
+                        ref={assistantInputRef}
+                        type="text"
+                        aria-label="Ask the assistant"
+                        value={assistantDraft}
+                        placeholder={assistantPlaceholder}
+                        onChange={e => setAssistantDraft(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === "Enter") handleAssistantSubmit();
+                        }}
+                        onFocus={() =>
+                          setAssistantFocusRing(lastInputWasKeyboard.current)
+                        }
+                        data-kbd={assistantFocusRing ? "true" : undefined}
+                        className="nav-search-input min-w-0 flex-1 bg-transparent text-[14px] font-medium outline-none placeholder:text-[color:var(--text-quaternary)]"
+                        style={{ color: "var(--text-primary)" }}
+                      />
+                      {assistantDraft && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAssistantDraft("");
+                            assistantInputRef.current?.focus({
+                              preventScroll: true,
+                            });
+                          }}
+                          aria-label="Clear message"
+                          className="nav-search-control shrink-0 rounded-full p-1.5 transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
+                        >
+                          <X
+                            className="h-4 w-4"
+                            strokeWidth={2.25}
+                            style={{ color: "var(--text-secondary)" }}
+                          />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={onAssistantClose}
+                        className="nav-search-control shrink-0 rounded-full px-2.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
+                        style={{ color: "var(--select-fg)" }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : isSearchOpen ? (
                   /* Search mode: wipes in right-to-left from the trigger,
                      slightly after the left control begins receding, so the
                      morph reads as one motion. Entry is a full transform
@@ -1905,7 +2046,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 pointerEvents:
                   isNavigationMenuOpen ||
                   isCollapsed ||
-                  isSearchOpen ||
+                  isBarInputMode ||
                   isFilterExpanded ||
                   isActionSheetOpen ||
                   isUtilitySheetOpen
@@ -1916,12 +2057,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 // Filter expansion vacates the button's space entirely —
                 // the strip widens into it (width collapses only after the
                 // undot fade; see utilityButtonTransition).
-                width: isCollapsed || isSearchOpen || isFilterExpanded ? 0 : 56,
+                width:
+                  isCollapsed || isBarInputMode || isFilterExpanded ? 0 : 56,
                 // Hidden states shrink it slightly as it fades, so every
                 // return reads as a pop-in — dotting the horizontal "i".
                 scale:
                   isCollapsed ||
-                  isSearchOpen ||
+                  isBarInputMode ||
                   isNavigationMenuOpen ||
                   isFilterExpanded
                     ? 0.7
@@ -1933,7 +2075,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   // it stays visible — that surface grows out of it and
                   // contracts back into it.
                   isCollapsed ||
-                  isSearchOpen ||
+                  isBarInputMode ||
                   isNavigationMenuOpen ||
                   isFilterExpanded ||
                   isActionSheetOpen ||

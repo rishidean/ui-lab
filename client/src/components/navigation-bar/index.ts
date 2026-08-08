@@ -10,6 +10,7 @@ export {
 } from "./NavigationBar";
 export type {
   Action,
+  AssistantMessage,
   FilterOption,
   NavigationBarProps,
   NavTabId,
