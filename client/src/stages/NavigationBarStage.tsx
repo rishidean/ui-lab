@@ -10,14 +10,16 @@
  * Playground states shown here: expanded, navigation open, filter menu,
  * workflow sheet (tap any action), collapsed (scroll down), and the four
  * right-button utilities — Search (bar morph), Export (compact sheet),
- * AI (large draggable sheet), Scan (modal takeover). Sheets and modals
- * share one clear-out grammar: nav circle out, bar sweeps into the
- * button, button fades — then the surface takes over its footprint.
+ * AI (in-bar chat morph — search grammar + upward stretch), Scan (modal
+ * takeover). Sheets and modals share one clear-out grammar: nav circle
+ * out, bar sweeps into the button, button fades — then the surface
+ * takes over its footprint.
  */
 import {
   NavigationBar,
   ACTION_SHEET_CLEAROUT_MS,
   UTILITY_CLEAROUT_MS,
+  type AssistantMessage,
 } from "@/components/navigation-bar";
 import { BottomSheet, type SheetOrigin } from "@/components/bottom-sheet";
 import { UtilityModal } from "@/components/utility-modal";
@@ -29,11 +31,16 @@ import {
   navigationTabs,
 } from "@/demos/navigationBarDemo";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Camera, Sparkles, X } from "lucide-react";
+import { Camera, X } from "lucide-react";
 import { type UIEvent, useCallback, useEffect, useRef, useState } from "react";
 import "./NavigationBarStage.css";
 
 const ghostCards = [72, 48, 84, 60, 94, 56, 78, 66];
+const ASSISTANT_REPLIES = [
+  "You spent $342 on dining this month — 18% under your usual pace.",
+  "Your portfolio is up 2.4% this week, led by the index funds.",
+  "Done — I drafted that transfer. Review it on the Spend tab.",
+];
 const EASE = [0.2, 0, 0, 1] as const;
 const EASE_OUT = [0, 0, 0.2, 1] as const;
 const EASE_IN = [0.4, 0, 1, 1] as const;
@@ -53,8 +60,10 @@ const ALWAYS_EXPANDED_ABOVE = 20;
 // sweeps into the UtilityButton, button fades — sequenced by
 // isUtilitySheetOpen inside the NavigationBar). Then: modal takeovers
 // (Scan) use the shared UtilityModal (circle-reveal from the button's
-// center point); bottom sheets (Export, Assistant) use the shared
-// BottomSheet (widen out of its footprint, stretch vertically).
+// center point); bottom sheets (Export) use the shared BottomSheet
+// (widen out of its footprint, stretch vertically); AI is its own
+// in-bar chat morph (search grammar + upward stretch), owned by the
+// NavigationBar itself.
 /* Scan: full-screen capture takeover. Demonstrates the permission and
    error/unavailable states before the active viewfinder. */
 function ScanView({ onClose }: { onClose: () => void }) {
@@ -128,6 +137,58 @@ export default function NavigationBarStage() {
   const [lastAction, setLastAction] = useState("Navigation Bar ready");
   const prefersReducedMotion = useReducedMotion();
 
+  // ── Assistant mode (in-bar chat) ──
+  // The stage owns the transcript so it survives close/reopen; replies
+  // are canned with a delay long enough that pending → reply → stretch
+  // reads as three beats.
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [assistantMessages, setAssistantMessages] = useState<
+    AssistantMessage[]
+  >([]);
+  const assistantReplyTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const assistantReplyCount = useRef(0);
+  useEffect(
+    () => () => {
+      if (assistantReplyTimer.current)
+        clearTimeout(assistantReplyTimer.current);
+    },
+    []
+  );
+
+  const handleAssistantSubmit = useCallback(
+    (text: string) => {
+      const stamp = Date.now();
+      setAssistantMessages(prev => [
+        ...prev,
+        { id: `u-${stamp}`, role: "user", text },
+        { id: `a-${stamp}`, role: "assistant", text: "", pending: true },
+      ]);
+      setLastAction(`Asked assistant: ${text}`);
+      if (assistantReplyTimer.current)
+        clearTimeout(assistantReplyTimer.current);
+      assistantReplyTimer.current = setTimeout(
+        () => {
+          const reply =
+            ASSISTANT_REPLIES[
+              assistantReplyCount.current % ASSISTANT_REPLIES.length
+            ];
+          assistantReplyCount.current += 1;
+          // Resolve every pending bubble — rapid submits share one reply
+          // beat rather than stranding earlier shimmers.
+          setAssistantMessages(prev =>
+            prev.map(m =>
+              m.pending ? { ...m, text: reply, pending: false } : m
+            )
+          );
+        },
+        prefersReducedMotion ? 400 : 1400
+      );
+    },
+    [prefersReducedMotion]
+  );
+
   // ── Utility surface state ──
   const utilityButtonRef = useRef<HTMLButtonElement | null>(null);
   const actionBarRef = useRef<HTMLDivElement | null>(null);
@@ -151,12 +212,10 @@ export default function NavigationBarStage() {
     y: number;
   } | null>(null);
 
-  // ── Utility bottom sheets (Export, Assistant) — bar-grammar morph ──
+  // ── Utility bottom sheets (Export) — bar-grammar morph ──
   // utilSheetPrep drives the nav's clear-out (left circle, bar, then the
   // button itself) and stays true until the sheet has contracted back.
-  const [utilSheet, setUtilSheet] = useState<"export" | "assistant" | null>(
-    null
-  );
+  const [utilSheet, setUtilSheet] = useState<"export" | null>(null);
   const [utilSheetPrep, setUtilSheetPrep] = useState(false);
   const [utilSheetOrigin, setUtilSheetOrigin] = useState<SheetOrigin | null>(
     null
@@ -170,7 +229,7 @@ export default function NavigationBarStage() {
   );
 
   const openUtilitySheet = useCallback(
-    (kind: "export" | "assistant") => {
+    (kind: "export") => {
       if (utilSheet || utilSheetPrep || utility || utilityClosing) return;
       const rect = utilityButtonRef.current?.getBoundingClientRect();
       setUtilSheetOrigin(
@@ -248,6 +307,7 @@ export default function NavigationBarStage() {
       openSheet !== null ||
       sheetPrep ||
       isSearchOpen ||
+      isAssistantOpen ||
       utility !== null ||
       utilityClosing ||
       utilSheet !== null ||
@@ -256,6 +316,7 @@ export default function NavigationBarStage() {
     openSheet,
     sheetPrep,
     isSearchOpen,
+    isAssistantOpen,
     utility,
     utilityClosing,
     utilSheet,
@@ -267,7 +328,10 @@ export default function NavigationBarStage() {
     anchorScrollRef.current = anchor;
     lastToggleAtRef.current = Date.now();
     setIsCollapsed(next);
-    if (next) setIsSearchOpen(false);
+    if (next) {
+      setIsSearchOpen(false);
+      setIsAssistantOpen(false);
+    }
   }, []);
 
   const handleScroll = useCallback(
@@ -400,16 +464,22 @@ export default function NavigationBarStage() {
             setLastAction(query ? `Searched ${query}` : "Search closed")
           }
           searchPlaceholder="Search markets…"
+          isAssistantOpen={isAssistantOpen}
+          onAssistantClose={() => setIsAssistantOpen(false)}
+          onAssistantSubmit={handleAssistantSubmit}
+          assistantMessages={assistantMessages}
           isActionSheetOpen={sheetPrep}
           // One clear-out grammar for the right-button surfaces: bottom
-          // sheets (Export, Assistant) AND modal takeovers (Scan) — nav
-          // circle out, bar sweeps into the button, button fades last.
+          // sheets (Export) AND modal takeovers (Scan) — nav circle out,
+          // bar sweeps into the button, button fades last. AI is its own
+          // in-bar chat morph and isn't part of this grammar.
           isUtilitySheetOpen={utilSheetPrep}
           onTabChange={tab => {
             setActiveTab(tab);
             setActiveAction(null);
             setOpenSheet(null);
             setIsSearchOpen(false);
+            setIsAssistantOpen(false);
             setLastAction(`${tab} tab selected`);
           }}
           onFilterChange={filter => {
@@ -454,10 +524,17 @@ export default function NavigationBarStage() {
             if (!label) return;
             setLastAction(`${label} selected`);
             // Right-button utilities, all sharing the button as origin:
+            //   AI     → in-bar chat morph (search grammar + upward stretch)
             //   Search → the bar itself morphs into a search field
-            //   AI     → large draggable assistant sheet (bar-grammar morph)
             //   Export → compact actionable sheet (bar-grammar morph)
             //   Scan   → full-screen capture takeover (circle reveal)
+            if (label === "AI") {
+              // Assistant is an in-bar mode like Search — no clear-out, no sheet.
+              if (utilSheet || utilSheetPrep || utility || utilityClosing)
+                return;
+              setIsAssistantOpen(true);
+              return;
+            }
             if (label === "Search") {
               setIsSearchOpen(true);
               return;
@@ -466,7 +543,7 @@ export default function NavigationBarStage() {
               openUtility("scan");
               return;
             }
-            openUtilitySheet(label === "AI" ? "assistant" : "export");
+            openUtilitySheet("export");
           }}
         />
       </div>
@@ -522,32 +599,6 @@ export default function NavigationBarStage() {
               <div className="navigation-demo__sheet-row" />
               <div className="navigation-demo__sheet-row" />
               <div className="navigation-demo__sheet-row navigation-demo__sheet-row--short" />
-            </div>
-          </BottomSheet>
-        )}
-        {utilSheet === "assistant" && utilSheetOrigin && (
-          <BottomSheet
-            key="assistant"
-            origin={utilSheetOrigin}
-            title={
-              <>
-                <Sparkles aria-hidden="true" /> Assistant
-              </>
-            }
-            ariaLabel="Assistant"
-            onClose={closeUtilitySheet}
-            height={0.62}
-            expandable
-            reducedMotion={!!prefersReducedMotion}
-          >
-            <div
-              className="navigation-demo__sheet-body"
-              style={{ marginTop: "auto" }}
-              aria-hidden="true"
-            >
-              <div className="navigation-demo__sheet-bubble navigation-demo__sheet-bubble--user" />
-              <div className="navigation-demo__sheet-bubble navigation-demo__sheet-bubble--loading" />
-              <div className="navigation-demo__sheet-input">Ask anything…</div>
             </div>
           </BottomSheet>
         )}
