@@ -34,8 +34,12 @@
   --bg-canvas: #fbfbf9;
   --text-primary: #181a16;
   --text-secondary: #5c5f56;
-  --text-tertiary: #797c71;
-  --text-quaternary: #95988c;
+  /* Darkened from #797c71 to clear 4.5:1 on --bg-canvas (was 4.11:1) —
+     see scripts/a11y/a11y-contrast.mjs. */
+  --text-tertiary: #72756a;
+  /* Darkened from #95988c to clear the placeholder-grade 3:1 floor
+     (was 2.84:1) — see scripts/a11y/a11y-contrast.mjs. */
+  --text-quaternary: #8f9286;
   /* Strong icon ink (utility button glyph). Inverts in dark presets. */
   --gray-900: #181a16;
 
