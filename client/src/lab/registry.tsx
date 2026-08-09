@@ -163,7 +163,7 @@ const utilityActions = {
   utilityButtonRef={utilityButtonRef} // shared origin: measure its bounds
                                       // and grow utility surfaces out of it
   actionBarRef={actionBarRef}         // shared origin for workflow sheets
-  isSheetOpen={sheetPrep || utilPrep} // flip, wait SHEET_CLEAROUT_MS, then
+  isSheetOpen={sheetPrep}             // flip, wait SHEET_CLEAROUT_MS, then
                                       // measure the bar and mount your
                                       // sheet (BottomSheet pairs perfectly)
   onTabChange={setActiveTab}

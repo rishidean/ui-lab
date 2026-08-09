@@ -739,6 +739,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     prevSheetOpenForFocusRef.current = isSheetOpen;
     if (was && !isSheetOpen) {
       const label = lastEngagedActionRef.current;
+      // One-shot: consume the ref before handing off focus. A utility
+      // surface (Export, Scan, ...) shares this same falling edge but
+      // never repopulates the ref, so without clearing it here a utility
+      // close on a later cycle would inherit a stale chip label from the
+      // last workflow sheet and fight the stage's own focusWhenClear call.
+      lastEngagedActionRef.current = null;
       if (label) focusWhenClear(actionChipRefs.current[label] ?? null);
     }
   }, [isSheetOpen]);
@@ -2326,9 +2332,15 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 /* Gated like aria-haspopup: a one-shot utility action must
                    not permanently announce "collapsed". Search isn't a
                    dialog and unmounts this button while open, so it carries
-                   no expanded state either. */
+                   no expanded state either. `isSheetOpen` alone can't tell
+                   a utility sheet from a workflow one — but `activeAction`
+                   is truthy for the whole lifetime of a workflow-chip sheet
+                   (set at press, cleared in onExitComplete), so excluding
+                   that case leaves only sheets this button itself opened. */
                 aria-expanded={
-                  utilityAction.opensDialog ? isSheetOpen : undefined
+                  utilityAction.opensDialog
+                    ? isSheetOpen && !activeAction
+                    : undefined
                 }
                 className="nav-circle-trigger group relative w-14 h-14 rounded-full flex items-center justify-center pointer-events-auto"
                 whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
