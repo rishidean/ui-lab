@@ -106,6 +106,16 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const finalWidth = Math.min(vw - 24, 512);
   const finalLeft = (vw - finalWidth) / 2;
 
+  // A full-width origin (the NavigationBar's receded pill) has nothing
+  // to widen — the widen beat would be a ~240ms no-op delaying the
+  // stretch. Skip straight to the vertical growth; small origins
+  // (buttons, chips) keep the two-beat entrance.
+  const originFullWidth = origin.width >= finalWidth - 8;
+  const stretchAt = originFullWidth ? 0.06 : STRETCH_AT;
+  const settleDur = originFullWidth ? 0.18 : WIDEN;
+  const titleAt = stretchAt + STRETCH;
+  const bodyAt = titleAt + 0.14 + 0.06;
+
   const [isFull, setIsFull] = useState(false);
 
   const sheetRef = useRef<HTMLDivElement | null>(null);
@@ -181,7 +191,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         transition={{
           duration: reduced ? 0.01 : 0.22,
           ease: EASE,
-          delay: reduced ? 0 : STRETCH_AT,
+          delay: reduced ? 0 : stretchAt,
         }}
         onClick={onClose}
       />
@@ -245,22 +255,23 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             : opened
               ? SETTLED
               : {
-                  // Beat one: widen in place at the origin's height.
-                  left: { duration: WIDEN, ease: EASE_OUT },
-                  width: { duration: WIDEN, ease: EASE_OUT },
-                  borderRadius: { duration: WIDEN, ease: EASE_OUT },
+                  // Beat one: widen in place at the origin's height (a
+                  // full-width origin collapses this to a quick settle).
+                  left: { duration: settleDur, ease: EASE_OUT },
+                  width: { duration: settleDur, ease: EASE_OUT },
+                  borderRadius: { duration: settleDur, ease: EASE_OUT },
+                  boxShadow: { duration: settleDur, ease: EASE_OUT },
                   // Beat two: stretch up and down simultaneously.
                   bottom: {
-                    delay: STRETCH_AT,
+                    delay: stretchAt,
                     duration: STRETCH,
                     ease: EASE_OUT,
                   },
                   height: {
-                    delay: STRETCH_AT,
+                    delay: stretchAt,
                     duration: STRETCH,
                     ease: EASE_OUT,
                   },
-                  boxShadow: { duration: TITLE_AT, ease: EASE_OUT },
                 }
         }
       >
@@ -273,7 +284,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
           exit={{ opacity: 0, transition: { duration: 0.08 } }}
           transition={{
             duration: reduced ? 0.01 : 0.14,
-            delay: reduced ? 0 : TITLE_AT,
+            delay: reduced ? 0 : titleAt,
           }}
         />
         {/* Title first, body a beat later; width is pinned so text never
@@ -286,7 +297,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
           transition={{
             duration: reduced ? 0.01 : 0.14,
             ease: EASE_OUT,
-            delay: reduced ? 0 : TITLE_AT,
+            delay: reduced ? 0 : titleAt,
           }}
         >
           <div className="bottom-sheet__header">
@@ -330,7 +341,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
           transition={{
             duration: reduced ? 0.01 : 0.18,
             ease: EASE_OUT,
-            delay: reduced ? 0 : BODY_AT,
+            delay: reduced ? 0 : bodyAt,
           }}
         >
           {children}
