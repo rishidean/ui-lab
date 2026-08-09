@@ -537,17 +537,33 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const [assistantFocusRing, setAssistantFocusRing] = useState(false);
 
   // Assistant open mirrors search open: exclusive with menu/filter, draft
-  // reset, focus deferred until the field has mostly widened.
+  // reset, focus deferred until the field has mostly widened. Same
+  // poll-then-arm as search: the input mounts only after the actions
+  // row's exit finishes (AnimatePresence mode="wait"), so a fixed timer
+  // from the open can fire before the ref exists and silently no-op.
   useEffect(() => {
     if (isAssistantOpen) {
       setIsNavigationMenuOpen(false);
       setIsFilterExpanded(false);
       setAssistantDraft("");
-      const t = setTimeout(
-        () => assistantInputRef.current?.focus({ preventScroll: true }),
-        prefersReducedMotion ? 0 : 220 * TEMPO
-      );
-      return () => clearTimeout(t);
+      let raf = 0;
+      let timer: number | undefined;
+      let tries = 0;
+      const arm = () => {
+        if (assistantInputRef.current) {
+          timer = window.setTimeout(
+            () => assistantInputRef.current?.focus({ preventScroll: true }),
+            prefersReducedMotion ? 0 : 220 * TEMPO
+          );
+        } else if (tries++ < 120) {
+          raf = requestAnimationFrame(arm);
+        }
+      };
+      arm();
+      return () => {
+        cancelAnimationFrame(raf);
+        if (timer !== undefined) window.clearTimeout(timer);
+      };
     }
   }, [isAssistantOpen, prefersReducedMotion]);
 
