@@ -118,8 +118,7 @@
   flex: none;
 }
 
-.lab-header__title,
-.lab-header__count {
+.lab-header__title {
   font-family: "JetBrains Mono", monospace;
   font-size: 13px;
   letter-spacing: 0.18em;
@@ -127,32 +126,10 @@
   white-space: nowrap;
 }
 
-.lab-header__count {
-  color: var(--lab-faint);
-}
-
 .lab-header__right {
   display: flex;
   align-items: center;
   gap: 14px;
-}
-
-.lab-header__kbd {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--lab-line);
-  font-family: "JetBrains Mono", monospace;
-  font-size: 12px;
-  color: var(--lab-faint);
-  white-space: nowrap;
-}
-
-.lab-header__kbd kbd {
-  font: inherit;
-  color: var(--lab-muted);
 }
 
 .lab-header__theme {
@@ -257,10 +234,6 @@ a.lab-side__row--current:hover {
   border-left-color: var(--lab-acc);
   background: var(--lab-press-bg);
   color: var(--lab-text);
-}
-
-.lab-side__row--oven {
-  color: var(--lab-faint);
 }
 
 .lab-side__num {
@@ -678,8 +651,7 @@ a.lab-side__row--current:hover {
   padding-top: 22px;
 }
 
-.lab-col__label,
-.lab-section-label {
+.lab-col__label {
   font-family: "JetBrains Mono", monospace;
   font-size: 11.5px;
   letter-spacing: 0.2em;
@@ -724,73 +696,6 @@ a.lab-side__row--current:hover {
   line-height: 1.5;
   letter-spacing: -0.01em;
   text-wrap: pretty;
-}
-
-/* ── The rest of the lab ────────────────────────────────────────── */
-
-.lab-grid-wrap {
-  padding: 64px 48px 0 48px;
-}
-
-.lab-grid-wrap .lab-section-label {
-  margin-bottom: 18px;
-}
-
-.lab-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: var(--lab-line);
-  border: 1px solid var(--lab-line);
-}
-
-.lab-grid__card {
-  background: var(--lab-panel);
-  padding: 24px;
-  min-height: 126px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  transition: box-shadow 120ms;
-}
-
-a.lab-grid__card:hover {
-  box-shadow: inset 0 0 0 1px var(--lab-acc);
-}
-
-.lab-grid__card:focus-visible {
-  outline-offset: -2px;
-  position: relative;
-  z-index: 1;
-}
-
-.lab-grid__card--current {
-  background: var(--lab-press-bg);
-}
-
-.lab-grid__meta {
-  display: flex;
-  justify-content: space-between;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 10.5px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--lab-faint);
-}
-
-.lab-grid__card--current .lab-grid__meta {
-  color: var(--lab-acc);
-}
-
-.lab-grid__name {
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--lab-text);
-}
-
-.lab-grid__card--oven .lab-grid__name {
-  color: var(--lab-faint);
 }
 
 /* ── Card footer ────────────────────────────────────────────────── */
@@ -1309,10 +1214,6 @@ a.lab-grid__card:hover {
     padding: 14px 20px;
   }
 
-  .lab-header .lab-header__kbd {
-    display: none;
-  }
-
   .lab-body {
     grid-template-columns: 232px 1fr;
   }
@@ -1359,10 +1260,6 @@ a.lab-grid__card:hover {
     padding: 24px 28px;
     flex-wrap: wrap;
     gap: 14px;
-  }
-
-  .lab-grid-wrap {
-    padding: 48px 32px 0 32px;
   }
 
   .lab-foot {
@@ -1457,24 +1354,6 @@ a.lab-grid__card:hover {
   max-width: 1560px;
   margin: 0 auto;
   padding: 110px 60px 0 60px;
-}
-
-.lab-home-index__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 28px;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 12.5px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--lab-faint);
-}
-
-.lab-home-index__hint {
-  letter-spacing: 0.1em;
-  text-transform: none;
 }
 
 /* Two columns so the shipped set always fills whole rows — empty grid
@@ -1634,10 +1513,6 @@ a.lab-home-card:hover {
 }
 
 @media (max-width: 640px) {
-  .lab-header__kbd {
-    display: none;
-  }
-
   /* The site link lives in the banner and footer too — the header
      row can't fit it beside the brand at phone widths. */
   .lab-home-header__site {

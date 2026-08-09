@@ -25,7 +25,6 @@ import { Link } from "wouter";
 import {
   AUTHOR_URL,
   labComponents,
-  PLANNED_COUNT,
   type LabComponent,
   type PresentationBeat,
   type PropRow,
@@ -33,7 +32,7 @@ import {
 import { useRecordingMode } from "@/lab/recording";
 import { useTheme } from "@/contexts/ThemeContext";
 import { PickerBeatVisual, PickerDemo } from "@/lab/PickerShowcase";
-import { labRows, pad2, PALETTES } from "@/lab/labTheme";
+import { pad2, PALETTES } from "@/lab/labTheme";
 import "./Showcase.css";
 
 const BEAT_MS = 2600;
@@ -307,7 +306,6 @@ export function Showcase({ component }: { component: LabComponent }) {
     );
   }
 
-  const rows = labRows();
   const number = pad2(
     labComponents.findIndex(c => c.slug === component.slug) + 1
   );
@@ -335,15 +333,8 @@ export function Showcase({ component }: { component: LabComponent }) {
               <Link href="/" className="lab-header__title">
                 rishi's ui lab
               </Link>
-              <span className="lab-header__count">
-                / {pad2(labComponents.length)} built · {pad2(PLANNED_COUNT)}{" "}
-                planned
-              </span>
             </div>
             <div className="lab-header__right">
-              <span className="lab-header__kbd">
-                find component <kbd>⌘K</kbd>
-              </span>
               {toggleTheme && (
                 <button
                   type="button"
@@ -374,33 +365,19 @@ export function Showcase({ component }: { component: LabComponent }) {
             {/* Index sidebar */}
             <nav className="lab-side" aria-label="Components">
               <div className="lab-side__label">index</div>
-              {rows.map(row =>
-                row.component ? (
-                  <Link
-                    key={row.num}
-                    href={`/${row.component.slug}`}
-                    className={`lab-side__row ${
-                      row.component.slug === component.slug
-                        ? "lab-side__row--current"
-                        : ""
-                    }`}
-                    aria-current={
-                      row.component.slug === component.slug ? "page" : undefined
-                    }
-                  >
-                    <span className="lab-side__num">{row.num}</span>
-                    <span className="lab-side__name">{row.component.name}</span>
-                  </Link>
-                ) : (
-                  <div
-                    key={row.num}
-                    className="lab-side__row lab-side__row--oven"
-                  >
-                    <span className="lab-side__num">{row.num}</span>
-                    <span className="lab-side__name">Unnamed</span>
-                  </div>
-                )
-              )}
+              {labComponents.map((c, i) => (
+                <Link
+                  key={c.slug}
+                  href={`/${c.slug}`}
+                  className={`lab-side__row ${
+                    c.slug === component.slug ? "lab-side__row--current" : ""
+                  }`}
+                  aria-current={c.slug === component.slug ? "page" : undefined}
+                >
+                  <span className="lab-side__num">{pad2(i + 1)}</span>
+                  <span className="lab-side__name">{c.name}</span>
+                </Link>
+              ))}
               <div className="lab-side__foot">
                 <a
                   href={AUTHOR_URL}
@@ -522,50 +499,6 @@ export function Showcase({ component }: { component: LabComponent }) {
                 </div>
               </div>
 
-              <div className="lab-grid-wrap">
-                <div className="lab-section-label">the rest of the lab</div>
-                <div className="lab-grid">
-                  {rows.map(row => {
-                    const isCurrent = row.component?.slug === component.slug;
-                    const status = isCurrent
-                      ? "active"
-                      : row.component
-                        ? "shipped"
-                        : "in the oven";
-                    const body = (
-                      <>
-                        <div className="lab-grid__meta">
-                          <span>{row.num}</span>
-                          <span>{status}</span>
-                        </div>
-                        <div className="lab-grid__name">
-                          {row.component?.name ?? "Unnamed"}
-                        </div>
-                      </>
-                    );
-                    return row.component ? (
-                      <Link
-                        key={row.num}
-                        href={`/${row.component.slug}`}
-                        className={`lab-grid__card ${
-                          isCurrent ? "lab-grid__card--current" : ""
-                        }`}
-                        aria-current={isCurrent ? "page" : undefined}
-                      >
-                        {body}
-                      </Link>
-                    ) : (
-                      <div
-                        key={row.num}
-                        className="lab-grid__card lab-grid__card--oven"
-                      >
-                        {body}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
               <div className="lab-foot">
                 <span className="lab-foot__license">
                   free · mit · no attribution needed
@@ -576,7 +509,7 @@ export function Showcase({ component }: { component: LabComponent }) {
                   rel="noreferrer"
                   className="lab-foot__link"
                 >
-                  more of my thinking at rishidean.com →
+                  rishidean.com →
                 </a>
               </div>
             </div>

@@ -1,13 +1,7 @@
 /**
  * Shared bits of the lab redesign (Showcase + Home): the design's
- * dark/light palettes as --lab-* custom properties, and the row model
- * that fills the built components out to the planned count.
+ * dark/light palettes as --lab-* custom properties.
  */
-import {
-  labComponents,
-  PLANNED_COUNT,
-  type LabComponent,
-} from "@/lab/registry";
 
 /** Design palettes (pink accent). */
 export const PALETTES: Record<"dark" | "light", Record<string, string>> = {
@@ -52,17 +46,3 @@ export const PALETTES: Record<"dark" | "light", Record<string, string>> = {
 };
 
 export const pad2 = (n: number) => String(n).padStart(2, "0");
-
-export type LabRow = { component: LabComponent | null; num: string };
-
-/** Sidebar/grid rows: built components filled out to PLANNED_COUNT. */
-export function labRows(): LabRow[] {
-  const rows: LabRow[] = labComponents.map((c, i) => ({
-    component: c,
-    num: pad2(i + 1),
-  }));
-  for (let i = labComponents.length; i < PLANNED_COUNT; i++) {
-    rows.push({ component: null, num: pad2(i + 1) });
-  }
-  return rows;
-}

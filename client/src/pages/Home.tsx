@@ -21,9 +21,6 @@ export default function Home() {
           <span className="lab-header__title">rishi's ui lab</span>
         </div>
         <div className="lab-header__right">
-          <span className="lab-header__kbd">
-            find component <kbd>⌘K</kbd>
-          </span>
           {toggleTheme && (
             <button
               type="button"
@@ -69,10 +66,6 @@ export default function Home() {
           className="lab-home-index"
           aria-label={`Index of ${labComponents.length} components`}
         >
-          <div className="lab-home-index__head">
-            <span>index / {pad2(labComponents.length)} components</span>
-            <span className="lab-home-index__hint">click any row to open</span>
-          </div>
           <div className="lab-home-grid">
             {labComponents.map((c, i) => (
               <Link key={c.slug} href={`/${c.slug}`} className="lab-home-card">

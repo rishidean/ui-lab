@@ -455,7 +455,7 @@ export const labComponents: LabComponent[] = [
       "Tap Deposit — the action bar itself grows into the workflow sheet, and contracts back on Done",
       "Open the tab menu — the bar is absorbed into the circle and the menu grows out of it",
       "On Trade, tap Search — the bar itself morphs into a search field",
-      "On Home, tap the sparkle UtilityButton — the assistant sheet grows out of it (extend it to full screen)",
+      "On Home, tap the sparkle UtilityButton — the bar morphs into a chat input; send a message and the bar stretches into the conversation",
       "On Spend, tap Scan — full-screen takeover with permission and error states",
       "On Transactions, tap Export — a compact sheet grows from the button and contracts back into it",
       "On Trade, five actions overflow the pill — swipe the row horizontally",
