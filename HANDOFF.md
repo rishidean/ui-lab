@@ -123,9 +123,11 @@ Design specs live in `docs/superpowers/specs/`, plans in
   ACTION_SHEET_CLEAROUT_MS / UTILITY_CLEAROUT_MS — the stage's sheet
   launch timers derive from them (never hardcode clear-out waits).
 - ALL sheet/modal surfaces are shared components now: BottomSheet
-  (workflow + Export + Assistant — every one `expandable`, skeleton
-  bodies with the shimmer pulse; no fake feature content) and
-  UtilityModal (Scan). The NavigationBar usage snippet documents the
+  (workflow + Export — every one `expandable`, skeleton bodies with the
+  shimmer pulse; no fake feature content) and UtilityModal (Scan). The
+  Assistant no longer uses BottomSheet — as of the 2026-08-08 session it's
+  a bar-internal mode (see the latest-session recap above), so it isn't
+  in this list. The NavigationBar usage snippet documents the
   onUtilityClick surface-routing pattern + file dependencies.
 - **Theme system:** `client/src/theme/theme.css` is the component token
   contract — Aurora (light, :root) and Ink (dark, .dark) presets, glass
@@ -169,14 +171,16 @@ Design specs live in `docs/superpowers/specs/`, plans in
    left circle WHILE its icon swaps → beat → bar regrows left-to-right →
    beat → utility dots in (`CLOSE_DELAYS`: tabIconSwap 0.02, pillGrow 0.22,
    rightButtonFadeIn 0.46). Dismissal = same close without the hold.
-3. **Utility bottom sheets (Export, Assistant):** utility pressed state →
-   nav circle fades → bar sweeps inward L→R INTO the right button → button
-   fades WHILE sheet widens out of its footprint → stretch up+down → title →
+3. **Utility bottom sheets (Export):** utility pressed state → nav circle
+   fades → bar sweeps inward L→R INTO the right button → button fades
+   WHILE sheet widens out of its footprint → stretch up+down → title →
    beat → body. Close fully reverses (button returns first, bar regrows from
    the RIGHT — originX held at 1 until regrow lands — circle last).
    `UtilitySheetMorph` + `isUtilitySheetOpen` prop (`UTILITY_SHEET_DELAYS`),
-   stage `utilSheetPrep` + 500ms timer. Assistant keeps half↔full drag
-   (enabled only after entrance, `opened` state).
+   stage `utilSheetPrep` + 500ms timer. Export keeps the sheet's half↔full
+   drag (enabled only after entrance, `opened` state). The Assistant used
+   to share this surface but moved off it entirely on 2026-08-08 — see
+   item 7 below.
 4. **Modal takeovers (Scan):** SAME clear-out as sheets, then the modal
    expands as a circle from the button's CENTER POINT — now the shared
    `UtilityModal` component (`client/src/components/utility-modal/`, its
@@ -203,6 +207,17 @@ Design specs live in `docs/superpowers/specs/`, plans in
    the stage reshuffles its ghost cards with a short content transition
    during the collapse. Dismissal (scrim tap / outside / Escape) = same
    close, no hold, no label change. All in FILTER_DELAYS.
+7. **Assistant (2026-08-08):** a bar-internal mode, sibling of Search
+   (item 5) rather than a bottom sheet — no drag, no half↔full stops.
+   Open morph is identical to Search's. On first send the bar itself
+   runs a real height animation (never `scaleY`) from 48px toward
+   fit-content, capped at 62% of viewport height as a hard ceiling (the
+   old sheet's stop, repurposed — not a drag stop). Past the cap the
+   transcript scrolls internally, pinned to the newest message. Close is
+   three serial beats (transcript fade → card contract → Search-style
+   wipe); reopen replays two beats (plain input lands, then the card
+   re-stretches to the preserved transcript). `isAssistantOpen` prop; see
+   the Overview's Assistant section and the 2026-08-08 recap above.
 
 ### Timing constants live at the top of NavigationBar.tsx
 
