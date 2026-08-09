@@ -11,8 +11,8 @@ const results = [];
 //    so the field has mostly widened before the mobile keyboard appears).
 await page.locator('button[aria-label="AI"]').click();
 await page.waitForTimeout(900);
-let focused = await page.evaluate(
-  () => document.activeElement?.getAttribute("aria-label")
+let focused = await page.evaluate(() =>
+  document.activeElement?.getAttribute("aria-label")
 );
 results.push([
   "Assistant input focused on open",
@@ -63,18 +63,85 @@ results.push(
 // 4. Escape closes; focus returns to the AI utility button.
 await page.keyboard.press("Escape");
 await page.waitForTimeout(1200);
-let returned = await page.evaluate(
-  () => document.activeElement?.getAttribute("aria-label")
+let returned = await page.evaluate(() =>
+  document.activeElement?.getAttribute("aria-label")
 );
-results.push(["Focus returns to AI button on Escape", returned === "AI", returned]);
+results.push([
+  "Focus returns to AI button on Escape",
+  returned === "AI",
+  returned,
+]);
 
-// 5. Reopen: transcript is preserved (the stage owns it across close/open).
+// The reopen checks must assert VISIBILITY, not just DOM presence — a
+// stranded exit value (branch clip at inset 100%, or transcript at
+// opacity 0) keeps every bubble in the DOM while showing an empty card.
+const probeAssistantVisible = () =>
+  page.evaluate(() => {
+    const input = document.querySelector(
+      'input[aria-label="Ask the assistant"]'
+    );
+    if (!input) return { mounted: false };
+    const branch = input.parentElement?.parentElement;
+    const cs = branch ? getComputedStyle(branch) : null;
+    const transcript = document.querySelector('[role="log"]');
+    const clip = cs?.clipPath ?? "";
+    return {
+      mounted: true,
+      clipOpen:
+        clip === "none" ||
+        /^inset\(0(px)?\)$/.test(clip) ||
+        /^inset\(0px 0px 0px 0(px|%)?\)$/.test(clip),
+      branchOpacity: Number(cs?.opacity ?? 0),
+      transcriptOpacity: transcript
+        ? Number(getComputedStyle(transcript).opacity)
+        : null,
+      bubbles: document.querySelectorAll(".nav-assistant-bubble").length,
+    };
+  });
+
+// 5. Reopen: transcript is preserved (the stage owns it across close/open)
+//    AND the branch + transcript are actually visible.
 await page.locator('button[aria-label="AI"]').click();
 await page.waitForTimeout(1400);
-let preserved = await page.evaluate(
-  () => document.querySelectorAll(".nav-assistant-bubble").length
+let reopened = await probeAssistantVisible();
+results.push(
+  ["Transcript preserved on reopen", reopened.bubbles === 2, reopened],
+  [
+    "Reopen lands branch visible (clip open, opacity 1)",
+    reopened.mounted && reopened.clipOpen && reopened.branchOpacity > 0.99,
+    reopened,
+  ],
+  [
+    "Reopen lands transcript visible",
+    reopened.transcriptOpacity !== null && reopened.transcriptOpacity > 0.99,
+    reopened,
+  ]
 );
-results.push(["Transcript preserved on reopen", preserved === 2, preserved]);
+
+// 6. Rapid reopen (regression): Escape, then reopen 200ms later — while the
+//    close wipe is still in flight. A delayed AnimatePresence exit on the
+//    keyed branch used to strand the transcript at opacity 0 here (tall
+//    empty card); every open must land the input AND transcript visibly.
+await page.keyboard.press("Escape");
+await page.waitForTimeout(200);
+await page.evaluate(() =>
+  document.querySelector('button[aria-label="AI"]')?.click()
+);
+await page.waitForTimeout(2500);
+let rapid = await probeAssistantVisible();
+results.push(
+  [
+    "Rapid reopen (200ms) lands branch visible",
+    rapid.mounted && rapid.clipOpen && rapid.branchOpacity > 0.99,
+    rapid,
+  ],
+  [
+    "Rapid reopen (200ms) lands transcript visible",
+    rapid.transcriptOpacity !== null && rapid.transcriptOpacity > 0.99,
+    rapid,
+  ],
+  ["Rapid reopen keeps both bubbles", rapid.bubbles === 2, rapid]
+);
 
 for (const [name, pass, detail] of results)
   console.log(pass ? "PASS" : "FAIL", name, pass ? "" : JSON.stringify(detail));

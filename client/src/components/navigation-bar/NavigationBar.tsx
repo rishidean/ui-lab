@@ -600,6 +600,46 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     return () => clearTimeout(t);
   }, [isAssistantOpen, prefersReducedMotion]);
 
+  // ── Assistant close/unmount lag ────────────────────────────────────
+  // The close wipe runs as an ANIMATE retarget while the branch is still
+  // mounted — not as an AnimatePresence exit. A delayed exit on the keyed
+  // child left it in the "exiting" presence state for ~550ms, and framer's
+  // exit-interruption bookkeeping does not reliably restore values when the
+  // same key re-enters mid-exit (an exit-completed value with no animate
+  // counterpart is never restored — ExitAnimationFeature only jumps values
+  // named in `initial` and replays `animate`). Reopening in that window
+  // stranded the transcript at opacity 0 (a stretched-but-empty card) and
+  // could strand the branch clip at inset 100%. Keeping the branch mounted
+  // through the wipe turns every rapid open/close into a plain retarget —
+  // the one interruption path framer handles per the spec ("retargets from
+  // current animated values; nothing snaps") — and the branch unmounts
+  // (instant, valueless exit) only once fully invisible.
+  const ASSISTANT_CLOSE_WIPE_DELAY_S = 0.22; // after the height contract
+  const ASSISTANT_CLOSE_WIPE_S = 0.2;
+  const [assistantHeld, setAssistantHeld] = useState(false);
+  useEffect(() => {
+    if (isAssistantOpen) {
+      setAssistantHeld(true);
+      return;
+    }
+    if (!assistantHeld) return;
+    const t = setTimeout(
+      () => setAssistantHeld(false),
+      prefersReducedMotion
+        ? 0
+        : Math.round(
+            (ASSISTANT_CLOSE_WIPE_DELAY_S + ASSISTANT_CLOSE_WIPE_S) *
+              TEMPO *
+              1000
+          )
+    );
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAssistantOpen, assistantHeld, prefersReducedMotion]);
+  // Mount immediately on open (isAssistantOpen leads assistantHeld by a
+  // render); hold through the close wipe.
+  const renderAssistantBranch = isAssistantOpen || assistantHeld;
+
   const hasTranscript = assistantMessages.length > 0;
   // Absorb states (scroll-collapse, action sheet, utility sheet) only kill
   // the pill's transform/paint (scaleX/opacity) — height is real layout,
@@ -615,14 +655,16 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // assistantContentH measures the inner transcript column only — it
   // excludes the scroll container's own `pt-3` (12px) AND the pill's
   // vertical padding + border (10px padding + 2px border = 12px), neither
-  // of which is part of that measurement. Both must be added back so a
-  // below-cap card fits its content with zero internal scroll.
+  // of which is part of that measurement. Both must be added back — plus
+  // the input row's stretched-only mb-1.5 (6px) — so a below-cap card
+  // fits its content with zero internal scroll.
   const assistantHeight = assistantStretched
     ? Math.min(
         ASSISTANT_INPUT_ROW_PX +
           assistantContentH +
           12 /* transcript pt-3 */ +
-          12 /* pill padding + border */,
+          12 /* pill padding + border */ +
+          6 /* input row mb-1.5, stretched only */,
         Math.round(viewportH * ASSISTANT_HEIGHT_CAP)
       )
     : 48;
@@ -1768,36 +1810,46 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 mode="wait"
                 custom={isFilterExpanded && hasFilterAction}
               >
-                {isAssistantOpen ? (
+                {renderAssistantBranch ? (
                   <motion.div
                     key="assistant"
                     initial={{ clipPath: "inset(0 0 0 100%)" }}
-                    animate={{ clipPath: "inset(0 0 0 0%)" }}
-                    // Delayed wipe: the height contraction (assistantHeight
+                    // Open and close are BOTH animate retargets on the
+                    // mounted branch (see the assistantHeld block for why
+                    // this isn't an AnimatePresence exit). Close is the
+                    // delayed wipe: the height contraction (assistantHeight
                     // → 48) starts immediately on the flag flip and is
                     // allowed to land first; the clip/opacity wipe follows
                     // so closing reads transcript-fade → contract → wipe.
-                    exit={{
-                      clipPath: "inset(0 0 0 100%)",
-                      opacity: 0,
-                      transition: {
-                        clipPath: {
-                          duration: dur(0.2),
-                          ease: EASE_IN,
-                          delay: del(0.22),
-                        },
-                        opacity: {
-                          duration: dur(0.2),
-                          ease: EASE_IN,
-                          delay: del(0.22),
-                        },
-                      },
-                    }}
-                    transition={{
-                      duration: dur(0.24),
-                      ease: EASE,
-                      delay: del(0.06),
-                    }}
+                    animate={
+                      isAssistantOpen
+                        ? { clipPath: "inset(0 0 0 0%)", opacity: 1 }
+                        : { clipPath: "inset(0 0 0 100%)", opacity: 0 }
+                    }
+                    // By unmount time the wipe has already landed — the
+                    // exit is an instant formality so mode="wait" hands
+                    // the pill to the next branch without a second beat.
+                    exit={{ opacity: 0, transition: { duration: 0 } }}
+                    transition={
+                      isAssistantOpen
+                        ? {
+                            duration: dur(0.24),
+                            ease: EASE,
+                            delay: del(0.06),
+                          }
+                        : {
+                            clipPath: {
+                              duration: dur(ASSISTANT_CLOSE_WIPE_S),
+                              ease: EASE_IN,
+                              delay: del(ASSISTANT_CLOSE_WIPE_DELAY_S),
+                            },
+                            opacity: {
+                              duration: dur(ASSISTANT_CLOSE_WIPE_S),
+                              ease: EASE_IN,
+                              delay: del(ASSISTANT_CLOSE_WIPE_DELAY_S),
+                            },
+                          }
+                    }
                     className="flex flex-col w-full h-full"
                     onKeyDown={e => {
                       // Escape closes from anywhere inside the pill (menu/filter
@@ -1812,20 +1864,22 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                         aria-live="polite"
                         aria-label="Assistant conversation"
                         tabIndex={0}
-                        // Fades ahead of the parent's delayed wipe — a
-                        // child exit inside an exiting AnimatePresence
-                        // subtree runs concurrently with it, so the
-                        // transcript is gone before the wipe even starts.
-                        exit={{
-                          opacity: 0,
-                          transition: { duration: dur(0.12), ease: EASE_IN },
+                        // Fades ahead of the branch's delayed wipe. An
+                        // animate retarget (not an exit) so a rapid reopen
+                        // mid-close restores it — an exit-only value has no
+                        // animate counterpart to be restored TO, and framer
+                        // leaves it stranded at 0 (the empty-card bug).
+                        animate={{ opacity: isAssistantOpen ? 1 : 0 }}
+                        transition={{
+                          duration: dur(0.12),
+                          ease: isAssistantOpen ? EASE_OUT : EASE_IN,
                         }}
                         className="flex-1 min-h-0 overflow-y-auto px-2 pt-3"
                         style={{ overscrollBehaviorY: "contain" }}
                       >
                         <div
                           ref={setTranscriptContentRef}
-                          className="flex flex-col gap-2 pb-1"
+                          className="flex flex-col gap-2 pb-2"
                         >
                           {assistantMessages.map(m => (
                             <motion.div
@@ -1860,7 +1914,15 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                         </div>
                       </motion.div>
                     )}
-                    <div className="flex items-center gap-2 w-full h-9 shrink-0 px-2">
+                    {/* Stretched only: the row floats 6px off the card's
+                        bottom edge (accounted in assistantHeight). At rest
+                        it must fill the 36px content box exactly. */}
+                    <div
+                      className={cn(
+                        "flex items-center gap-2 w-full h-9 shrink-0 px-2",
+                        hasTranscript && "mb-1.5"
+                      )}
+                    >
                       <Sparkles
                         aria-hidden="true"
                         className="h-4 w-4 shrink-0"
