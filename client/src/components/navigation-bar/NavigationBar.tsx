@@ -38,9 +38,9 @@ const DefaultLogo = () => (
     aria-hidden="true"
     className="block h-5 w-5 rounded-full"
     style={{
-      background: "var(--gradient-aurora)",
+      background: "var(--gradient-brand)",
       boxShadow:
-        "0 0 0 3px color-mix(in oklab, var(--aurora-lilac) 28%, transparent), inset 0 1px 1px rgba(255,255,255,0.6)",
+        "0 0 0 3px color-mix(in oklab, var(--accent-soft) 28%, transparent), inset 0 1px 1px rgba(255,255,255,0.6)",
     }}
   />
 );
@@ -1385,7 +1385,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         className="pointer-events-none absolute inset-x-0 bottom-0 h-[170px] z-0"
         style={{
           background:
-            "linear-gradient(to top, var(--bg-canvas) 26%, color-mix(in oklab, var(--aurora-lilac) 13%, var(--bg-canvas)) 58%, transparent 100%)",
+            "linear-gradient(to top, var(--bg-canvas) 26%, color-mix(in oklab, var(--accent-soft) 13%, var(--bg-canvas)) 58%, transparent 100%)",
         }}
       />
       {/* Filter scrim — the page dims SLIGHTLY (lighter than the sheet
@@ -1471,7 +1471,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                 style={{
                   boxShadow:
-                    "0 0 20px -2px color-mix(in oklab, var(--aurora-lilac) 48%, transparent)",
+                    "0 0 20px -2px color-mix(in oklab, var(--accent-soft) 48%, transparent)",
                 }}
               />
               {/* Pressed fill — a visible commit on top of the tap scale. */}
@@ -1480,7 +1480,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-150 group-active:opacity-100"
                 style={{
                   background:
-                    "color-mix(in oklab, var(--iris-700) 14%, transparent)",
+                    "color-mix(in oklab, var(--accent-700) 14%, transparent)",
                 }}
               />
               {/* Absorb pulse — the border flares as the bar lands in the
@@ -1493,7 +1493,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   className="pointer-events-none absolute inset-0 rounded-full"
                   style={{
                     boxShadow:
-                      "0 0 18px 4px color-mix(in oklab, var(--aurora-lilac) 60%, transparent), inset 0 0 0 1.5px color-mix(in oklab, var(--iris-700) 45%, transparent)",
+                      "0 0 18px 4px color-mix(in oklab, var(--accent-soft) 60%, transparent), inset 0 0 0 1.5px color-mix(in oklab, var(--accent-700) 45%, transparent)",
                   }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: [0, 1, 0] }}
@@ -1510,7 +1510,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 type="button"
                 onClick={handleNavigationButtonClick}
                 className="nav-circle-trigger absolute inset-[2px] rounded-full flex items-center justify-center transition-colors"
-                style={{ color: "var(--iris-700)" }}
+                style={{ color: "var(--accent-700)" }}
                 aria-label={isCollapsed ? "Open controls" : undefined}
                 title={isCollapsed ? "Open controls" : undefined}
                 aria-haspopup="menu"
@@ -2322,7 +2322,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   className="absolute inset-0 rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                   style={{
                     boxShadow:
-                      "0 0 20px -2px color-mix(in oklab, var(--aurora-lilac) 48%, transparent)",
+                      "0 0 20px -2px color-mix(in oklab, var(--accent-soft) 48%, transparent)",
                   }}
                 />
                 {/* Pressed fill — a visible commit on top of the tap
@@ -2332,7 +2332,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-150 group-active:opacity-100"
                   style={{
                     background:
-                      "color-mix(in oklab, var(--iris-700) 14%, transparent)",
+                      "color-mix(in oklab, var(--accent-700) 14%, transparent)",
                   }}
                 />
                 <span className="relative z-10 flex items-center justify-center">
