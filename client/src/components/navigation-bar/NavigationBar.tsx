@@ -322,7 +322,10 @@ export type NavigationBarProps = {
   onSearchSubmit?: (query: string) => void;
   /** Assistant mode: the bar morphs into a chat input with the exact
    *  search grammar, then stretches upward into a conversation card as
-   *  messages accumulate. Controlled by the consumer, like search. */
+   *  messages accumulate. Controlled by the consumer, like search.
+   *  Precedence: if both isSearchOpen and isAssistantOpen are set, the
+   *  assistant branch wins (see isBarInputMode's render order) — treat
+   *  the two as mutually exclusive. */
   isAssistantOpen?: boolean;
   onAssistantClose?: () => void;
   /** Fired with the trimmed draft on Enter/submit; empty drafts are
@@ -555,7 +558,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // the viewport, re-clamped on resize. Reopen-with-history runs two
   // beats: the open morph lands the plain input first, then the card
   // stretches to fit (assistantSurfaceReady gates the second beat).
-  const ASSISTANT_INPUT_ROW_PX = 48;
+  const ASSISTANT_INPUT_ROW_PX = 36;
   const ASSISTANT_HEIGHT_CAP = 0.62;
 
   const [assistantContentH, setAssistantContentH] = useState(0);
@@ -609,10 +612,17 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     !isCollapsed &&
     !isUtilitySheetOpen &&
     !isActionSheetOpen;
-  // +12 breathing room so the last bubble's shadow isn't clipped.
+  // assistantContentH measures the inner transcript column only — it
+  // excludes the scroll container's own `pt-3` (12px) AND the pill's
+  // vertical padding + border (10px padding + 2px border = 12px), neither
+  // of which is part of that measurement. Both must be added back so a
+  // below-cap card fits its content with zero internal scroll.
   const assistantHeight = assistantStretched
     ? Math.min(
-        ASSISTANT_INPUT_ROW_PX + assistantContentH + 12,
+        ASSISTANT_INPUT_ROW_PX +
+          assistantContentH +
+          12 /* transcript pt-3 */ +
+          12 /* pill padding + border */,
         Math.round(viewportH * ASSISTANT_HEIGHT_CAP)
       )
     : 48;
@@ -1801,7 +1811,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                         role="log"
                         aria-live="polite"
                         aria-label="Assistant conversation"
-                        tabIndex={-1}
+                        tabIndex={0}
                         // Fades ahead of the parent's delayed wipe — a
                         // child exit inside an exiting AnimatePresence
                         // subtree runs concurrently with it, so the
@@ -1850,7 +1860,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                         </div>
                       </motion.div>
                     )}
-                    <div className="flex items-center gap-2 w-full h-12 shrink-0 px-2">
+                    <div className="flex items-center gap-2 w-full h-9 shrink-0 px-2">
                       <Sparkles
                         aria-hidden="true"
                         className="h-4 w-4 shrink-0"

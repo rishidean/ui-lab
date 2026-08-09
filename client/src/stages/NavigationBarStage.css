@@ -179,13 +179,6 @@
   width: 62%;
 }
 
-/* Assistant sheet */
-.navigation-demo__sheet--assistant {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
 @keyframes nav-demo-shimmer {
   0%,
   100% {
