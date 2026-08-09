@@ -260,7 +260,10 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
                   left: { duration: settleDur, ease: EASE_OUT },
                   width: { duration: settleDur, ease: EASE_OUT },
                   borderRadius: { duration: settleDur, ease: EASE_OUT },
-                  boxShadow: { duration: settleDur, ease: EASE_OUT },
+                  boxShadow: {
+                    duration: originFullWidth ? settleDur : TITLE_AT,
+                    ease: EASE_OUT,
+                  },
                   // Beat two: stretch up and down simultaneously.
                   bottom: {
                     delay: stretchAt,
