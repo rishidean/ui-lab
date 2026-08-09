@@ -45,7 +45,7 @@
   border: 1px solid rgb(255 255 255 / 0.88);
   border-radius: 2rem;
   background: rgb(255 255 255 / 0.38);
-  box-shadow: 0 1.5rem 4rem rgb(38 31 58 / 0.035);
+  box-shadow: 0 1.5rem 4rem rgb(20 20 10 / 0.035);
 }
 
 .navigation-demo__feature-orb {
@@ -58,9 +58,9 @@
       rgb(255 255 255 / 0.92),
       transparent 28%
     ),
-    linear-gradient(145deg, rgb(221 214 254 / 0.5), rgb(244 241 255 / 0.72));
+    linear-gradient(145deg, rgb(251 207 232 / 0.5), rgb(253 242 248 / 0.72));
   box-shadow:
-    0 1.25rem 3rem rgb(109 40 217 / 0.07),
+    0 1.25rem 3rem rgb(194 42 117 / 0.07),
     inset 0 1px 0 rgb(255 255 255 / 0.85);
 }
 
@@ -77,7 +77,7 @@
   display: block;
   height: 0.62rem;
   border-radius: 999px;
-  background: rgb(46 35 70 / 0.07);
+  background: rgb(20 20 10 / 0.07);
 }
 
 .navigation-demo__feature-lines span:nth-child(1) {
@@ -116,7 +116,7 @@
   height: 2.6rem;
   flex: 0 0 auto;
   border-radius: 0.85rem;
-  background: rgb(109 40 217 / 0.065);
+  background: rgb(194 42 117 / 0.065);
 }
 
 .navigation-demo__ghost-lines {
@@ -171,8 +171,8 @@
 .navigation-demo__sheet-row {
   height: 3.1rem;
   border-radius: 0.9rem;
-  background: rgb(109 40 217 / 0.05);
-  border: 1px solid rgb(53 42 75 / 0.07);
+  background: rgb(194 42 117 / 0.05);
+  border: 1px solid rgb(20 20 10 / 0.07);
 }
 
 .navigation-demo__sheet-row--short {
@@ -214,10 +214,10 @@
   background:
     radial-gradient(
       circle at 50% 38%,
-      rgb(48 40 64 / 0.92),
-      rgb(16 12 24 / 0.97)
+      rgb(38 42 49 / 0.92),
+      rgb(19 20 23 / 0.97)
     ),
-    #14101c;
+    #131417;
   display: grid;
   place-items: center;
 }
@@ -295,7 +295,7 @@
   border-radius: 999px;
   border: 0;
   background: #fff;
-  color: #14101c;
+  color: #131417;
   font-family: inherit;
   font-size: 0.875rem;
   font-weight: 600;
@@ -352,10 +352,10 @@
 }
 
 .dark .navigation-demo__ghost-icon {
-  background: rgb(167 139 250 / 0.16);
+  background: rgb(255 95 168 / 0.16);
 }
 
 .dark .navigation-demo__sheet-row {
-  background: rgb(167 139 250 / 0.1);
+  background: rgb(255 95 168 / 0.1);
   border-color: rgb(255 255 255 / 0.08);
 }
