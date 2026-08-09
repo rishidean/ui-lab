@@ -11,9 +11,12 @@
  * workflow sheet (tap any action), collapsed (scroll down), and the four
  * right-button utilities — Search (bar morph), Export (compact sheet),
  * AI (in-bar chat morph — search grammar + upward stretch), Scan (modal
- * takeover). Sheets and modals share one clear-out grammar: nav circle
- * out, bar sweeps into the button, button fades — then the surface
- * takes over its footprint.
+ * takeover). Three grammars total: workflow sheets, Export, and Scan all
+ * launch from the receded bar via launchFromBar — one clear-out (circles
+ * recede, labels fade), then mount from the now-full-width bar (Scan
+ * alone measures its origin at press time, since the button itself is
+ * what recedes). AI and Search are separate in-bar morphs with no
+ * clear-out.
  */
 import {
   NavigationBar,
@@ -191,10 +194,10 @@ export default function NavigationBarStage() {
   const utilityButtonRef = useRef<HTMLButtonElement | null>(null);
   const actionBarRef = useRef<HTMLDivElement | null>(null);
   const [sheetOrigin, setSheetOrigin] = useState<SheetOrigin | null>(null);
-  // Action-press sequence: pressed feedback → fade phase (circles and
-  // unselected actions out, selected label lingering) → the emptied bar
-  // stretches into the sheet. sheetPrep drives the fade phase and stays
-  // true until the sheet has contracted back.
+  // One flag drives the clear-out for every bar-launched surface (workflow
+  // sheets, Export, Scan): pressed feedback → fade phase (circles recede,
+  // labels fade) → the emptied, full-width bar becomes the mount origin.
+  // sheetPrep stays true until the surface has contracted back into the bar.
   const [sheetPrep, setSheetPrep] = useState(false);
   const prepTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -203,6 +206,42 @@ export default function NavigationBarStage() {
     },
     []
   );
+
+  const measureBar = useCallback((): SheetOrigin => {
+    const rect = actionBarRef.current?.getBoundingClientRect();
+    return rect
+      ? {
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+          bottom: rect.bottom,
+        }
+      : {
+          top: window.innerHeight - 86,
+          left: 80,
+          width: window.innerWidth - 160,
+          height: 48,
+          bottom: window.innerHeight - 38,
+        };
+  }, []);
+
+  // One launch for every bar surface: flip the clear-out, wait for the
+  // recede, THEN measure the pill — its rect now spans the full row —
+  // and mount. (Press-time measuring would bake in the narrower
+  // pre-recede rect.)
+  const launchFromBar = useCallback(
+    (mount: () => void) => {
+      setSheetPrep(true);
+      if (prepTimer.current) clearTimeout(prepTimer.current);
+      prepTimer.current = setTimeout(
+        mount,
+        prefersReducedMotion ? 0 : SHEET_CLEAROUT_MS
+      );
+    },
+    [prefersReducedMotion]
+  );
+
   const [utility, setUtility] = useState<"scan" | null>(null);
   const [utilityClosing, setUtilityClosing] = useState(false);
   const [utilityOrigin, setUtilityOrigin] = useState<{
@@ -211,53 +250,22 @@ export default function NavigationBarStage() {
   } | null>(null);
 
   // ── Utility bottom sheets (Export) — bar-grammar morph ──
-  // utilSheetPrep drives the nav's clear-out (left circle, bar, then the
-  // button itself) and stays true until the sheet has contracted back.
+  // Launched via launchFromBar; sheetPrep drives the nav's clear-out and
+  // stays true until the sheet has contracted back.
   const [utilSheet, setUtilSheet] = useState<"export" | null>(null);
-  const [utilSheetPrep, setUtilSheetPrep] = useState(false);
   const [utilSheetOrigin, setUtilSheetOrigin] = useState<SheetOrigin | null>(
     null
-  );
-  const utilPrepTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (utilPrepTimer.current) clearTimeout(utilPrepTimer.current);
-    },
-    []
   );
 
   const openUtilitySheet = useCallback(
     (kind: "export") => {
-      if (utilSheet || utilSheetPrep || utility || utilityClosing) return;
-      const rect = utilityButtonRef.current?.getBoundingClientRect();
-      setUtilSheetOrigin(
-        rect
-          ? {
-              top: rect.top,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-              bottom: rect.bottom,
-            }
-          : {
-              top: window.innerHeight - 94,
-              left: window.innerWidth - 74,
-              width: 56,
-              height: 56,
-              bottom: window.innerHeight - 38,
-            }
-      );
-      // Clear-out first: nav circle fades (0.12 @ 0), bar sweeps into the
-      // button (0.2 @ 0.16) — at TEMPO ≈ 470ms. The sheet mounts as the
-      // button begins its own fade (0.4 ≈ 520ms), widening while it goes.
-      setUtilSheetPrep(true);
-      if (utilPrepTimer.current) clearTimeout(utilPrepTimer.current);
-      utilPrepTimer.current = setTimeout(
-        () => setUtilSheet(kind),
-        prefersReducedMotion ? 0 : SHEET_CLEAROUT_MS
-      );
+      if (utilSheet || sheetPrep || utility || utilityClosing) return;
+      launchFromBar(() => {
+        setUtilSheetOrigin(measureBar());
+        setUtilSheet(kind);
+      });
     },
-    [utilSheet, utilSheetPrep, utility, utilityClosing, prefersReducedMotion]
+    [utilSheet, sheetPrep, utility, utilityClosing, launchFromBar, measureBar]
   );
 
   const closeUtilitySheet = useCallback(() => {
@@ -273,21 +281,18 @@ export default function NavigationBarStage() {
     (kind: "scan") => {
       // Locked the moment any utility transition begins; only one surface
       // can exist at a time.
-      if (utility || utilityClosing || utilSheet || utilSheetPrep) return;
+      if (utility || utilityClosing || utilSheet || sheetPrep) return;
+      // Captured at press time — the button is gone post-recede, so this
+      // is the only chance to read its center as the reveal origin.
       const rect = utilityButtonRef.current?.getBoundingClientRect();
       setUtilityOrigin(
         rect
           ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
           : { x: window.innerWidth - 46, y: window.innerHeight - 52 }
       );
-      setUtilSheetPrep(true);
-      if (utilPrepTimer.current) clearTimeout(utilPrepTimer.current);
-      utilPrepTimer.current = setTimeout(
-        () => setUtility(kind),
-        prefersReducedMotion ? 0 : SHEET_CLEAROUT_MS
-      );
+      launchFromBar(() => setUtility(kind));
     },
-    [utility, utilityClosing, utilSheet, utilSheetPrep, prefersReducedMotion]
+    [utility, utilityClosing, utilSheet, sheetPrep, launchFromBar]
   );
 
   const closeUtility = useCallback(() => {
@@ -308,8 +313,7 @@ export default function NavigationBarStage() {
       isAssistantOpen ||
       utility !== null ||
       utilityClosing ||
-      utilSheet !== null ||
-      utilSheetPrep;
+      utilSheet !== null;
   }, [
     openSheet,
     sheetPrep,
@@ -318,7 +322,6 @@ export default function NavigationBarStage() {
     utility,
     utilityClosing,
     utilSheet,
-    utilSheetPrep,
   ]);
 
   const setCollapsed = useCallback((next: boolean, anchor: number) => {
@@ -470,7 +473,7 @@ export default function NavigationBarStage() {
           // bottom sheets (Export), AND modal takeovers (Scan) — both
           // circles recede, labels fade. AI is its own in-bar chat morph
           // and isn't part of this grammar.
-          isSheetOpen={sheetPrep || utilSheetPrep}
+          isSheetOpen={sheetPrep}
           onTabChange={tab => {
             setActiveTab(tab);
             setActiveAction(null);
@@ -485,50 +488,28 @@ export default function NavigationBarStage() {
           }}
           onActionClick={(label, tab) => {
             if (sheetPrep || openSheet) return;
-            // Capture the bar's rect as the stretch origin at press time.
-            const rect = actionBarRef.current?.getBoundingClientRect();
-            setSheetOrigin(
-              rect
-                ? {
-                    top: rect.top,
-                    left: rect.left,
-                    width: rect.width,
-                    height: rect.height,
-                    bottom: rect.bottom,
-                  }
-                : {
-                    top: window.innerHeight - 86,
-                    left: 80,
-                    width: window.innerWidth - 160,
-                    height: 48,
-                    bottom: window.innerHeight - 38,
-                  }
-            );
             setActiveAction(label);
             setLastAction(`${label} selected in ${tab}`);
             // Fade phase first: both circles out together, beat, then all
             // action labels out (0.16 + 0.12 at TEMPO ≈ 365ms), beat — then
             // the emptied bar begins its widen-and-stretch.
-            setSheetPrep(true);
-            if (prepTimer.current) clearTimeout(prepTimer.current);
-            prepTimer.current = setTimeout(
-              () => setOpenSheet(label),
-              prefersReducedMotion ? 0 : SHEET_CLEAROUT_MS
-            );
+            launchFromBar(() => {
+              setSheetOrigin(measureBar());
+              setOpenSheet(label);
+            });
           }}
           onUtilityClick={() => {
             const label = utilityAction?.label;
             if (!label) return;
             setLastAction(`${label} selected`);
-            // Right-button utilities, all sharing the button as origin:
-            //   AI     → in-bar chat morph (search grammar + upward stretch)
-            //   Search → the bar itself morphs into a search field
-            //   Export → compact actionable sheet (bar-grammar morph)
-            //   Scan   → full-screen capture takeover (circle reveal)
+            // Three grammars for the right-button utilities:
+            //   AI, Search    → in-bar morphs, no clear-out, no sheet
+            //   Export, Scan  → launched from the receded bar
+            //                   (launchFromBar), same grammar as the
+            //                   workflow sheet
             if (label === "AI") {
               // Assistant is an in-bar mode like Search — no clear-out, no sheet.
-              if (utilSheet || utilSheetPrep || utility || utilityClosing)
-                return;
+              if (utilSheet || sheetPrep || utility || utilityClosing) return;
               setIsAssistantOpen(true);
               return;
             }
@@ -551,7 +532,7 @@ export default function NavigationBarStage() {
         onExitComplete={() => {
           setUtilityClosing(false);
           setUtilityOrigin(null);
-          setUtilSheetPrep(false); // button, bar, and circle fade back in
+          setSheetPrep(false); // button, bar, and circle fade back in
           // Focus returns to the origin control — see focusWhenClear's
           // docstring in @/lib/a11y for why this can't be a plain
           // .focus() call.
@@ -576,7 +557,7 @@ export default function NavigationBarStage() {
       <AnimatePresence
         onExitComplete={() => {
           setUtilSheetOrigin(null);
-          setUtilSheetPrep(false); // button, bar, and circle fade back in
+          setSheetPrep(false); // button, bar, and circle fade back in
           // BottomSheet applies useInertOutside too — same race as above.
           focusWhenClear(utilityButtonRef.current);
         }}
