@@ -41,6 +41,9 @@
 
   /* ── Surfaces + borders ───────────────────────────────────────── */
   --surface-overlay: rgb(255 255 255 / 0.9);
+  /* Full-screen takeover sheet (UtilityModal) — a step lighter than the
+     canvas so the circle reveal reads against the page it covers. */
+  --surface-modal: #fdfcff;
   --border-subtle: rgb(53 42 75 / 0.11);
 
   /* ── Select pill — state, never decoration ────────────────────── */
@@ -106,6 +109,8 @@
   --gray-900: #f2eff7;
 
   --surface-overlay: rgb(32 27 44 / 0.92);
+  /* Elevated a step above the Ink canvas, same role as in Aurora. */
+  --surface-modal: #251f31;
   --border-subtle: rgb(255 255 255 / 0.12);
 
   --select-bg: rgb(109 40 217 / 0.3);

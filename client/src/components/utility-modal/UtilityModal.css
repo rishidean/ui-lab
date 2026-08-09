@@ -11,11 +11,27 @@
   cursor: pointer;
 }
 
-.utility-modal {
+/* Shadow wrapper — the disc's drop-shadow must sit on an ancestor of
+   the clipped element (filter is applied before clip-path on the same
+   element, which would clip the shadow away). The shadow follows the
+   clipped circle every frame, giving the growing surface physical
+   presence over the page. */
+.utility-modal__halo {
   position: fixed;
   inset: 0;
   z-index: 64;
   pointer-events: none;
+  filter: drop-shadow(0 16px 40px rgb(10 6 18 / 0.3));
+}
+
+.utility-modal {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* The takeover's own sheet: distinct from the page canvas so the
+     circle reads against what it covers, even before children paint.
+     Full-bleed children (a camera view) simply cover it. */
+  background: var(--surface-modal, #fdfcff);
 }
 
 .utility-modal__content {

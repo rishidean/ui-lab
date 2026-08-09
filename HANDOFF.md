@@ -56,6 +56,112 @@ Everything below landed, verified, and is pushed/deployed:
    a real user must Escape first), and reduced-motion open → submit →
    reply. 11/11 checks passed; `pnpm check` clean.
 
+## Previous session (2026-08-06) — recap
+
+**Showcase redesign shipped** — the component pages now render the "lab
+bench" design from Rishi's Claude Design project (design source archived
+at `docs/superpowers/specs/2026-08-06-showcase-redesign.dc.html`;
+implemented from the uploaded export since /design-login isn't available
+in remote sessions):
+
+1. **`lab/Showcase.tsx` + `Showcase.css`** replace `ComponentPage` (and
+   `CodeBlock`, both deleted) on every component route. Framed card:
+   header (logo / built·planned count / faux ⌘K / theme toggle /
+   Present), 288px index sidebar filled to `PLANNED_COUNT` (9) with
+   "in the oven" rows, hero, Demo/Code/Props tabs + Desktop/Mobile
+   viewport toggle, tryIt hints under the canvas, problem / "what I did"
+   columns, fair-warning banner, "rest of the lab" grid, footer.
+   Space Grotesk + JetBrains Mono (added to index.html), pink accent,
+   dark/light `--lab-*` palettes keyed off the existing ThemeContext
+   (site default stays light until Home gets its dark pass).
+2. **Registry `showcase` metadata** — category, lede, problem, solution,
+   real `propRows` for all four components, presentation `beats` (picker
+   only). Copy for the picker is verbatim from the design; the other
+   three are authored in the same voice.
+3. **Demo canvas strategy:** the picker gets a bespoke in-page demo
+   (digest-frequency card hosting the REAL PressAndSlidePicker + live
+   readout; mobile = 390px card with handle) in `lab/PickerShowcase.tsx`.
+   The other components embed their own route in an `<iframe
+src="/{slug}?embed=1">` — a true nested viewport, so the stages'
+   `position: fixed` choreography and rect-measured morphs run
+   untouched (they'd break under a transformed wrapper; no portals
+   anywhere, so the frame contains everything). Desktop = full-width
+   640px frame, Mobile = 390×720 device frame. The iframe remounts on
+   theme change (localStorage is shared) but NOT on view change.
+4. **Bare-stage fallback:** `?embed=1`, recording mode (H key), and
+   viewports <1024px all render just the Stage full-viewport (plus a
+   small "← index" chip when it's a human, not an iframe/recording).
+   Phones get the components themselves, and the a11y suites — which
+   all run at 390×844 — see the same DOM as before: **63/63 PASS**.
+5. **Presentation mode** (the old "Record mode" roadmap item): shown for
+   components with `beats` — 1920×1080 stage scaled to fit, 5 narrated
+   picker beats driving a scripted strip replica (horizontal, true to
+   the real gesture — the design's vertical fan misrepresented the
+   component), beat dots, play/pause at 2600ms, click-to-take-control,
+   ← / → / Space stepping, Escape releases. The Mobile/Desktop toggle
+   closes the other roadmap item; tryIt hints now surface on the Demo
+   tab (old "surface tryIt on Preview" item).
+
+**Home redesign shipped too** (2026-08-07, same session): `pages/Home.tsx`
+rewritten per "UI Lab - Home.dc.html" — full-bleed header strip, the
+"Interactions worth stealing." hero (accent on the last word),
+"open the first one" CTA + built·planned chip, the 9-slot index grid
+(registry `showcase.blurb` card one-liners — design copy for the first
+three, Utility Modal authored to match), the "not a frontend developer"
+banner, and the footer. Responsive: grid 3→2→1 columns, clamped hero
+type, ⌘K chip hidden under 640px. Shared palette/rows moved to
+`lab/labTheme.ts` (Showcase imports it too); Home carries its own
+chrome, so LabShell now only wraps the 404. Suite re-run: 63/63 PASS.
+
+**Picker popover fix** (2026-08-07, post-merge): Rishi's phone repro —
+tapping the picker chip showed no options. Root cause predates the
+redesign: the stage's plinth `transform: scale(1.35)` on
+`.picker-demo__object` (since 2026-08-03) made it the containing block
+for the picker's `position: fixed` strip/listbox, which rendered
+in-tree — inline top/left were computed correctly but painted offset
+AND scaled (390×844: listbox at y≈993, w≈461 — fully off-screen).
+Fix in the component: strip, fallback listbox, and scrim now render via
+`createPortal(document.body)`, with the token contract
+(`--surface-overlay` etc.) forwarded from the chip's computed style so
+scoped theming survives the portal; fallback top also gains the missing
+viewport clamp (flips above the chip when there's no room below).
+Verified on phone bare stage (tap + long-press strip) and the showcase
+demo card; suite 63/63. See the new Gotcha at the bottom.
+
+**Sticky headers + mobile component chrome** (2026-08-07, continued):
+site headers are sticky-glass (`overflow: clip` on the showcase card —
+NOT hidden, which would make it the sticky containing block;
+color-mix + backdrop-blur on both headers). Component pages <1024px get
+compact chrome instead of the bare stage: mini header, horizontally
+scrolling component-chip strip, Demo/Code/Props tabs (stacked props
+cards, no Desktop/Mobile toggle on-device); `?embed=1`/recording stay
+truly bare, the "← index" chip is gone. This surfaced TWO latent
+NavigationBar bugs, both fixed in-component: (1) the actions row's
+search-open exit was a bare `{ opacity: 0 }`, inheriting the
+`transition` PROP captured at its last render — mid menu-close that
+carries CLOSE_DELAYS.actionsFadeIn's 0.39s delay, slowing search-open
+~430ms (exit now pins explicit transitions in both variant branches);
+(2) the search-input focus ran on a fixed 286ms timer from open, racing
+the mode="wait" mount of the input (54ms margin!) — it now rAF-polls
+for the mount, then applies the same most-of-final-width delay. Suite
+63/63.
+
+**UtilityModal luster pass** (2026-08-07, Rishi's mobile feedback —
+"something is happening but not really" on open, dismiss "feels like a
+flash"): the demo surface was `--bg-canvas` on `--bg-canvas`, so the
+circle revealed a sheet identical to the page it covered. Fixes, in
+component: (1) new `--surface-modal` token (Aurora #fdfcff / Ink
+#251f31, theme.css) painted by the modal itself under children —
+full-bleed children like Scan's camera simply cover it; the demo
+stage's surface went transparent. (2) A drop-shadow rim on the disc via
+a new `.utility-modal__halo` wrapper — filter must sit on an ANCESTOR
+of the clipped element (filter applies before clip-path on the same
+element, which clips the shadow away). (3) Close choreography: content
+no longer exit-fades (it stays painted and the circle clips it away —
+the early fade left an empty disc), contraction is 0.85× grow (was
+0.7×), and the scrim lifts only after the circle lands (exit delay
+0.75×shrink). Registry copy + prop notes updated. Suite 63/63.
+
 ## Previous session (2026-08-05) — recap
 
 **NavigationBar is DONE** (Rishi's call). Everything below landed,
@@ -237,13 +343,16 @@ that wasn't foreseen in the 08-05 handoff, but still component-scoped.
 **NavigationBar is done.** What remains is site-wide, not component
 work:
 
-1. **Site copy pass** — About/landing description plus a general copy
-   pass (subsumes the old "Site description" roadmap item).
+1. ~~**Home redesign**~~ — SHIPPED 2026-08-07 (see the latest-session
+   recap). The old "site copy pass" and "dark pass on Home" items went
+   with it. LabShell survives only for the 404 — fold it away whenever
+   NotFound gets the lab treatment.
 2. **Site code + dependency links** — the registry `dependencies`
-   arrays are prose today; make each entry link to its file/source. Also
-   still open from the previous roadmap: surface the registry `tryIt`
-   hints on the Preview tab; README updates (Bottom Sheet row, Theming
-   section); dark pass on Home/landing.
+   arrays are prose today; make each entry link to its file/source.
+   Also still open: README updates (Bottom Sheet row, Theming section).
+   (2026-08-06 closed: tryIt hints now render under the showcase demo
+   canvas; Mobile/Desktop toggle and presentation/record mode shipped
+   with the showcase redesign.)
 
 (All previous items landed, frame-verified: Filter choreography — see
 Choreography specs #6 and the Overview's Filtering section — the
@@ -269,13 +378,14 @@ the full list.)
 
 ## Remaining roadmap after that
 
-**Possible new EPIC: Site Fixes** (Rishi, 2026-08-04 — spec before
-building):
+**Site Fixes epic — SHIPPED 2026-08-06** with the showcase redesign
+(the .dc.html design served as the spec):
 
-- **Mobile/desktop toggle** — view any component in different viewport
-  contexts from the Preview tab.
-- **Record mode** — a mode for recording walkthrough videos of a
-  component (driving its choreography for capture).
+- ~~**Mobile/desktop toggle**~~ — the showcase's Desktop/Mobile views
+  (device-framed iframe for stage-hosted components).
+- ~~**Record mode**~~ — presentation mode with narrated beats (picker
+  has the first beat script; add `beats` + a beat visual to give other
+  components one). The old H-key recording mode also still works.
 
 ## Housekeeping
 
@@ -295,6 +405,15 @@ building):
   actions row's label-hold). Corollary: never trust a single mount-time
   measurement of geometry that animates — the filter highlight tracks
   its option with a ResizeObserver until layout settles.
+- Same capture rule applies to the `transition` PROP: an exit variant
+  without its own transition (`exit: { opacity: 0 }`) inherits the
+  component's `transition` as of the LAST render — if that prop is
+  state-dependent (menuClosing/navCollapsing branches), the exit can
+  silently carry a stale multi-hundred-ms delay. Pin an explicit
+  transition inside every exit variant branch. Downstream hazard: under
+  `mode="wait"` the NEXT child's mount waits for that exit, so anything
+  scheduled on a fixed timer from the state flip (the search input's
+  focus) races it — poll for the mount instead.
 
 - Never combine framer's `layout`/`layoutId` with manual scaleX/origin
   animation on these surfaces (FLIP fights, origin hijacking). Measure and
@@ -353,6 +472,16 @@ building):
   reproduce it; drive a real Chrome (claude-in-chrome) to verify. Fix
   pattern: on animation-complete at scale 1, toggle an invisible
   inherited paint property (transparent text-shadow) for one frame.
+- A `position: fixed` element inside a transformed (or filtered /
+  will-change: transform) ancestor is NOT viewport-fixed — that ancestor
+  becomes its containing block, so correct inline top/left paint offset
+  and scaled. Inline-style inspection looks right while the rendered
+  rect is wrong; compare `el.style.top` against
+  `getBoundingClientRect()` to catch it. Any in-tree popover a consumer
+  might mount under a transform (demo plinths use `scale()`!) must
+  portal to document.body — and CSS custom properties don't follow: read
+  the token values off the anchor's `getComputedStyle` and re-apply them
+  on the portal wrapper (see PressAndSlidePicker's PORTAL_TOKEN_KEYS).
 - Fix verification races the Railway deploy AND the browser tab: a
   just-pushed fix takes minutes to deploy, and an already-open SPA tab
   keeps running its old bundle until a reload — "still broken" right

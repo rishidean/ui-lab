@@ -1,123 +1,131 @@
 /**
- * Landing page — the gallery. Everything renders from the registry.
+ * Landing page — the lab redesign's Home (UI Lab - Home.dc.html).
+ * Full-bleed: header strip, hero, the index grid of shipped components,
+ * the fair-warning banner, and the footer. Everything renders from the
+ * registry; palette + type ride Showcase.css.
  */
 import { Link } from "wouter";
-import { ArrowUpRight, Github } from "lucide-react";
-import {
-  AUTHOR_URL,
-  GITHUB_URL,
-  LAB_TAGLINE,
-  labComponents,
-} from "@/lab/registry";
+import { AUTHOR_URL, labComponents } from "@/lab/registry";
+import { pad2, PALETTES } from "@/lab/labTheme";
+import { useTheme } from "@/contexts/ThemeContext";
+import "@/lab/Showcase.css";
 
 export default function Home() {
+  const { theme, toggleTheme } = useTheme();
+
   return (
-    <div className="h-full overflow-auto">
-      <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-12 sm:px-6 sm:pt-16">
-        {/* Hero */}
-        <section className="max-w-2xl">
-          <h1 className="text-4xl font-semibold tracking-tight text-[#211a2c] sm:text-5xl">
-            Components you
-            <br />
-            haven't seen before.
+    <div className="lab" style={PALETTES[theme] as React.CSSProperties}>
+      <header className="lab-home-header">
+        <div className="lab-header__brand">
+          <span aria-hidden="true" className="lab-logo" />
+          <span className="lab-header__title">rishi's ui lab</span>
+        </div>
+        <div className="lab-header__right">
+          <span className="lab-header__kbd">
+            find component <kbd>⌘K</kbd>
+          </span>
+          {toggleTheme && (
+            <button
+              type="button"
+              className="lab-btn lab-header__theme"
+              onClick={toggleTheme}
+              aria-label={
+                theme === "dark"
+                  ? "Switch to light theme"
+                  : "Switch to dark theme"
+              }
+            >
+              {theme === "dark" ? "☾ dark" : "☀ light"}
+            </button>
+          )}
+          <a
+            href={AUTHOR_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="lab-header__theme lab-home-header__site"
+          >
+            rishidean.com →
+          </a>
+        </div>
+      </header>
+
+      <main>
+        <section className="lab-home-hero">
+          <div className="lab-home-hero__eyebrow">
+            a personal component lab · by rishi dean
+          </div>
+          <h1 className="lab-home-hero__title">
+            Interactions worth{" "}
+            <span className="lab-home-hero__steal">stealing.</span>
           </h1>
-          <p className="mt-4 text-[1.0625rem] leading-relaxed text-[#625a6d]">
-            {LAB_TAGLINE}
+          <p className="lab-home-hero__lede">
+            I build one interaction at a time, mostly to feel it in my own
+            hands. Every one here is live, dissectible, and free to copy — code,
+            props, and all.
           </p>
-          <div className="mt-6 flex items-center gap-3">
-            <a
-              href={GITHUB_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-[#211a2c] px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-85"
-            >
-              <Github className="h-4 w-4" />
-              View the code
-            </a>
-            <span className="text-sm text-[#9c95a4]">
-              MIT licensed · copy freely
-            </span>
+        </section>
+
+        <section
+          className="lab-home-index"
+          aria-label={`Index of ${labComponents.length} components`}
+        >
+          <div className="lab-home-index__head">
+            <span>index / {pad2(labComponents.length)} components</span>
+            <span className="lab-home-index__hint">click any row to open</span>
+          </div>
+          <div className="lab-home-grid">
+            {labComponents.map((c, i) => (
+              <Link key={c.slug} href={`/${c.slug}`} className="lab-home-card">
+                <div className="lab-home-card__meta">
+                  <span className="lab-home-card__num">{pad2(i + 1)}</span>
+                  <span className="lab-home-card__status">shipped</span>
+                </div>
+                <div>
+                  <div className="lab-home-card__name">{c.name}</div>
+                  <div className="lab-home-card__desc">{c.showcase.blurb}</div>
+                </div>
+              </Link>
+            ))}
           </div>
         </section>
 
-        {/* Gallery */}
-        <section className="mt-12 grid gap-5 sm:grid-cols-2">
-          {labComponents.map(c => (
-            <Link
-              key={c.slug}
-              href={`/${c.slug}`}
-              className="group flex flex-col overflow-hidden rounded-3xl border border-[#e7e3ee] bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
-            >
-              <div
-                aria-hidden="true"
-                className="relative h-36 overflow-hidden"
-                style={{ background: c.accent }}
-              >
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgb(255_255_255/0.55),transparent_55%)]" />
-                <span className="absolute bottom-4 left-5 rounded-full bg-white/85 px-3 py-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-[#4b4456] backdrop-blur-sm">
-                  {c.status}
-                </span>
+        <section className="lab-home-banner-wrap">
+          <div className="lab-home-banner">
+            <div>
+              <div className="lab-home-banner__tag">
+                not a frontend developer
               </div>
-              <div className="flex flex-1 flex-col p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <h2 className="text-lg font-semibold tracking-tight text-[#211a2c]">
-                    {c.name}
-                  </h2>
-                  <ArrowUpRight className="h-5 w-5 shrink-0 text-[#b7b0c0] transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[#5b21b6]" />
-                </div>
-                <p className="mt-1.5 flex-1 text-sm leading-relaxed text-[#625a6d]">
-                  {c.tagline}
-                </p>
-                <div className="mt-4 flex flex-wrap gap-1.5">
-                  {c.tags.map(tag => (
-                    <span
-                      key={tag}
-                      className="rounded-full bg-[#f1eef6] px-2.5 py-1 text-[0.6875rem] font-medium text-[#625a6d]"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </Link>
-          ))}
-
-          {/* More coming */}
-          <div className="flex min-h-[16rem] flex-col items-center justify-center rounded-3xl border border-dashed border-[#d9d4e2] p-8 text-center">
-            <span className="text-2xl" aria-hidden="true">
-              ⚗️
-            </span>
-            <p className="mt-3 text-sm font-medium text-[#625a6d]">
-              More experiments brewing
-            </p>
-            <p className="mt-1 text-xs text-[#9c95a4]">
-              New components land here as they graduate from side projects.
-            </p>
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="mt-16 flex flex-wrap items-center justify-between gap-3 border-t border-[#e7e3ee] pt-6 text-sm text-[#9c95a4]">
-          <span>
-            Built by{" "}
+              <p className="lab-home-banner__copy">
+                I vibe-code these out of my head because I want to feel the idea
+                before I argue about it. They work. Steal them, break them, ship
+                them better.
+              </p>
+            </div>
             <a
               href={AUTHOR_URL}
               target="_blank"
               rel="noreferrer"
-              className="font-medium text-[#625a6d] underline-offset-2 hover:underline"
+              className="lab-home-banner__link"
             >
-              Rishi Dean
+              more of my thinking →
             </a>
-          </span>
-          <span>
-            Tip: press{" "}
-            <kbd className="rounded border border-[#d9d4e2] bg-white px-1.5 py-0.5 font-mono text-xs">
-              H
-            </kbd>{" "}
-            on any demo to hide the chrome for recordings
-          </span>
-        </footer>
+          </div>
+        </section>
       </main>
+
+      <footer className="lab-home-foot">
+        <span className="lab-foot__license">
+          free · mit · no attribution needed
+        </span>
+        <a
+          href={AUTHOR_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="lab-foot__link"
+        >
+          rishidean.com →
+        </a>
+      </footer>
     </div>
   );
 }

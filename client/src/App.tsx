@@ -3,16 +3,23 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LabShell } from "@/lab/LabShell";
-import { ComponentPage } from "@/lab/ComponentPage";
+import { Showcase } from "@/lab/Showcase";
 import { RecordingProvider } from "@/lab/recording";
 import { getComponent, labComponents } from "@/lab/registry";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/NotFound";
 
+// Home and the component pages carry their own chrome (the lab
+// redesign); LabShell only wraps the 404 fallback now.
 function ComponentRoute({ slug }: { slug: string }) {
   const component = getComponent(slug);
-  if (!component) return <NotFound />;
-  return <ComponentPage component={component} />;
+  if (!component)
+    return (
+      <LabShell>
+        <NotFound />
+      </LabShell>
+    );
+  return <Showcase component={component} />;
 }
 
 function Router() {
@@ -26,7 +33,11 @@ function Router() {
           </Route>
         ))
       )}
-      <Route component={NotFound} />
+      <Route>
+        <LabShell>
+          <NotFound />
+        </LabShell>
+      </Route>
     </Switch>
   );
 }
@@ -37,9 +48,7 @@ function App() {
       <ThemeProvider defaultTheme="light" switchable>
         <TooltipProvider>
           <RecordingProvider>
-            <LabShell>
-              <Router />
-            </LabShell>
+            <Router />
           </RecordingProvider>
         </TooltipProvider>
       </ThemeProvider>
