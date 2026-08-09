@@ -38,7 +38,7 @@ The center region changes based on the current view.
 - Contains one or more actions, such as Deposit and Withdraw.
 - Action chips are **text-only verbs** — icons belong to the circular
   left/right buttons, never the pill.
-- Chips are ghost labels at rest; the lavender select-pill appears only for
+- Chips are ghost labels at rest; the select-pill appears only for
   hover/pressed/engaged states. **Pill = state**, not decoration.
 - With more actions than fit (e.g. five on Trade), the row scrolls
   horizontally with edge-fade affordances instead of squishing labels.
@@ -146,7 +146,7 @@ When an Action Button is clicked:
 - Both Navigation & Utility circles recede simultaneously — the bar's
   clear-out, triggered by flipping `isSheetOpen`.
 - Action labels — selected and unselected — fade out a beat later (the
-  pressed chip keeps its lavender state as it goes), leaving the
+  pressed chip keeps its select-pill state as it goes), leaving the
   full-width glass bar as the seed the sheet grows out of.
 - Once `SHEET_CLEAROUT_MS` elapses, the bar is measured — its rect now
   spans the full row — and the Action Sheet mounts there. Because the
@@ -330,9 +330,9 @@ denied/unavailable, and the active viewfinder.
 
 ## Visual Rules
 
-- Purple indicates the active navigation state — reserved for navigation;
+- The accent indicates the active navigation state — reserved for navigation;
   actions are ink.
-- The lavender select-pill marks state (engaged, selected, pressed) and is
+- The select-pill marks state (engaged, selected, pressed) and is
   never decorative.
 - Workflow actions use verbs; icons never appear on action chips.
 - Filters display the current value with a chevron menu indicator, in

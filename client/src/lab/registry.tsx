@@ -176,7 +176,7 @@ const utilityActions = {
 /*
  * Styling contract: the component reads the token contract in
  * client/src/theme/theme.css (accent family, text scale, select pill,
- * glass classes, scrims — with Aurora light and Ink dark presets).
+ * glass classes, scrims — with Bench (light) and Bench (dark) presets).
  * Copy theme.css alongside the component and edit a preset block, or
  * remap the variables to your own design system.
  */
@@ -338,7 +338,7 @@ export const labComponents: LabComponent[] = [
     tagline:
       "A glass bottom bar where navigation, actions, and filters share one surface.",
     description:
-      "A mobile-first bottom bar that collapses navigation into a single morphing cluster: a tab switcher that blooms into a menu, a center pill carrying per-tab contextual actions, an in-place filter expansion, and one aurora accent button. Scroll down and it folds to a logo; scroll up and it returns. Every transition is choreographed — nothing pops.",
+      "A mobile-first bottom bar that collapses navigation into a single morphing cluster: a tab switcher that blooms into a menu, a center pill carrying per-tab contextual actions, an in-place filter expansion, and one accent utility button. Scroll down and it folds to a logo; scroll up and it returns. Every transition is choreographed — nothing pops.",
     tags: ["navigation", "mobile", "motion", "glassmorphism"],
     status: "stable",
     accent: "linear-gradient(135deg, #c4b5fd 0%, #f0abfc 46%, #a5b4fc 100%)",
