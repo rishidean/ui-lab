@@ -4,7 +4,47 @@ Working doc for continuing the lab's component work in a fresh session.
 Repo: `github.com/rishidean/ui-lab` (push to `main` auto-deploys on
 Railway via the Dockerfile). Owner: Rishi (rishidean).
 
-## Latest session (2026-08-08) — recap
+## Latest session (2026-08-09) — recap
+
+**Assistant hardening, mainline reconciliation, and a chrome declutter.**
+Everything landed, verified (tsc + prettier + full a11y sweep per
+change), and is pushed/deployed:
+
+1. **Post-review assistant fixes** (landed after the 08-08 recap below
+   was written): pill geometry corrected — the input row is 36px inside
+   the pill's 12px padding+border box, so the assistant centers
+   identically to Search and a below-cap card fits with zero internal
+   scroll (`3542d84`); transcript scroll region keyboard-focusable
+   (`tabIndex 0`); rapid-reopen strand fixed — a delayed
+   AnimatePresence exit on the keyed branch left mid-exit values
+   unrestored when the same key re-entered, so `assistantHeld` now
+   keeps the branch mounted through the close wipe and every toggle is
+   an animate retarget (`50806af`); bottom breathing room per Rishi
+   (8px above the input row, 6px stretched-only margin below, height
+   formula in sync); assistant focus-arm aligned with Search's
+   poll-then-arm (`2132053`) — a fixed timer could fire before the
+   input mounts under `mode="wait"`. a11y-assistant.mjs now asserts
+   VISIBILITY (computed clip-path/opacity), not just DOM presence, plus
+   a 200ms rapid-reopen case.
+2. **Mainline reconciliation** (`fc185bf`): local main (assistant line,
+   12 commits) and origin/main (showcase-redesign line, 7 commits) had
+   diverged from `68cffc8`. Merged remote into local — HANDOFF recaps
+   stacked chronologically, NavigationBar.tsx / registry.tsx /
+   theme.css auto-merged (remote's poll-then-arm search fix + explicit
+   exit transitions coexist with the assistant rework) — verified with
+   the full harness, pushed. The assistant now lives inside the
+   lab-bench showcase chrome.
+3. **Chrome declutter per Rishi** (`6f63633`): index rail lists only
+   built components (oven rows gone), faux ⌘K removed from both
+   headers, built/planned header count removed, "rest of the lab" grid
+   removed (redundant with the rail), Home's index/count + click-hint
+   row removed, component footer link is just "rishidean.com →". Dead
+   CSS and `labRows` removed; the stale assistant-sheet tryIt hint now
+   describes the bar morph. `PLANNED_COUNT` in registry.tsx is dead but
+   left in place (the working tree carries uncommitted picker edits to
+   that file — don't sweep them into a commit).
+
+## Previous session (2026-08-08) — recap
 
 **NavigationBar assistant mode shipped** (Rishi's call — spec in
 `docs/superpowers/specs/2026-08-08-assistant-in-bar-design.md`). The AI
@@ -334,25 +374,31 @@ the two morph components in the stage (raw seconds, no TEMPO).
 
 ## NEXT UP (the reason for this handoff)
 
-The 2026-08-05 session closed out the old item 1 entirely (sweep fixes +
-all four deferred a11y minors) and the NavigationBar-scoped parts of
-items 2–3 (Overview/spec sync, registry copy/usage/tryIt corrections).
-The 2026-08-08 session then shipped the assistant-mode rework on top
-(see the latest-session recap above) — component work on NavigationBar
-that wasn't foreseen in the 08-05 handoff, but still component-scoped.
-**NavigationBar is done.** What remains is site-wide, not component
-work:
+Rishi's plan for the next session (2026-08-09):
 
-1. ~~**Home redesign**~~ — SHIPPED 2026-08-07 (see the latest-session
-   recap). The old "site copy pass" and "dark pass on Home" items went
-   with it. LabShell survives only for the 404 — fold it away whenever
-   NotFound gets the lab treatment.
-2. **Site code + dependency links** — the registry `dependencies`
-   arrays are prose today; make each entry link to its file/source.
-   Also still open: README updates (Bottom Sheet row, Theming section).
-   (2026-08-06 closed: tryIt hints now render under the showcase demo
-   canvas; Mobile/Desktop toggle and presentation/record mode shipped
-   with the showcase redesign.)
+1. **Unify the morph grammar around the assistant pattern.** Apply the
+   assistant's bar-morph approach to the bottom sheet so Search, the
+   Assistant, and BottomSheet-backed surfaces (workflow sheets, Export)
+   all morph consistently — one grammar instead of "bar-internal modes"
+   vs "clear-out + external surface". Start from how the assistant does
+   it (real height animation on the pill, `assistantHeld` retargeting,
+   serial beats) and the existing clear-out contract
+   (`ACTION_SHEET_CLEAROUT_MS` / `UTILITY_CLEAROUT_MS`); decide whether
+   the sheet becomes a bar-internal mode or the bar-internal machinery
+   gets extracted for both. Spec-first — this touches the flagship's
+   choreography grammar.
+2. **Theme-consistency pass on the components.** The lab-bench showcase
+   chrome (`--lab-*` palette, pink accent, JetBrains Mono/Space
+   Grotesk) and the components' own token contract (Aurora/Ink,
+   `--iris`/`--aurora-lilac`) are two different worlds on one page.
+   Update the components so they match the overall site theme
+   color-wise.
+
+Older site-wide leftovers, still open but behind the two above:
+
+- **Site code + dependency links** — the registry `dependencies`
+  arrays are prose today; make each entry link to its file/source.
+  Also still open: README updates (Bottom Sheet row, Theming section).
 
 (All previous items landed, frame-verified: Filter choreography — see
 Choreography specs #6 and the Overview's Filtering section — the
