@@ -34,7 +34,7 @@
   height: 0.3rem;
   margin: 0.4rem auto 0.9rem;
   border-radius: 999px;
-  background: var(--sheet-grabber, rgb(53 42 75 / 0.16));
+  background: var(--sheet-grabber, rgb(20 20 10 / 0.16));
 }
 
 .bottom-sheet__header {
@@ -70,7 +70,7 @@
 .bottom-sheet__done {
   border: 0;
   background: var(--select-bg, #ece7fb);
-  color: var(--select-fg, #5b21b6);
+  color: var(--select-fg, #a12160);
   font-family: inherit;
   font-size: 0.8125rem;
   font-weight: 600;
@@ -87,19 +87,19 @@
   background: color-mix(
     in oklab,
     var(--select-bg, #ece7fb) 86%,
-    var(--select-fg, #5b21b6)
+    var(--select-fg, #a12160)
   );
 }
 
 .bottom-sheet__done:active {
   transform: scale(0.96);
-  box-shadow: inset 0 1px 2px rgb(49 36 72 / 0.18);
+  box-shadow: inset 0 1px 2px rgb(20 20 10 / 0.18);
 }
 
 .bottom-sheet__done:focus-visible,
 .bottom-sheet__expand:focus-visible {
   outline: 2px solid
-    color-mix(in oklab, var(--select-fg, #5b21b6) 40%, transparent);
+    color-mix(in oklab, var(--select-fg, #a12160) 40%, transparent);
   outline-offset: 2px;
 }
 
@@ -121,13 +121,13 @@
 }
 
 .bottom-sheet__expand:hover {
-  background: var(--action-ghost-bg-hover, rgb(53 42 75 / 0.08));
+  background: var(--action-ghost-bg-hover, rgba(194 42 117 / 0.06));
 }
 
 .bottom-sheet__expand:active {
   transform: scale(0.92);
   background: var(--select-bg, #ece7fb);
-  color: var(--select-fg, #5b21b6);
+  color: var(--select-fg, #a12160);
 }
 
 .bottom-sheet__expand svg {

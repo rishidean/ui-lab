@@ -1578,7 +1578,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     scaleY: 0.45,
                     borderRadius: 28,
                     boxShadow:
-                      "0 4px 14px rgb(44 31 66 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9)",
+                      "0 4px 14px rgb(20 20 10 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9)",
                   }}
                   animate={{
                     opacity: 1,
@@ -1586,7 +1586,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     scaleY: 1,
                     borderRadius: 21,
                     boxShadow:
-                      "0 18px 44px rgb(44 31 66 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.9)",
+                      "0 18px 44px rgb(20 20 10 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.9)",
                   }}
                   exit={{
                     opacity: 0,
@@ -1594,7 +1594,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     scaleY: 0.5,
                     borderRadius: 28,
                     boxShadow:
-                      "0 4px 14px rgb(44 31 66 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9)",
+                      "0 4px 14px rgb(20 20 10 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9)",
                   }}
                   transition={menuGrowTransition}
                   className="glass-overlay absolute z-40 pointer-events-auto p-1.5 min-w-[210px] overflow-hidden"

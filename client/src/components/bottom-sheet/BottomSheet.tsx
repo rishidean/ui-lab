@@ -170,7 +170,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     height: origin.height,
     borderRadius: origin.height / 2,
     boxShadow:
-      "0 10px 28px rgb(48 36 72 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.8)",
+      "0 10px 28px rgb(20 20 10 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.8)",
   };
   const sheetState = {
     left: finalLeft,
@@ -179,7 +179,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     height: sheetHeight,
     borderRadius: 28,
     boxShadow:
-      "0 24px 60px rgb(48 36 72 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.9)",
+      "0 24px 60px rgb(20 20 10 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.9)",
   };
 
   return (
