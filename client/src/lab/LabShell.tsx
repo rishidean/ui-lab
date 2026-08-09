@@ -27,9 +27,9 @@ export function LabShell({ children }: { children: ReactNode }) {
                 aria-hidden="true"
                 className="h-3.5 w-3.5 rounded-full"
                 style={{
-                  background:
-                    "linear-gradient(135deg, #c4b5fd 0%, #f0abfc 46%, #a5b4fc 100%)",
-                  boxShadow: "0 0 0 3px rgb(196 181 253 / 0.25)",
+                  background: "var(--gradient-brand)",
+                  boxShadow:
+                    "0 0 0 3px color-mix(in oklab, var(--accent-soft) 25%, transparent), inset 0 1px 1px rgba(255,255,255,0.6)",
                 }}
               />
               {LAB_NAME}

@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 import { focusWhenClear } from "@/lib/a11y";
 import { ChevronDown, Search as SearchGlyph, Sparkles, X } from "lucide-react";
 
-// Default collapsed-state glyph: a small aurora dot. A brand mark, not a
+// Default collapsed-state glyph: a small brand dot. A brand mark, not a
 // placeholder icon — consumers pass `logo` to supply their own.
 const DefaultLogo = () => (
   <span
@@ -294,10 +294,10 @@ export type NavigationBarProps = {
   activeTab?: string;
   onActionClick?: (label: string, tab: string) => void;
   /** Label of the currently engaged action, if any. The pill treatment is
-   *  reserved for real state: only this ActionButton gets the lavender
+   *  reserved for real state: only this ActionButton gets the accent
    *  inset fill. */
   activeAction?: string | null;
-  /** Glyph shown when no tab is active. Defaults to the aurora-dot brand
+  /** Glyph shown when no tab is active. Defaults to the brand
    *  mark. */
   logo?: React.ReactNode;
   /** Search mode: the NavigationButton recedes and the bar morphs into a
@@ -1464,7 +1464,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   WebkitBackdropFilter: "saturate(1.5) blur(var(--blur-lg))",
                 }}
               />
-              {/* Aurora hover glow — same affordance as the UtilityButton,
+              {/* Accent hover glow — same affordance as the UtilityButton,
                   so both circles answer the cursor identically. */}
               <span
                 aria-hidden="true"
@@ -2304,7 +2304,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 transition={{ duration: dur(0.18), ease: EASE }}
               >
                 {/* Neutral action circle: frosted white with a muted
-                    gray-lilac border and dark icon. Deliberately quieter than
+                    border and dark icon. Deliberately quieter than
                     the selected navigation circle on the left. */}
                 <span
                   className="absolute inset-0 rounded-full"
@@ -2316,7 +2316,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     WebkitBackdropFilter: "saturate(1.4) blur(var(--blur-lg))",
                   }}
                 />
-                {/* Aurora hover glow */}
+                {/* Accent hover glow */}
                 <span
                   aria-hidden="true"
                   className="absolute inset-0 rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100"
