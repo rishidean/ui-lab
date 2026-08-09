@@ -77,8 +77,7 @@ export const PLANNED_COUNT = 9;
 
 const navigationBarUsage = `import {
   NavigationBar,
-  ACTION_SHEET_CLEAROUT_MS,   // clear-out windows for launching sheet
-  UTILITY_CLEAROUT_MS,        // surfaces from the bar (see below)
+  SHEET_CLEAROUT_MS,   // one clear-out window for every sheet surface
 } from "@/components/navigation-bar";
 import {
   Home, CreditCard, TrendingUp, ReceiptText,          // Tabs
@@ -164,11 +163,9 @@ const utilityActions = {
   utilityButtonRef={utilityButtonRef} // shared origin: measure its bounds
                                       // and grow utility surfaces out of it
   actionBarRef={actionBarRef}         // shared origin for workflow sheets
-  isActionSheetOpen={sheetPrep}       // flip, wait ACTION_SHEET_CLEAROUT_MS,
-                                      // then mount your sheet (BottomSheet
-                                      // pairs perfectly here)
-  isUtilitySheetOpen={utilPrep}       // flip, wait UTILITY_CLEAROUT_MS,
-                                      // then mount the utility surface
+  isSheetOpen={sheetPrep || utilPrep} // flip, wait SHEET_CLEAROUT_MS, then
+                                      // measure the bar and mount your
+                                      // sheet (BottomSheet pairs perfectly)
   onTabChange={setActiveTab}
   onFilterChange={setActiveFilter}
   onActionClick={(label, tab) => console.log(label, tab)}
@@ -211,11 +208,11 @@ const utilityActions = {
  *            then stretches upward into a conversation card once you
  *            append messages via onAssistantSubmit).
  *   Search → set isSearchOpen (the bar itself morphs into the field).
- *   Sheets → flip isUtilitySheetOpen, wait UTILITY_CLEAROUT_MS, then
- *            mount a BottomSheet (@/components/bottom-sheet) from the
+ *   Sheets → flip isSheetOpen, wait SHEET_CLEAROUT_MS, then mount a
+ *            BottomSheet (@/components/bottom-sheet) from the
  *            UtilityButton's rect. Workflow sheets from ActionButtons
- *            use the same pattern: isActionSheetOpen +
- *            ACTION_SHEET_CLEAROUT_MS from the bar's rect (actionBarRef).
+ *            use the same pattern: isSheetOpen + SHEET_CLEAROUT_MS from
+ *            the bar's rect (actionBarRef).
  *   Modals → same clear-out, then mount a UtilityModal
  *            (@/components/utility-modal) from the UtilityButton's
  *            CENTER point — a full-screen circle-reveal takeover.
@@ -422,16 +419,10 @@ export const labComponents: LabComponent[] = [
           note: "The bar itself morphs into the search field; Enter submits, then closes.",
         },
         {
-          name: "isActionSheetOpen",
+          name: "isSheetOpen",
           type: "boolean",
           def: "false",
-          note: "Workflow-sheet clear-out. Flip, wait ACTION_SHEET_CLEAROUT_MS, mount.",
-        },
-        {
-          name: "isUtilitySheetOpen",
-          type: "boolean",
-          def: "false",
-          note: "Clear-out toward the UtilityButton. Flip, wait UTILITY_CLEAROUT_MS, mount.",
+          note: "Sheet clear-out — both circles recede. Flip, wait SHEET_CLEAROUT_MS, mount.",
         },
         {
           name: "utilityButtonRef / actionBarRef",

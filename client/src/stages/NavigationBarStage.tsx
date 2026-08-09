@@ -17,8 +17,7 @@
  */
 import {
   NavigationBar,
-  ACTION_SHEET_CLEAROUT_MS,
-  UTILITY_CLEAROUT_MS,
+  SHEET_CLEAROUT_MS,
   type AssistantMessage,
 } from "@/components/navigation-bar";
 import { BottomSheet, type SheetOrigin } from "@/components/bottom-sheet";
@@ -56,14 +55,13 @@ const TOGGLE_COOLDOWN_MS = 350;
 const ALWAYS_EXPANDED_ABOVE = 20;
 
 // ── UtilityButton surfaces ──────────────────────────────────────────────
-// Every kind runs the same clear-out first (NavigationButton out, bar
-// sweeps into the UtilityButton, button fades — sequenced by
-// isUtilitySheetOpen inside the NavigationBar). Then: modal takeovers
-// (Scan) use the shared UtilityModal (circle-reveal from the button's
-// center point); bottom sheets (Export) use the shared BottomSheet
-// (widen out of its footprint, stretch vertically); AI is its own
-// in-bar chat morph (search grammar + upward stretch), owned by the
-// NavigationBar itself.
+// Every kind runs the same clear-out first (both circles recede, labels
+// fade — sequenced by isSheetOpen inside the NavigationBar). Then: modal
+// takeovers (Scan) use the shared UtilityModal (circle-reveal from the
+// button's center point); bottom sheets (Export) use the shared
+// BottomSheet (widen out of its footprint, stretch vertically); AI is
+// its own in-bar chat morph (search grammar + upward stretch), owned by
+// the NavigationBar itself.
 /* Scan: full-screen capture takeover. Demonstrates the permission and
    error/unavailable states before the active viewfinder. */
 function ScanView({ onClose }: { onClose: () => void }) {
@@ -256,7 +254,7 @@ export default function NavigationBarStage() {
       if (utilPrepTimer.current) clearTimeout(utilPrepTimer.current);
       utilPrepTimer.current = setTimeout(
         () => setUtilSheet(kind),
-        prefersReducedMotion ? 0 : UTILITY_CLEAROUT_MS
+        prefersReducedMotion ? 0 : SHEET_CLEAROUT_MS
       );
     },
     [utilSheet, utilSheetPrep, utility, utilityClosing, prefersReducedMotion]
@@ -286,7 +284,7 @@ export default function NavigationBarStage() {
       if (utilPrepTimer.current) clearTimeout(utilPrepTimer.current);
       utilPrepTimer.current = setTimeout(
         () => setUtility(kind),
-        prefersReducedMotion ? 0 : UTILITY_CLEAROUT_MS
+        prefersReducedMotion ? 0 : SHEET_CLEAROUT_MS
       );
     },
     [utility, utilityClosing, utilSheet, utilSheetPrep, prefersReducedMotion]
@@ -468,12 +466,11 @@ export default function NavigationBarStage() {
           onAssistantClose={() => setIsAssistantOpen(false)}
           onAssistantSubmit={handleAssistantSubmit}
           assistantMessages={assistantMessages}
-          isActionSheetOpen={sheetPrep}
-          // One clear-out grammar for the right-button surfaces: bottom
-          // sheets (Export) AND modal takeovers (Scan) — nav circle out,
-          // bar sweeps into the button, button fades last. AI is its own
-          // in-bar chat morph and isn't part of this grammar.
-          isUtilitySheetOpen={utilSheetPrep}
+          // One clear-out grammar for every sheet surface: workflow sheets,
+          // bottom sheets (Export), AND modal takeovers (Scan) — both
+          // circles recede, labels fade. AI is its own in-bar chat morph
+          // and isn't part of this grammar.
+          isSheetOpen={sheetPrep || utilSheetPrep}
           onTabChange={tab => {
             setActiveTab(tab);
             setActiveAction(null);
@@ -516,7 +513,7 @@ export default function NavigationBarStage() {
             if (prepTimer.current) clearTimeout(prepTimer.current);
             prepTimer.current = setTimeout(
               () => setOpenSheet(label),
-              prefersReducedMotion ? 0 : ACTION_SHEET_CLEAROUT_MS
+              prefersReducedMotion ? 0 : SHEET_CLEAROUT_MS
             );
           }}
           onUtilityClick={() => {
