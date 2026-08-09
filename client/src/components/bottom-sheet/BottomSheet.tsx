@@ -110,7 +110,15 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   // to widen — the widen beat would be a ~240ms no-op delaying the
   // stretch. Skip straight to the vertical growth; small origins
   // (buttons, chips) keep the two-beat entrance.
-  const originFullWidth = origin.width >= finalWidth - 8;
+  //
+  // The bar's shell is a little narrower than the sheet (container
+  // padding 18px/side vs the sheet's 12px margins), so "full width"
+  // can never be exact equality. An origin within one padding-band of
+  // the sheet's width has no widen story to tell — the settle covers
+  // the remainder. Real control origins (buttons, chips) are hundreds
+  // of px narrower and never come near this slack.
+  const SKIP_WIDEN_SLACK = 48;
+  const originFullWidth = origin.width >= finalWidth - SKIP_WIDEN_SLACK;
   const stretchAt = originFullWidth ? 0.06 : STRETCH_AT;
   const settleDur = originFullWidth ? 0.18 : WIDEN;
   const titleAt = stretchAt + STRETCH;
