@@ -274,9 +274,10 @@ export default function NavigationBarStage() {
 
   // (Escape is handled by the BottomSheet itself.)
 
-  // Modal takeovers (Scan): the SAME clear-out beats as the bottom sheets
-  // — pressed feedback, nav circle out, bar sweeps into the button, button
-  // fades — then the modal expands from the button's center point.
+  // Modal takeovers (Scan): the SAME clear-out as the bottom sheets —
+  // pressed feedback, both circles recede, labels fade — then the modal
+  // circle-reveals from the button's center point (captured at press,
+  // before the button itself recedes).
   const openUtility = useCallback(
     (kind: "scan") => {
       // Locked the moment any utility transition begins; only one surface
@@ -552,8 +553,8 @@ export default function NavigationBarStage() {
         )}
       </AnimatePresence>
 
-      {/* Utility bottom sheets — widen out of the right button and stretch
-          vertically; contract back onto it on dismiss. */}
+      {/* Utility bottom sheets — grow from the receded bar (launchFromBar)
+          and stretch vertically; contract back onto it on dismiss. */}
       <AnimatePresence
         onExitComplete={() => {
           setUtilSheetOrigin(null);

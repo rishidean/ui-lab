@@ -71,7 +71,6 @@ const WIDEN = 0.24;
 const STRETCH_AT = WIDEN + 0.08;
 const STRETCH = 0.28;
 const TITLE_AT = STRETCH_AT + STRETCH;
-const BODY_AT = TITLE_AT + 0.14 + 0.06;
 
 // Post-entrance height changes (initial ↔ full) use one settled band.
 const SETTLED = { duration: 0.26, ease: EASE };

@@ -659,10 +659,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const renderAssistantBranch = isAssistantOpen || assistantHeld;
 
   const hasTranscript = assistantMessages.length > 0;
-  // Absorb states (scroll-collapse, action sheet, utility sheet) only kill
-  // the pill's transform/paint (scaleX/opacity) — height is real layout,
-  // so without this guard the wrapping row would stay transcript-tall
-  // (and the bar's footprint with it) while the pill sat invisible.
+  // Scroll-collapse and menu-open kill the pill's transform/paint
+  // (scaleX/opacity) directly — height is real layout, so without this
+  // guard the wrapping row would stay transcript-tall (and the bar's
+  // footprint with it) while the pill sat invisible. A sheet doesn't
+  // touch the pill's transform at all, but its surface grows from this
+  // same footprint, so the stretch still has to collapse first.
   const assistantStretched =
     isAssistantOpen &&
     assistantSurfaceReady &&
@@ -731,10 +733,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   useEffect(() => {
     if (activeAction) lastEngagedActionRef.current = activeAction;
   }, [activeAction]);
-  const prevActionSheetOpenRef = useRef(isSheetOpen);
+  const prevSheetOpenForFocusRef = useRef(isSheetOpen);
   useEffect(() => {
-    const was = prevActionSheetOpenRef.current;
-    prevActionSheetOpenRef.current = isSheetOpen;
+    const was = prevSheetOpenForFocusRef.current;
+    prevSheetOpenForFocusRef.current = isSheetOpen;
     if (was && !isSheetOpen) {
       const label = lastEngagedActionRef.current;
       if (label) focusWhenClear(actionChipRefs.current[label] ?? null);
@@ -1743,8 +1745,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               }}
               transition={centerPillTransition}
               onAnimationComplete={definition => {
-                // Every regrow path (scroll expand, menu close, utility
-                // close) ends at scaleX 1 — re-raster once it lands.
+                // Every regrow path (scroll expand, menu close) ends at
+                // scaleX 1 — re-raster once it lands.
                 if ((definition as { scaleX?: number }).scaleX === 1)
                   repaintPillText();
               }}

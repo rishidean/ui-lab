@@ -90,8 +90,12 @@ button.
 One grammar governs every transition:
 
 - **Every surface grows out of the control that owns it.** Menu ← left
-  circle. Workflow sheet ← center bar. Utility sheets and modals ← right
-  button. Search ← the bar morphs in place.
+  circle. Search ← the bar morphs in place. Workflow sheets and the
+  Export utility sheet share one launch grammar: the bar recedes (both
+  circles gone, labels faded) to full width, then the sheet grows from
+  that footprint. The Scan utility modal recedes the same way, but
+  reveals as a circle from the pressed button's center (captured before
+  it recedes) — a takeover, not a grow-from-bar.
 - **Strictly serial beats.** Confirm → clear-out → geometry → title → body.
   Motions overlap only where the spec says "simultaneously."
 - **Undot / dot the horizontal "i".** In any absorb, the right button pops
@@ -139,23 +143,23 @@ selection is abandoned cleanly if the menu closes by another path.
 
 When an Action Button is clicked:
 
-- Both Navigation & Utility buttons fade out simultaneously.
-- Brief delay.
-- Action labels — selected and unselected — fade out (the pressed chip
-  keeps its lavender state as it goes).
-- Brief delay.
-- The emptied Action Bar expands horizontally outward to the bottom sheet's
-  full width, staying at bar height.
-- Brief delay.
-- The Action Sheet grows upward & downward simultaneously to its initial
-  height — a floating card that never welds to the viewport edge.
+- Both Navigation & Utility circles recede simultaneously — the bar's
+  clear-out, triggered by flipping `isSheetOpen`.
+- Action labels — selected and unselected — fade out a beat later (the
+  pressed chip keeps its lavender state as it goes), leaving the
+  full-width glass bar as the seed the sheet grows out of.
+- Once `SHEET_CLEAROUT_MS` elapses, the bar is measured — its rect now
+  spans the full row — and the Action Sheet mounts there. Because the
+  origin is already sheet-width, the sheet's own widen beat is skipped;
+  it goes straight into the vertical stretch to its initial height — a
+  floating card that never welds to the viewport edge.
 - The grab bar and title fade in together once the geometry lands.
 - Brief delay.
 - The rest of the bottom sheet content fades in.
 
-Closing the Action Sheet reverses this order: content out, drop to bar
-height, narrow back onto the bar's footprint, then the labels and circles
-return.
+Closing the Action Sheet reverses this order: content out, the sheet
+drops to bar height and settles back onto the bar's footprint, then the
+labels fade back in and the circles dot the ends again.
 
 (The sheet surface itself is the lab's shared `BottomSheet` component —
 `client/src/components/bottom-sheet/` — which owns the scrim, morph
@@ -259,21 +263,20 @@ morphs the bar directly (see Assistant, above) — a sibling of Search
 rather than a sheet.
 
 - The Utility button shows its pressed state.
-- The Navigation button fades out.
-- The Action Bar collapses inward, left edge sweeping right into the
-  Utility button.
-- The Utility button fades out while the Action Sheet appears by expanding
-  first outward to the full width (like the recently collapsed Action Bar,
-  emerging from the button's footprint).
-- The Action Sheet then grows upward & downward simultaneously to its
-  initial height.
+- Both the Navigation and Utility circles recede — the same clear-out as
+  a Workflow Action — leaving the full-width bar as the seed the sheet
+  grows out of.
+- Once the clear-out completes, the bar is measured at full width and
+  the Export sheet mounts there. As with Workflow Actions, the
+  already-full-width origin skips the sheet's own widen beat and goes
+  straight into the vertical stretch to its initial height.
 - Fade in the title & "Done" button (the grab bar arrives with them).
 - Brief delay.
 - Fade in the rest of the bottom sheet content.
 
 Closing or completing the workflow invokes the sequence in reverse: the
-sheet lands back on the button as the button fades in beneath it, the bar
-regrows out of the right side, and the navigation circle returns last.
+sheet drops to bar height and settles back onto the bar's footprint,
+then the labels fade back in and both circles dot the ends again.
 
 Export is a `BottomSheet` instance too (auto height), so it carries the
 component's two-stop model: a chevron header control and the grab-bar
@@ -295,15 +298,17 @@ its own internal state, such as:
 
 The animation sequence:
 
-- The Utility button shows its pressed state.
-- The Navigation button fades out.
-- The Action Bar collapses inward from left to right.
-- The Utility button fades out.
-- The modal view expands as a circle from the Utility button's center point.
+- The Utility button shows its pressed state; its center point is
+  captured now, at press time, since the button itself is about to
+  recede.
+- Both the Navigation and Utility circles recede — the same clear-out as
+  a workflow or Export sheet.
+- The modal view circle-reveals from the captured center point — a
+  full-screen takeover, the one grammar that doesn't grow from the bar.
 
 Completing or closing the modal performs the reverse sequence — the circle
-contracts back to the button's center, then the button, bar, and
-navigation circle restore in order.
+contracts back to the button's center, then the labels fade back in and
+both circles dot the ends again.
 
 The Scan demo shows the modal's internal states: permission request,
 denied/unavailable, and the active viewfinder.
