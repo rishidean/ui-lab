@@ -227,12 +227,11 @@ const SCROLL_EXPAND_DELAYS = {
 //       as the seed the surface grows out of,
 //    3. the consumer waits SHEET_CLEAROUT_MS, measures the pill (its
 //       rect now spans the full row), and mounts the surface.
-//    Close reverses: the surface contracts onto the bar, labels fade
-//    back, then the circles dot the ends (search-close's return).
+//    Close reverses: the surface contracts onto the bar, then labels
+//    and both circles return together on the default bands — the exact
+//    search-close return, per Rishi (no staggered ends).
 const SHEET_DELAYS = {
   labelFade: 0.05, // labels leave just after the recede begins
-  closeLabelsFadeIn: 0.0, // surface has landed; labels return first
-  closeCirclesIn: 0.18, // then the circles dot the ends
 };
 
 // Consumers flip isSheetOpen, wait this window, then measure the bar
@@ -632,8 +631,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // the one interruption path framer handles per the spec ("retargets from
   // current animated values; nothing snaps") — and the branch unmounts
   // (instant, valueless exit) only once fully invisible.
-  const ASSISTANT_CLOSE_WIPE_DELAY_S = 0.22; // after the height contract
-  const ASSISTANT_CLOSE_WIPE_S = 0.2;
+  // Close wipe mirrors the open wipe (search's band) — the height
+  // contraction, when the card was stretched, runs concurrently rather
+  // than as a separate beat, so both ends of the bar return together.
+  const ASSISTANT_CLOSE_WIPE_DELAY_S = 0.06;
+  const ASSISTANT_CLOSE_WIPE_S = 0.24;
   const [assistantHeld, setAssistantHeld] = useState(false);
   useEffect(() => {
     if (isAssistantOpen) {
@@ -696,15 +698,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     prevAssistantHeightRef.current = assistantHeight;
   }, [assistantHeight]);
 
-  // Falling edge for close choreography (transcript fades, card
-  // contracts, THEN the wipe + circles return).
-  const prevAssistantOpenForCloseRef = useRef(isAssistantOpen);
-  useEffect(() => {
-    prevAssistantOpenForCloseRef.current = isAssistantOpen;
-  }, [isAssistantOpen]);
-  const assistantClosing =
-    !isAssistantOpen && prevAssistantOpenForCloseRef.current;
-
   // Transcript pins to the newest message through growth and reflow.
   useEffect(() => {
     const el = transcriptScrollRef.current;
@@ -748,12 +741,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       if (label) focusWhenClear(actionChipRefs.current[label] ?? null);
     }
   }, [isSheetOpen]);
-
-  const prevSheetOpenRef = useRef(isSheetOpen);
-  useEffect(() => {
-    prevSheetOpenRef.current = isSheetOpen;
-  }, [isSheetOpen]);
-  const sheetClosing = !isSheetOpen && prevSheetOpenRef.current;
 
   const prevFilterExpandedRef = useRef(isFilterExpanded);
   useEffect(() => {
@@ -1371,11 +1358,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               ? rightDotOut
               : filterClosing
                 ? rightDotIn(FILTER_DELAYS.closeRightDotIn)
-                : assistantClosing
-                  ? // Assistant close: the circles return late, after the
-                    // transcript has faded and the card has contracted.
-                    rightDotIn(0.3)
-                  : { duration: dur(0.16), ease: EASE },
+                : { duration: dur(0.16), ease: EASE },
     opacity: navCollapsing
       ? rightDotOut
       : navExpanding
@@ -1388,13 +1371,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               ? rightDotOut
               : filterClosing
                 ? rightDotIn(FILTER_DELAYS.closeRightDotIn)
-                : sheetClosing
-                  ? // Sheet has closed onto the bar; the circles dot the
-                    // ends again, same beat as search-close's return.
-                    rightDotIn(SHEET_DELAYS.closeCirclesIn)
-                  : assistantClosing
-                    ? rightDotIn(0.3)
-                    : { duration: dur(0.16), ease: EASE },
+                : // Sheet and assistant closes deliberately take this
+                  // default — both ends return together, like search.
+                  { duration: dur(0.16), ease: EASE },
   };
 
   return (
@@ -1459,22 +1438,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               // instead.
               opacity: isBarSurrendered ? 0 : 1,
             }}
-            transition={
-              sheetClosing
-                ? // Sheet has closed; the circle dots the end again, same
-                  // beat as search-close's return.
-                  {
-                    duration: dur(0.25),
-                    ease: EASE,
-                    delay: del(SHEET_DELAYS.closeCirclesIn),
-                  }
-                : assistantClosing
-                  ? // Assistant close: the circles return late, after
-                    // the transcript has faded and the card has
-                    // contracted.
-                    { duration: dur(0.25), ease: EASE, delay: del(0.3) }
-                  : { duration: dur(0.25), ease: EASE }
-            }
+            transition={{ duration: dur(0.25), ease: EASE }}
           >
             <motion.div
               className="relative w-14 h-14 group pointer-events-auto"
@@ -1772,11 +1736,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     initial={{ clipPath: "inset(0 0 0 100%)" }}
                     // Open and close are BOTH animate retargets on the
                     // mounted branch (see the assistantHeld block for why
-                    // this isn't an AnimatePresence exit). Close is the
-                    // delayed wipe: the height contraction (assistantHeight
-                    // → 48) starts immediately on the flag flip and is
-                    // allowed to land first; the clip/opacity wipe follows
-                    // so closing reads transcript-fade → contract → wipe.
+                    // this isn't an AnimatePresence exit). Close mirrors
+                    // the open wipe on search's band; the height
+                    // contraction (assistantHeight → 48) runs concurrently
+                    // so both ends of the bar return together, like
+                    // search-close.
                     animate={
                       isAssistantOpen
                         ? { clipPath: "inset(0 0 0 0%)", opacity: 1 }
@@ -2184,11 +2148,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                                 duration: dur(0.12),
                                 ease: EASE_IN,
                                 delay: del(
-                                  isSheetOpen
-                                    ? SHEET_DELAYS.labelFade
-                                    : sheetClosing
-                                      ? SHEET_DELAYS.closeLabelsFadeIn
-                                      : 0
+                                  isSheetOpen ? SHEET_DELAYS.labelFade : 0
                                 ),
                               }}
                             />
@@ -2227,11 +2187,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                                 duration: dur(0.12),
                                 ease: EASE_IN,
                                 delay: del(
-                                  isSheetOpen
-                                    ? SHEET_DELAYS.labelFade
-                                    : sheetClosing
-                                      ? SHEET_DELAYS.closeLabelsFadeIn
-                                      : 0
+                                  isSheetOpen ? SHEET_DELAYS.labelFade : 0
                                 ),
                               },
                             }}

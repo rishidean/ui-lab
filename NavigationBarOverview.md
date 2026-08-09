@@ -159,7 +159,8 @@ When an Action Button is clicked:
 
 Closing the Action Sheet reverses this order: content out, the sheet
 drops to bar height and settles back onto the bar's footprint, then the
-labels fade back in and the circles dot the ends again.
+labels and both circles return together — the same simultaneous
+both-ends return as search-close.
 
 (The sheet surface itself is the lab's shared `BottomSheet` component —
 `client/src/components/bottom-sheet/` — which owns the scrim, morph
@@ -244,9 +245,10 @@ there's something to show.
   kept on as the chat card's ceiling. Past the cap the transcript
   scrolls internally, pinned to the newest message; the cap re-clamps on
   window resize.
-- Closing runs three serial beats: the transcript fades, the card
-  contracts back down onto the input row, then the standard Search-close
-  wipe runs (row wipes out, circles return).
+- Closing mirrors Search-close exactly: the row wipes out on the same
+  band while both circles return together; the transcript fade and (when
+  stretched) the card's height contraction run concurrently rather than
+  as separate beats.
 - Escape closes from anywhere inside the pill — the input or a scrolled
   transcript — a wider net than Search's input-only handler.
 - The conversation is preserved for the session: closing never discards
@@ -276,7 +278,8 @@ rather than a sheet.
 
 Closing or completing the workflow invokes the sequence in reverse: the
 sheet drops to bar height and settles back onto the bar's footprint,
-then the labels fade back in and both circles dot the ends again.
+then the labels and both circles return together, mirroring
+search-close.
 
 Export is a `BottomSheet` instance too (auto height), so it carries the
 component's two-stop model: a chevron header control and the grab-bar
@@ -307,8 +310,8 @@ The animation sequence:
   full-screen takeover, the one grammar that doesn't grow from the bar.
 
 Completing or closing the modal performs the reverse sequence — the circle
-contracts back to the button's center, then the labels fade back in and
-both circles dot the ends again.
+contracts back to the button's center, then the labels and both
+circles return together, mirroring search-close.
 
 The Scan demo shows the modal's internal states: permission request,
 denied/unavailable, and the active viewfinder.
