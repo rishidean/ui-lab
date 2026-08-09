@@ -7,7 +7,7 @@
   z-index: 62;
   border: 0;
   padding: 0;
-  background: var(--scrim-strong, rgb(24 18 34 / 0.26));
+  background: var(--scrim-strong, rgb(20 20 10 / 0.26));
   cursor: pointer;
 }
 
@@ -21,7 +21,7 @@
   inset: 0;
   z-index: 64;
   pointer-events: none;
-  filter: drop-shadow(0 16px 40px rgb(10 6 18 / 0.3));
+  filter: drop-shadow(0 16px 40px rgb(20 20 10 / 0.3));
 }
 
 .utility-modal {
@@ -31,7 +31,7 @@
   /* The takeover's own sheet: distinct from the page canvas so the
      circle reads against what it covers, even before children paint.
      Full-bleed children (a camera view) simply cover it. */
-  background: var(--surface-modal, #fdfcff);
+  background: var(--surface-modal, #fdfcfa);
 }
 
 .utility-modal__content {
