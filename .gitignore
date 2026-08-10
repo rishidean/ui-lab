@@ -114,3 +114,4 @@ client/public/__manus__/version.json
 
 # a11y suite screenshots
 scripts/a11y/shots/
+.superpowers/
