@@ -4,7 +4,48 @@ Working doc for continuing the lab's component work in a fresh session.
 Repo: `github.com/rishidean/ui-lab` (push to `main` auto-deploys on
 Railway via the Dockerfile). Owner: Rishi (rishidean).
 
-## Latest session (2026-08-09) — recap
+## Latest session (2026-08-09, second session) — recap
+
+**Close symmetry, sheet morph unification, and the theme consistency
+pass.** All merged to main and deployed (`origin/main` at `cbf0fb8`);
+per-session detail in `session_handoffs/SessionHandoff_0809_20:48.md`:
+
+1. **Close symmetry** (`48cff75`): assistant and sheet closes return
+   both ends of the bar together, exactly like Search-close — the
+   delayed serial-beat circle returns were deleted; measured, all
+   three closes start both ends within one 50ms sample.
+2. **Sheet morph unification** (spec + plan committed, 7 commits
+   through `ce6451d`): one launch grammar — workflow sheets, Export,
+   and Scan's clear-out all recede search-style; the emptied
+   full-width pill is the seed; `BottomSheet` skips its widen beat for
+   full-width origins (`SKIP_WIDEN_SLACK`, stretch ~70ms vs old
+   ~333ms). BREAKING: `isSheetOpen` + `SHEET_CLEAROUT_MS` replace
+   `isActionSheetOpen`/`isUtilitySheetOpen` and both old clear-out
+   constants; `UTILITY_SHEET_DELAYS` and the inward sweep are gone.
+   Motion comment-tables now describe three grammars (bar-internal
+   morph / sheet launch / takeover). Final review fixed a
+   chip-vs-utility focus race (one-shot `lastEngagedActionRef`) and
+   workflow-sheet `aria-expanded` (`isSheetOpen && !activeAction`).
+3. **Theme consistency pass** (spec + plan, 11 commits through
+   `cbf0fb8`): the component world adopted the bench palette — presets
+   renamed "Bench (light)/(dark)", tokens hue-neutral
+   (`--accent-700`/`--accent-soft`/`--gradient-brand`), pink accent
+   `#c22a75`/`#ff5fa8`, warm neutrals, every violet literal/fallback
+   swept (components, stages, LabShell's 404 dot). Permanent
+   `a11y-contrast.mjs` suite (14 WCAG pairs, both presets; suite now
+   10 files). Gate feedback: dark backings that read plum went neutral
+   lab-ramp (orb = graphite + pink rim); backing/placeholder surfaces
+   are strictly neutral — pink is state/decoration only. The ambiguous
+   LIGHT/DARK header button is now a shared sun|moon segmented
+   `ThemeToggle` (aria-pressed pair, persistence intact).
+
+Known issues filed as task chips: BottomSheet arm-window wedge
+(close at ~580–1100ms post-mount permanently wedges the dialog —
+pre-existing, deterministic repro in the chip) and dead registry
+`accent:` gradient fields. LabShell's 404 theme button deliberately
+kept its old pattern (different token system).
+
+## Previous session (2026-08-09, first session) — recap
 
 **Assistant hardening, mainline reconciliation, and a chrome declutter.**
 Everything landed, verified (tsc + prettier + full a11y sweep per
@@ -368,33 +409,23 @@ Design specs live in `docs/superpowers/specs/`, plans in
 ### Timing constants live at the top of NavigationBar.tsx
 
 `OPEN_DELAYS`, `CLOSE_DELAYS`, `SCROLL_COLLAPSE/EXPAND_DELAYS`,
-`UTILITY_SHEET_DELAYS`, `FILTER_DELAYS`, `DUR`, `TEMPO`. Morph beat timings
+`SHEET_DELAYS`, `FILTER_DELAYS`, `DUR`, `TEMPO`. Morph beat timings
 (WIDEN 0.24 / gap 0.08 / STRETCH 0.28 / title / gap 0.06 / body) are local to
 the two morph components in the stage (raw seconds, no TEMPO).
 
 ## NEXT UP (the reason for this handoff)
 
-Rishi's plan for the next session (2026-08-09):
+Rishi's plan for the next session: **more minor tweaks to both the
+NavBar and the app** — nothing more specific queued yet; expect
+polish-scale items decided live. Both of the previous next-ups
+(sheet morph unification, theme consistency pass) SHIPPED in the
+2026-08-09 second session — see the latest-session recap.
 
-1. **Unify the morph grammar around the assistant pattern.** Apply the
-   assistant's bar-morph approach to the bottom sheet so Search, the
-   Assistant, and BottomSheet-backed surfaces (workflow sheets, Export)
-   all morph consistently — one grammar instead of "bar-internal modes"
-   vs "clear-out + external surface". Start from how the assistant does
-   it (real height animation on the pill, `assistantHeld` retargeting,
-   serial beats) and the existing clear-out contract
-   (`ACTION_SHEET_CLEAROUT_MS` / `UTILITY_CLEAROUT_MS`); decide whether
-   the sheet becomes a bar-internal mode or the bar-internal machinery
-   gets extracted for both. Spec-first — this touches the flagship's
-   choreography grammar.
-2. **Theme-consistency pass on the components.** The lab-bench showcase
-   chrome (`--lab-*` palette, pink accent, JetBrains Mono/Space
-   Grotesk) and the components' own token contract (Aurora/Ink,
-   `--iris`/`--aurora-lilac`) are two different worlds on one page.
-   Update the components so they match the overall site theme
-   color-wise.
+Available whenever, as filed task chips: the BottomSheet arm-window
+wedge fix (pre-existing bug, deterministic repro in the chip) and the
+dead registry `accent:` field cleanup.
 
-Older site-wide leftovers, still open but behind the two above:
+Older site-wide leftovers, still open but behind the above:
 
 - **Site code + dependency links** — the registry `dependencies`
   arrays are prose today; make each entry link to its file/source.
