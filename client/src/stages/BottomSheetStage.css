@@ -126,7 +126,7 @@
 }
 
 .dark .sheet-demo__row {
-  background: rgb(255 95 168 / 0.1);
+  background: rgb(255 255 255 / 0.08);
 }
 
 .dark .sheet-demo__actions button {

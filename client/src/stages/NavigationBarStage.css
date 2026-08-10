@@ -351,11 +351,24 @@
   background: rgb(255 255 255 / 0.09);
 }
 
+.dark .navigation-demo__feature-orb {
+  background:
+    radial-gradient(
+      circle at 34% 28%,
+      rgb(255 255 255 / 0.14),
+      transparent 28%
+    ),
+    linear-gradient(145deg, rgb(38 42 49 / 0.9), rgb(25 27 31 / 0.85));
+  box-shadow:
+    0 1.25rem 3rem rgb(255 95 168 / 0.12),
+    inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
 .dark .navigation-demo__ghost-icon {
-  background: rgb(255 95 168 / 0.16);
+  background: rgb(255 255 255 / 0.1);
 }
 
 .dark .navigation-demo__sheet-row {
-  background: rgb(255 95 168 / 0.1);
+  background: rgb(255 255 255 / 0.08);
   border-color: rgb(255 255 255 / 0.08);
 }
