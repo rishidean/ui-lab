@@ -155,6 +155,40 @@
   color: var(--lab-acc);
 }
 
+/* ── Theme toggle (sun | moon segments) ─────────────────────────── */
+
+.lab-theme-toggle {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--lab-line);
+  flex: none;
+}
+
+.lab-theme-toggle__seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 100%;
+  color: var(--lab-faint);
+  transition:
+    background-color 140ms,
+    color 140ms;
+}
+
+.lab-theme-toggle__seg:hover {
+  color: var(--lab-acc);
+}
+
+.lab-theme-toggle__seg--active,
+.lab-theme-toggle__seg--active:hover {
+  background: var(--lab-raised);
+  color: var(--lab-text);
+}
+
 .lab-header__present {
   display: flex;
   align-items: center;

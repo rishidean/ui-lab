@@ -31,6 +31,7 @@ import {
 } from "@/lab/registry";
 import { useRecordingMode } from "@/lab/recording";
 import { useTheme } from "@/contexts/ThemeContext";
+import { ThemeToggle } from "@/lab/ThemeToggle";
 import { PickerBeatVisual, PickerDemo } from "@/lab/PickerShowcase";
 import { pad2, PALETTES } from "@/lab/labTheme";
 import "./Showcase.css";
@@ -140,7 +141,7 @@ function PropsTable({ rows }: { rows: PropRow[] }) {
 }
 
 export function Showcase({ component }: { component: LabComponent }) {
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const chromeHidden = useRecordingMode();
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const embedded = useMemo(
@@ -226,20 +227,7 @@ export function Showcase({ component }: { component: LabComponent }) {
             <span aria-hidden="true" className="lab-logo" />
             <span className="lab-header__title">rishi's ui lab</span>
           </Link>
-          {toggleTheme && (
-            <button
-              type="button"
-              className="lab-btn lab-header__theme"
-              onClick={toggleTheme}
-              aria-label={
-                theme === "dark"
-                  ? "Switch to light theme"
-                  : "Switch to dark theme"
-              }
-            >
-              {theme === "dark" ? "☾ dark" : "☀ light"}
-            </button>
-          )}
+          <ThemeToggle />
         </header>
 
         <nav className="lab-mobile__comps" aria-label="Components">
@@ -335,20 +323,7 @@ export function Showcase({ component }: { component: LabComponent }) {
               </Link>
             </div>
             <div className="lab-header__right">
-              {toggleTheme && (
-                <button
-                  type="button"
-                  className="lab-btn lab-header__theme"
-                  onClick={toggleTheme}
-                  aria-label={
-                    theme === "dark"
-                      ? "Switch to light theme"
-                      : "Switch to dark theme"
-                  }
-                >
-                  {theme === "dark" ? "☾ dark" : "☀ light"}
-                </button>
-              )}
+              <ThemeToggle />
               {beats && (
                 <button
                   type="button"

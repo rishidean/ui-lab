@@ -8,10 +8,11 @@ import { Link } from "wouter";
 import { AUTHOR_URL, labComponents } from "@/lab/registry";
 import { pad2, PALETTES } from "@/lab/labTheme";
 import { useTheme } from "@/contexts/ThemeContext";
+import { ThemeToggle } from "@/lab/ThemeToggle";
 import "@/lab/Showcase.css";
 
 export default function Home() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
 
   return (
     <div className="lab" style={PALETTES[theme] as React.CSSProperties}>
@@ -21,20 +22,7 @@ export default function Home() {
           <span className="lab-header__title">rishi's ui lab</span>
         </div>
         <div className="lab-header__right">
-          {toggleTheme && (
-            <button
-              type="button"
-              className="lab-btn lab-header__theme"
-              onClick={toggleTheme}
-              aria-label={
-                theme === "dark"
-                  ? "Switch to light theme"
-                  : "Switch to dark theme"
-              }
-            >
-              {theme === "dark" ? "☾ dark" : "☀ light"}
-            </button>
-          )}
+          <ThemeToggle />
           <a
             href={AUTHOR_URL}
             target="_blank"
