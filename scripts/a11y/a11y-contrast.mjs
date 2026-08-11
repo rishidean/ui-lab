@@ -27,10 +27,32 @@ function contrastRatio(rgb1, rgb2) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-// Parses `#rrggbb`, `rgb(r g b)`, `rgb(r g b / a)`, and the legacy
+// oklch to linear RGB.
+function oklchToRgb(L, C, H) {
+  const h = (H * Math.PI) / 180;
+  const a = Math.cos(h) * C;
+  const b = Math.sin(h) * C;
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = L - 0.0894841775 * a - 1.291486575 * b;
+  const l = l_ * l_ * l_;
+  const m = m_ * m_ * m_;
+  const s = s_ * s_ * s_;
+  return [
+    4.0767416621 * l - 3.3077363322 * m + 0.2309101289 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193761 * s,
+    -0.004218652871 * l - 0.7034186147 * m + 1.707614701 * s,
+  ];
+}
+
+function linearToSrgb(c) {
+  if (c <= 0.0031308) return Math.round(c * 12.92 * 255);
+  return Math.round((1.055 * Math.pow(c, 1 / 2.4) - 0.055) * 255);
+}
+
+// Parses `#rrggbb`, `rgb(r g b)`, `rgb(r g b / a)`, `oklch(...)`, and the legacy
 // `rgba(r, g, b, a)` / `rgb(r, g, b)` comma forms getComputedStyle can
-// hand back. Also handles CSS relative color syntax `oklch(from ...)` by
-// extracting and parsing the reference color. Returns { rgb: [r,g,b], a: 0..1 }.
+// hand back. Returns { rgb: [r,g,b], a: 0..1 }.
 function parseColor(value) {
   const v = value.trim();
   const hex = v.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
@@ -59,11 +81,15 @@ function parseColor(value) {
     const a = alphaPart !== undefined ? parseFloat(alphaPart) : legacyA;
     return { rgb: [r, g, b], a: a === undefined ? 1 : a };
   }
-  // Handle CSS relative color syntax like `oklch(from #c22a75 l 0 h)`
-  // by extracting and parsing the reference color.
-  const relativeColor = v.match(/^(\w+)\(from\s+([^)\s]+)/i);
-  if (relativeColor) {
-    return parseColor(relativeColor[2]);
+  // Handle computed oklch() like `oklch(0.55017 0 356.116)`.
+  const oklch = v.match(/^oklch\(([^)\s]+)\s+([^)\s]+)\s+([^)]+)\)$/i);
+  if (oklch) {
+    const [, L, C, H] = oklch.map((x, i) => (i === 0 ? x : parseFloat(x)));
+    const [lr, lg, lb] = oklchToRgb(parseFloat(L), parseFloat(C), parseFloat(H));
+    return {
+      rgb: [linearToSrgb(lr), linearToSrgb(lg), linearToSrgb(lb)],
+      a: 1,
+    };
   }
   throw new Error(`Unrecognized color format: ${value}`);
 }
@@ -130,7 +156,6 @@ async function runPreset(label, isDark) {
   await setDark(isDark);
   const t = await readTokens(TOKEN_NAMES);
 
-
   const canvasRgb = parseColor(t["--bg-canvas"]).rgb;
   const textPrimaryRgb = parseColor(t["--text-primary"]).rgb;
   const textSecondaryRgb = parseColor(t["--text-secondary"]).rgb;
@@ -186,7 +211,21 @@ async function runPreset(label, isDark) {
   // The dormant tab ink sits on the nav circle's fill. It is the accent
   // with chroma stripped at identical lightness, so this ratio must
   // track the accent's own — if it ever diverges, the derivation broke.
-  const accentDormantRgb = resolveOverBackdrop(t["--accent-dormant"], canvasRgb);
+  // Let the browser compute the resolved color from the token (which may
+  // contain relative color syntax) by creating an element and reading
+  // its computed style property as rgb().
+  const resolvedDormant = await page.evaluate(() => {
+    const el = document.createElement("span");
+    el.style.color = "var(--accent-dormant)";
+    document.body.appendChild(el);
+    // Use canvas to convert to rgb() since getComputedStyle may return oklch()
+    const ctx = document.createElement("canvas").getContext("2d");
+    ctx.fillStyle = getComputedStyle(el).color;
+    const rgbValue = ctx.fillStyle;
+    el.remove();
+    return rgbValue;
+  });
+  const accentDormantRgb = resolveOverBackdrop(resolvedDormant, canvasRgb);
   check("dormant tab ink on canvas", accentDormantRgb, canvasRgb, 3.0);
 }
 
