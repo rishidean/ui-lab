@@ -65,6 +65,111 @@ results.push(
   ]
 );
 
+// The state machine: --nav-engage is 0 only at true rest.
+// Read it off the pill AND the tab glyph — they inherit from the same
+// animated ancestor, so if these two ever disagree the cascade broke.
+const engageOf = () =>
+  page.evaluate(() => {
+    const read = sel => {
+      const el = document.querySelector(sel);
+      return el
+        ? Number(getComputedStyle(el).getPropertyValue("--nav-engage"))
+        : null;
+    };
+    const pill = read(".glass-nav");
+    const ink = read(".nav-tab-ink");
+    if (pill === null || ink === null) return null;
+    if (Math.abs(pill - ink) > 0.001)
+      throw new Error(`channels drifted: pill=${pill} ink=${ink}`);
+    return pill;
+  });
+const settle = () => page.waitForTimeout(900);
+
+await settle();
+results.push([
+  "at rest, --nav-engage is 0",
+  (await engageOf()) < 0.02,
+  {
+    value: await engageOf(),
+  },
+]);
+
+// Menu open — engaged.
+await page.locator(".nav-circle-trigger").first().click();
+await settle();
+results.push([
+  "menu open engages the bar",
+  (await engageOf()) > 0.98,
+  {
+    value: await engageOf(),
+  },
+]);
+
+// Escape back to rest.
+await page.keyboard.press("Escape");
+await settle();
+results.push([
+  "menu close returns to rest",
+  (await engageOf()) < 0.02,
+  {
+    value: await engageOf(),
+  },
+]);
+
+// Search (Trade tab's utility) — engaged.
+await page.locator(".nav-circle-trigger").first().click();
+await settle();
+await page.locator("[role=menuitemradio]", { hasText: "Trade" }).click();
+await settle();
+await page.locator('button[aria-label="Search"]').click();
+await settle();
+results.push([
+  "search engages the bar",
+  (await engageOf()) > 0.98,
+  {
+    value: await engageOf(),
+  },
+]);
+await page.keyboard.press("Escape");
+await settle();
+
+// Scroll-collapsed counts as REST, per the spec.
+await page.evaluate(() => window.scrollTo(0, 600));
+await page.waitForTimeout(1200);
+results.push([
+  "scroll-collapsed reads as rest",
+  (await engageOf()) < 0.02,
+  {
+    value: await engageOf(),
+  },
+]);
+await page.evaluate(() => window.scrollTo(0, 0));
+await page.waitForTimeout(1200);
+
+// The committed filter chip's wash must never move.
+await page.locator(".nav-circle-trigger").first().click();
+await settle();
+await page.locator("[role=menuitemradio]", { hasText: "Transactions" }).click();
+await settle();
+const chipWash = () =>
+  page.evaluate(() => {
+    const chip = [...document.querySelectorAll(".nav-action-chip")].find(
+      c => getComputedStyle(c).backgroundColor !== "rgba(0, 0, 0, 0)"
+    );
+    return chip ? getComputedStyle(chip).backgroundColor : null;
+  });
+const washAtRest = await chipWash();
+await page.locator(".nav-circle-trigger").first().click();
+await settle();
+const washEngaged = await chipWash();
+await page.keyboard.press("Escape");
+await settle();
+results.push([
+  "committed chip wash is identical at rest and engaged",
+  washAtRest === washEngaged,
+  { washAtRest, washEngaged },
+]);
+
 for (const [name, pass, detail] of results)
   console.log(pass ? "PASS" : "FAIL", name, pass ? "" : JSON.stringify(detail));
 await browser.close();

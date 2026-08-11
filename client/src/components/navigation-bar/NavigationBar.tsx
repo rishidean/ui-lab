@@ -26,7 +26,12 @@ import React, {
   useState,
   useLayoutEffect,
 } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import {
+  motion,
+  AnimatePresence,
+  useReducedMotion,
+  type TargetAndTransition,
+} from "motion/react";
 import { cn } from "@/lib/utils";
 import { focusWhenClear } from "@/lib/a11y";
 import { ChevronDown, Search as SearchGlyph, Sparkles, X } from "lucide-react";
@@ -462,6 +467,17 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // Sheets and takeovers borrow the input modes' recede: circles leave,
   // the pill hands its full width to the incoming surface.
   const isBarSurrendered = isBarInputMode || isSheetOpen;
+
+  // Dormancy: the bar drains its colour when it is chrome and takes it
+  // back when it is the thing being operated. Every term here is a
+  // state the bar already tracks, so this can never disagree with the
+  // choreography. Scroll-collapse is deliberately NOT engagement — a
+  // collapsed bar is the definition of getting out of the way.
+  const isBarEngaged =
+    isBarSurrendered ||
+    isNavigationMenuOpen ||
+    isFilterExpanded ||
+    activeAction !== null;
 
   useEffect(() => {
     if (!externalActiveTab) return;
@@ -1491,7 +1507,27 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         )}
       </AnimatePresence>
       <div className="relative z-10 flex items-center gap-3 max-w-lg mx-auto">
-        <div className="flex items-center gap-2 w-full px-1 relative z-10">
+        <motion.div
+          className="flex items-center gap-2 w-full px-1 relative z-10"
+          // Dormancy is one inherited scalar: the pill's glass and the
+          // tab glyph's ink both derive from it in theme.css, so they
+          // can never fall out of step. Eager to engage, lazy to leave —
+          // the delay on the return also debounces travel between two
+          // engaged states, so closing the menu to open the filter
+          // never flashes dormant in between.
+          animate={
+            { "--nav-engage": isBarEngaged ? 1 : 0 } as TargetAndTransition
+          }
+          transition={
+            isBarEngaged
+              ? { duration: dur(DUR.direct), ease: EASE_OUT }
+              : {
+                  duration: dur(DUR.expand),
+                  ease: EASE_IN,
+                  delay: del(0.08),
+                }
+          }
+        >
           {/* LEFT: Tab Switcher / Logo */}
           <motion.div
             ref={navigationMenuContainerRef}
@@ -2437,7 +2473,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               </motion.button>
             </motion.div>
           )}
-        </div>
+        </motion.div>
       </div>
     </div>
   );
