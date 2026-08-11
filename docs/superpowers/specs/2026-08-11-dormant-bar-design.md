@@ -60,36 +60,51 @@ page colour bloom through the glass.
 
 ## Mechanism
 
-Both halves were verified in-browser before speccing:
-
-- `backdrop-filter: saturate(var(--nav-saturate)) blur(12px)` resolves
-  correctly (computed: `saturate(0.3) blur(12px)`).
-- A CSS custom property interpolates smoothly — measured `0.502` at the
-  midpoint of a 200ms run. Framer sets the value per frame, so
-  `CSS.registerProperty` is not required.
-
-### Channel one — the glass
-
-`.glass-nav` gains a variable in place of its literal saturation:
+Framer cannot interpolate `var()` strings — a documented gotcha in this
+codebase (animated shadows stay literal for the same reason). So the
+component animates **one unitless scalar**, `--nav-engage` (0 at rest, 1
+engaged), and CSS derives both channels from it. Everything below was
+verified in-browser before speccing.
 
 ```css
-backdrop-filter: saturate(var(--nav-saturate, 1.45)) blur(var(--blur-lg));
+/* channel one — the glass */
+backdrop-filter: saturate(calc(0.3 + 1.15 * var(--nav-engage))) blur(var(--blur-lg));
+
+/* channel two — the tab icon */
+color: color-mix(
+  in oklab,
+  var(--accent-700) calc(var(--nav-engage) * 100%),
+  var(--accent-dormant)
+);
 ```
 
-The pill animates `--nav-saturate` between `0.3` (rest) and `1.45`
-(engaged). The fallback is the engaged value, so the class is still
-correct for any consumer who mounts it without the animation.
+Measured at three points: `--nav-engage: 0` → `saturate(0.3)` and a
+zero-chroma ink; `0.5` → `saturate(0.875)` and a half-mixed ink; `1` →
+`saturate(1.45)` and full `--accent-700`. A custom property also
+interpolates smoothly on its own (`0.502` at the midpoint of a 200ms
+run), so framer setting it per frame is sufficient —
+`CSS.registerProperty` is not required.
 
-### Channel two — the tab icon
+One scalar for both channels means the two can never drift out of sync,
+and the component animates a single value.
 
-The NavigationButton's glyph animates `color` between `--accent-700`
-(engaged) and a new `--accent-dormant` (rest). `--accent-dormant` is
-authored per preset rather than derived, so both themes are deliberate
-and the contrast suite can assert them.
+### The dormant token
 
-`--accent-dormant` must be **luminance-matched** to `--accent-700`, so
+```css
+--accent-dormant: #6d6a6b; /* fallback for older engines */
+--accent-dormant: oklch(from var(--accent-700) l 0 h);
+```
+
+Relative colour syntax takes the accent's own lightness and strips
+chroma to zero. Verified per preset: `#c22a75` → `oklch(0.55017 0 …)`,
+`#ff5fa8` → `oklch(0.712872 0 …)`.
+
+This makes the WCAG constraint **provable rather than hand-tuned** — the
+dormant ink is the accent's exact lightness by construction, so
 neutralizing the hue cannot change the icon's contrast against the
-circle. This is the single constraint that keeps the change WCAG-safe.
+circle in either preset. The plain-hex first declaration is a fallback
+for engines without relative colour syntax; the repo already depends on
+`color-mix(in oklab, …)` throughout, so the support floor is comparable.
 
 ### Timing
 
@@ -104,9 +119,9 @@ closing the menu to open the filter must not flash gray in between.
 
 ## Scope
 
-**In:** the two channels above, the `--accent-dormant` token pair, the
-derived `isBarEngaged`, a contrast pair for the dormant icon, and the
-Overview + registry copy.
+**In:** the two channels above, the `--accent-dormant` token, the
+`--nav-engage` scalar, the derived `isBarEngaged`, a contrast pair for
+the dormant icon, and the Overview + registry copy.
 
 **Out:** opacity or shadow changes at rest (option C in the discussion —
 rejected because resting label legibility would start depending on
@@ -117,7 +132,7 @@ component.
 ## Verification
 
 - **Headless Playwright** for the state machine: computed
-  `--nav-saturate` and icon colour at rest and in each engaged state
+  `--nav-engage` and icon colour at rest and in each engaged state
   (menu, filter, search, assistant, sheet, pressed action), plus an
   assertion that the chip's wash never moves, and that a collapsed bar
   reads as rest.
