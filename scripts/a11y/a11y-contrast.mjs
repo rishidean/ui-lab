@@ -85,7 +85,11 @@ function parseColor(value) {
   const oklch = v.match(/^oklch\(([^)\s]+)\s+([^)\s]+)\s+([^)]+)\)$/i);
   if (oklch) {
     const [, L, C, H] = oklch.map((x, i) => (i === 0 ? x : parseFloat(x)));
-    const [lr, lg, lb] = oklchToRgb(parseFloat(L), parseFloat(C), parseFloat(H));
+    const [lr, lg, lb] = oklchToRgb(
+      parseFloat(L),
+      parseFloat(C),
+      parseFloat(H)
+    );
     return {
       rgb: [linearToSrgb(lr), linearToSrgb(lg), linearToSrgb(lb)],
       a: 1,
