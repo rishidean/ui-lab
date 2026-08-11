@@ -245,10 +245,15 @@ there's something to show.
   kept on as the chat card's ceiling. Past the cap the transcript
   scrolls internally, pinned to the newest message; the cap re-clamps on
   window resize.
-- Closing mirrors Search-close exactly: the row wipes out on the same
-  band while both circles return together; the transcript fade and (when
-  stretched) the card's height contraction run concurrently rather than
-  as separate beats.
+- Closing from the plain input mirrors Search-close exactly: the row
+  wipes out on the same band while both circles return together.
+- Closing a card that has STRETCHED unwinds it in reverse of how it
+  grew, in four serial beats: the transcript fades → the card contracts
+  back to the resting input row → the row's own contents (sparkle,
+  placeholder, Cancel) fade → the bar returns exactly as it does from
+  the un-stretched state. The bar is held in input mode for the first
+  three beats, so that last beat is the ordinary Search-close, not a
+  variant of it. Reduced motion skips the collapse entirely.
 - Escape closes from anywhere inside the pill — the input or a scrolled
   transcript — a wider net than Search's input-only handler.
 - The conversation is preserved for the session: closing never discards

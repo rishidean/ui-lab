@@ -447,6 +447,7 @@ export const labComponents: LabComponent[] = [
       "Open the tab menu — the bar is absorbed into the circle and the menu grows out of it",
       "On Trade, tap Search — the bar itself morphs into a search field",
       "On Home, tap the sparkle UtilityButton — the bar morphs into a chat input; send a message and the bar stretches into the conversation",
+      "Cancel a stretched conversation — it unwinds in reverse: messages out, card back to the input row, that text out, then the bar returns",
       "On Spend, tap Scan — full-screen takeover with permission and error states",
       "On Transactions, tap Export — a compact sheet grows from the button and contracts back into it",
       "On Trade, five actions overflow the pill — swipe the row horizontally",

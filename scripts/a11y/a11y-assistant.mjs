@@ -73,8 +73,9 @@ results.push([
 ]);
 
 // The reopen checks must assert VISIBILITY, not just DOM presence — a
-// stranded exit value (branch clip at inset 100%, or transcript at
-// opacity 0) keeps every bubble in the DOM while showing an empty card.
+// stranded exit value (branch clip at inset 100%, transcript at opacity
+// 0, or the input row left faded by the collapse-first close's third
+// beat) keeps every bubble in the DOM while showing an empty card.
 const probeAssistantVisible = () =>
   page.evaluate(() => {
     const input = document.querySelector(
@@ -94,6 +95,11 @@ const probeAssistantVisible = () =>
       branchOpacity: Number(cs?.opacity ?? 0),
       transcriptOpacity: transcript
         ? Number(getComputedStyle(transcript).opacity)
+        : null,
+      // The row that holds the sparkle, the field, and Cancel — faded as
+      // beat three of a stretched close, so it must come back on reopen.
+      rowOpacity: input.parentElement
+        ? Number(getComputedStyle(input.parentElement).opacity)
         : null,
       bubbles: document.querySelectorAll(".nav-assistant-bubble").length,
     };
@@ -115,13 +121,20 @@ results.push(
     "Reopen lands transcript visible",
     reopened.transcriptOpacity !== null && reopened.transcriptOpacity > 0.99,
     reopened,
+  ],
+  [
+    "Reopen lands input row visible",
+    reopened.rowOpacity !== null && reopened.rowOpacity > 0.99,
+    reopened,
   ]
 );
 
-// 6. Rapid reopen (regression): Escape, then reopen 200ms later — while the
-//    close wipe is still in flight. A delayed AnimatePresence exit on the
-//    keyed branch used to strand the transcript at opacity 0 here (tall
-//    empty card); every open must land the input AND transcript visibly.
+// 6. Rapid reopen (regression): Escape, then reopen 200ms later. With a
+//    transcript present that lands mid-collapse (beat two, the card
+//    contracting), so this covers interrupting the collapse-first close
+//    as well as the wipe. A delayed AnimatePresence exit on the keyed
+//    branch used to strand the transcript at opacity 0 here (tall empty
+//    card); every open must land the input, row, AND transcript visibly.
 await page.keyboard.press("Escape");
 await page.waitForTimeout(200);
 await page.evaluate(() =>
@@ -140,7 +153,74 @@ results.push(
     rapid.transcriptOpacity !== null && rapid.transcriptOpacity > 0.99,
     rapid,
   ],
+  [
+    "Rapid reopen (200ms) lands input row visible",
+    rapid.rowOpacity !== null && rapid.rowOpacity > 0.99,
+    rapid,
+  ],
   ["Rapid reopen keeps both bubbles", rapid.bubbles === 2, rapid]
+);
+
+// 7. Collapse-first close (regression): a STRETCHED card unwinds in four
+//    serial beats — transcript out, card contracts to the resting row,
+//    the row's contents fade, then the bar wipes back. They all used to
+//    key off the same prop flip and moved at once. Sampled at three
+//    checkpoints; each asserts what must have happened and what must NOT
+//    have started yet.
+const probeBeats = () =>
+  page.evaluate(() => {
+    const input = document.querySelector(
+      'input[aria-label="Ask the assistant"]'
+    );
+    if (!input) return { mounted: false };
+    const row = input.parentElement;
+    const branch = row?.parentElement;
+    const card = branch?.parentElement;
+    const transcript = document.querySelector('[role="log"]');
+    return {
+      mounted: true,
+      transcriptOpacity: transcript
+        ? Number(getComputedStyle(transcript).opacity)
+        : null,
+      cardH: card ? Math.round(card.getBoundingClientRect().height) : null,
+      rowOpacity: row ? Number(getComputedStyle(row).opacity) : null,
+      clip: branch ? getComputedStyle(branch).clipPath : "",
+    };
+  });
+const unclipped = c => /^(none|inset\(0px 0px 0px 0(px|%)?\))$/.test(c ?? "");
+
+const stretchedH = (await probeBeats()).cardH;
+// Cancel, not the AI button — the utility control is intentionally inert
+// while the bar is in an input mode.
+await page.locator("button", { hasText: /^Cancel$/ }).click();
+await page.waitForTimeout(120);
+const beat1 = await probeBeats();
+await page.waitForTimeout(400); // ≈520ms in
+const beat2 = await probeBeats();
+await page.waitForTimeout(180); // ≈700ms in
+const beat3 = await probeBeats();
+
+results.push(
+  [
+    "Beat 1: transcript fades while the card is still tall",
+    beat1.transcriptOpacity < 0.9 && beat1.cardH > stretchedH - 30,
+    { stretchedH, beat1 },
+  ],
+  [
+    "Beat 2: card is back to the resting row, transcript gone",
+    beat2.cardH <= 56 && beat2.transcriptOpacity < 0.05,
+    beat2,
+  ],
+  [
+    "Beat 2: the row is still legible while the card contracts",
+    beat2.rowOpacity > 0.9,
+    beat2,
+  ],
+  [
+    "Beat 3: the row fades before the bar wipes",
+    beat3.rowOpacity < 0.3 && unclipped(beat3.clip),
+    beat3,
+  ]
 );
 
 for (const [name, pass, detail] of results)

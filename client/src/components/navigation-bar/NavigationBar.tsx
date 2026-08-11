@@ -393,10 +393,72 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const dur = (d: number) => (prefersReducedMotion ? 0 : d * TEMPO);
   const del = (d: number) => (prefersReducedMotion ? 0 : d * TEMPO);
 
+  // ── Assistant collapse-first close ─────────────────────────────────
+  // A card that has STRETCHED unwinds in reverse of how it grew, in four
+  // serial beats: transcript out → card contracts to the resting input
+  // row → the row's own contents fade → the bar returns exactly as it
+  // does from the un-stretched state (search's wipe, both ends together).
+  // Everything used to key off the same prop flip, so all of it moved at
+  // once and read as a single drop.
+  //
+  // `assistantCollapsing` holds the bar in input mode for beats one
+  // through three. Beat four is then the UNCHANGED close every bar-input
+  // mode shares — no special-casing downstream. A never-stretched close
+  // (no messages yet) and reduced motion both skip straight to beat four.
+  const ASSISTANT_COLLAPSE_DELAYS = {
+    // Beat one has no delay — the transcript leads the whole sequence.
+    contract: 0.13,
+    rowFade: 0.4,
+  };
+  const ASSISTANT_COLLAPSE_S = 0.54;
+  // Written during render once the card stretches (`assistantStretched`
+  // is defined further down and is already false on the closing render);
+  // consumed by the phase switch below.
+  const assistantWasStretchedRef = useRef(false);
+  // "collapsing" = beats one to three, "collapsed" = beat four onward.
+  // The phase MUST be derived during render, not in an effect: framer
+  // captures a value's transition when its target changes, and the
+  // height retargets to 48 on the very render the prop flips. A phase
+  // set one render later would arrive after that capture, and the card
+  // would contract immediately with no delay (measured: contraction
+  // began at ~45ms instead of the intended ~170ms). This is React's
+  // adjust-state-during-render pattern — the first pass is discarded, so
+  // framer only ever sees the render that already knows it's closing.
+  const [assistantClosePhase, setAssistantClosePhase] = useState<
+    "none" | "collapsing" | "collapsed"
+  >("none");
+  const prevAssistantOpenForCollapse = useRef(isAssistantOpen);
+  if (isAssistantOpen !== prevAssistantOpenForCollapse.current) {
+    prevAssistantOpenForCollapse.current = isAssistantOpen;
+    // A reopen at any point cancels the sequence: every beat is an
+    // animate retarget, so the card grows again from wherever it got to.
+    const next =
+      !isAssistantOpen &&
+      assistantWasStretchedRef.current &&
+      !prefersReducedMotion
+        ? "collapsing"
+        : "none";
+    if (!isAssistantOpen) assistantWasStretchedRef.current = false;
+    if (next !== assistantClosePhase) setAssistantClosePhase(next);
+  }
+  useEffect(() => {
+    if (assistantClosePhase !== "collapsing") return;
+    const t = setTimeout(
+      () => setAssistantClosePhase("collapsed"),
+      Math.round(ASSISTANT_COLLAPSE_S * TEMPO * 1000)
+    );
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assistantClosePhase]);
+  const assistantCollapsing = assistantClosePhase === "collapsing";
+  // What the bar renders as. Lags the prop through the collapse beats so
+  // the circles, actions row, and wipe all wait for beat four.
+  const assistantVisualOpen = isAssistantOpen || assistantCollapsing;
+
   // Search and assistant are the two bar-internal input modes: both recede
   // the circles and hand the full row to the pill. Layout conditionals key
   // off this; mode-specific behavior (focus, submit) stays per-mode.
-  const isBarInputMode = isSearchOpen || isAssistantOpen;
+  const isBarInputMode = isSearchOpen || assistantVisualOpen;
   // Sheets and takeovers borrow the input modes' recede: circles leave,
   // the pill hands its full width to the incoming surface.
   const isBarSurrendered = isBarInputMode || isSheetOpen;
@@ -638,7 +700,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const ASSISTANT_CLOSE_WIPE_S = 0.24;
   const [assistantHeld, setAssistantHeld] = useState(false);
   useEffect(() => {
-    if (isAssistantOpen) {
+    // Keyed on the VISUAL state: through a collapse-first close the branch
+    // must stay mounted for the three collapse beats as well as the wipe.
+    if (assistantVisualOpen) {
       setAssistantHeld(true);
       return;
     }
@@ -655,10 +719,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     );
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAssistantOpen, assistantHeld, prefersReducedMotion]);
-  // Mount immediately on open (isAssistantOpen leads assistantHeld by a
-  // render); hold through the close wipe.
-  const renderAssistantBranch = isAssistantOpen || assistantHeld;
+  }, [assistantVisualOpen, assistantHeld, prefersReducedMotion]);
+  // Mount immediately on open (assistantVisualOpen leads assistantHeld by
+  // a render); hold through the collapse beats and the close wipe.
+  const renderAssistantBranch = assistantVisualOpen || assistantHeld;
 
   const hasTranscript = assistantMessages.length > 0;
   // Scroll-collapse and menu-open kill the pill's transform/paint
@@ -673,6 +737,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     hasTranscript &&
     !isCollapsed &&
     !isSheetOpen;
+  // Arms the collapse-first close (see the block above isBarInputMode).
+  if (assistantStretched) assistantWasStretchedRef.current = true;
   // assistantContentH measures the inner transcript column only — it
   // excludes the scroll container's own `pt-3` (12px) AND the pill's
   // vertical padding + border (10px padding + 2px border = 12px), neither
@@ -1279,9 +1345,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     // Assistant stretch/contract — ease-out growing (transcript arrives
     // or grows), ease-in shrinking (message list trims or the mode
     // closes), matching the grammar used everywhere else in this file.
+    // Beat two of the collapse-first close waits for the transcript to
+    // clear before the card drops to the resting input row; every other
+    // height change (transcript arriving, growing, trimming) is direct.
     height: {
-      duration: dur(0.3),
+      duration: dur(assistantCollapsing ? 0.24 : 0.3),
       ease: assistantGrowing ? EASE_OUT : EASE_IN,
+      delay: del(assistantCollapsing ? ASSISTANT_COLLAPSE_DELAYS.contract : 0),
     },
   };
   const centerIconsTransition = navCollapsing
@@ -1742,7 +1812,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     // so both ends of the bar return together, like
                     // search-close.
                     animate={
-                      isAssistantOpen
+                      assistantVisualOpen
                         ? { clipPath: "inset(0 0 0 0%)", opacity: 1 }
                         : { clipPath: "inset(0 0 0 100%)", opacity: 0 }
                     }
@@ -1751,7 +1821,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     // the pill to the next branch without a second beat.
                     exit={{ opacity: 0, transition: { duration: 0 } }}
                     transition={
-                      isAssistantOpen
+                      assistantVisualOpen
                         ? {
                             duration: dur(0.24),
                             ease: EASE,
@@ -1836,8 +1906,30 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     )}
                     {/* Stretched only: the row floats 6px off the card's
                         bottom edge (accounted in assistantHeight). At rest
-                        it must fill the 36px content box exactly. */}
-                    <div
+                        it must fill the 36px content box exactly.
+
+                        Beat three of the collapse-first close: once the
+                        card has dropped back to this resting row, the row's
+                        own contents fade before the bar wipes away. Every
+                        other close leaves it at 1 and lets the wipe take
+                        it, exactly as search does. Pointer events go with
+                        the fade so a second Cancel can't land mid-close. */}
+                    <motion.div
+                      animate={{
+                        opacity: assistantClosePhase === "none" ? 1 : 0,
+                      }}
+                      transition={{
+                        duration: dur(0.11),
+                        ease: EASE_IN,
+                        delay: del(
+                          assistantCollapsing
+                            ? ASSISTANT_COLLAPSE_DELAYS.rowFade
+                            : 0
+                        ),
+                      }}
+                      style={{
+                        pointerEvents: assistantCollapsing ? "none" : "auto",
+                      }}
                       className={cn(
                         "flex items-center gap-2 w-full h-9 shrink-0 px-2",
                         hasTranscript && "mb-1.5"
@@ -1893,7 +1985,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                       >
                         Cancel
                       </button>
-                    </div>
+                    </motion.div>
                   </motion.div>
                 ) : isSearchOpen ? (
                   /* Search mode: wipes in right-to-left from the trigger,
