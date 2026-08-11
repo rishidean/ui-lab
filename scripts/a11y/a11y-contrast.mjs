@@ -29,7 +29,8 @@ function contrastRatio(rgb1, rgb2) {
 
 // Parses `#rrggbb`, `rgb(r g b)`, `rgb(r g b / a)`, and the legacy
 // `rgba(r, g, b, a)` / `rgb(r, g, b)` comma forms getComputedStyle can
-// hand back. Returns { rgb: [r,g,b], a: 0..1 }.
+// hand back. Also handles CSS relative color syntax `oklch(from ...)` by
+// extracting and parsing the reference color. Returns { rgb: [r,g,b], a: 0..1 }.
 function parseColor(value) {
   const v = value.trim();
   const hex = v.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
@@ -57,6 +58,12 @@ function parseColor(value) {
     let [r, g, b, legacyA] = channels;
     const a = alphaPart !== undefined ? parseFloat(alphaPart) : legacyA;
     return { rgb: [r, g, b], a: a === undefined ? 1 : a };
+  }
+  // Handle CSS relative color syntax like `oklch(from #c22a75 l 0 h)`
+  // by extracting and parsing the reference color.
+  const relativeColor = v.match(/^(\w+)\(from\s+([^)\s]+)/i);
+  if (relativeColor) {
+    return parseColor(relativeColor[2]);
   }
   throw new Error(`Unrecognized color format: ${value}`);
 }
@@ -105,6 +112,7 @@ const TOKEN_NAMES = [
   "--select-bg",
   "--select-fg",
   "--accent-700",
+  "--accent-dormant",
 ];
 
 // The accent-ink pair isn't a CSS custom property pairing on the
@@ -121,6 +129,7 @@ const ACCENT_INK = {
 async function runPreset(label, isDark) {
   await setDark(isDark);
   const t = await readTokens(TOKEN_NAMES);
+
 
   const canvasRgb = parseColor(t["--bg-canvas"]).rgb;
   const textPrimaryRgb = parseColor(t["--text-primary"]).rgb;
@@ -173,6 +182,12 @@ async function runPreset(label, isDark) {
   const accentRgb = parseColor(t[inkSpec.accentToken]).rgb;
   const inkRgb = parseColor(inkSpec.ink).rgb;
   check(`accent-ink (${inkSpec.ink}) on --accent-700`, inkRgb, accentRgb, 4.5);
+
+  // The dormant tab ink sits on the nav circle's fill. It is the accent
+  // with chroma stripped at identical lightness, so this ratio must
+  // track the accent's own — if it ever diverges, the derivation broke.
+  const accentDormantRgb = resolveOverBackdrop(t["--accent-dormant"], canvasRgb);
+  check("dormant tab ink on canvas", accentDormantRgb, canvasRgb, 3.0);
 }
 
 await runPreset("light", false);
