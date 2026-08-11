@@ -492,6 +492,16 @@ the full list.)
   scheduled on a fixed timer from the state flip (the search input's
   focus) races it — poll for the mount instead.
 
+- A component inside `<AnimatePresence>` stays MOUNTED through its exit,
+  so any pending timer it owns keeps running — and a `setState` that
+  fires mid-exit resets framer's exit bookkeeping: the animations still
+  complete visually, but the child is never removed and
+  `onExitComplete` never fires. That was the BottomSheet arm-window
+  wedge: `OPENED_AT_MS`'s drag-arming timer landing between the
+  entrance and 1100ms left the dialog painted at origin size with the
+  page permanently `inert`. Gate every in-surface timer/interval on
+  `useIsPresent()` (`motion/react`) — it flips false the instant the
+  close begins, and the effect cleanup cancels the timer.
 - Never combine framer's `layout`/`layoutId` with manual scaleX/origin
   animation on these surfaces (FLIP fights, origin hijacking). Measure and
   animate x/width instead.

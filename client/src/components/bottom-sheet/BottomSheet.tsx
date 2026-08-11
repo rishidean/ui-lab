@@ -21,7 +21,7 @@
  * the origin control (regrow, focus return).
  */
 import React, { useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { motion, useIsPresent, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { useInertOutside } from "@/lib/a11y";
 import { ChevronsDown, ChevronsUp } from "lucide-react";
@@ -147,12 +147,20 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const sheetHeight = isFull ? Math.round(vh * FULL_FRACTION) : initialHeight;
 
   // After the entrance lands, height changes switch to the settled band
-  // and the drag arms.
+  // and the drag arms. The timer must NOT fire once the sheet is exiting:
+  // AnimatePresence keeps the component mounted through the exit, so a
+  // mid-exit setOpened re-render (transition prop swap + drag arming)
+  // resets framer's exit bookkeeping — every animation still completes
+  // visually, but the child is never removed and onExitComplete never
+  // fires, wedging the dialog with the page inert. isPresent flips false
+  // the moment the close begins, which clears the pending timer here.
+  const isPresent = useIsPresent();
   const [opened, setOpened] = useState(false);
   useEffect(() => {
+    if (!isPresent) return;
     const t = setTimeout(() => setOpened(true), reduced ? 0 : OPENED_AT_MS);
     return () => clearTimeout(t);
-  }, [reduced]);
+  }, [reduced, isPresent]);
 
   // The sheet owns its dismissal paths: Done, scrim, Escape, drag-down.
   useEffect(() => {

@@ -29,7 +29,7 @@ screenshots to `scripts/a11y/shots/` (gitignored) for visual reading.
 
 | Suite                          | Covers                                                                                                                              |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `a11y-sheet.mjs`               | Workflow BottomSheet: initial focus, inert, Tab containment, Escape restore                                                         |
+| `a11y-sheet.mjs`               | Workflow BottomSheet: initial focus, inert, Tab containment, Escape restore, arm-window close (no wedge)                            |
 | `a11y-modal.mjs`               | Scan UtilityModal: same contract + focus return to the utility button                                                               |
 | `a11y-menu.mjs`                | APG menu: roving arrows/Home/End, Enter select, Tab/Escape close + focus return                                                     |
 | `a11y-filter.mjs`              | Filter radiogroup: roving without selecting, Enter select, chip focus return                                                        |

@@ -52,6 +52,48 @@ const after = await page.evaluate(() => ({
 results.push(["inert restored after close", after.inert === 0, after]);
 results.push(["dialog unmounted", after.dialogs === 0, after]);
 
+// 5. Arm-window close: closing while the entrance has landed but before
+// the drag-arm timer (OPENED_AT_MS = 1100) fires used to wedge the
+// dialog permanently — the timer's setOpened re-render mid-exit reset
+// framer's exit bookkeeping, so AnimatePresence never removed the child
+// and the page stayed inert. Close at mount+800ms on the PAGE clock
+// (Playwright's attach detection lags real mount, so a naive sleep can
+// drift out of the ~564–1100ms danger window).
+await page.evaluate(() => {
+  window.__sheetMountAt = null;
+  const mo = new MutationObserver(() => {
+    if (document.querySelector('[role="dialog"]') && !window.__sheetMountAt) {
+      window.__sheetMountAt = performance.now();
+      mo.disconnect();
+    }
+  });
+  mo.observe(document.body, { childList: true, subtree: true });
+});
+await page
+  .locator(".navigation-demo__nav-shell button", { hasText: "Deposit" })
+  .click();
+await page.waitForFunction(() => window.__sheetMountAt !== null);
+await page.waitForFunction(
+  () => performance.now() - window.__sheetMountAt >= 800
+);
+await page.keyboard.press("Escape");
+await page.waitForTimeout(2000); // exit choreography + slack
+const armWindow = await page.evaluate(() => ({
+  inert: document.querySelectorAll("[inert]").length,
+  dialogs: document.querySelectorAll('[role="dialog"]').length,
+  closedAt: Math.round(performance.now() - window.__sheetMountAt - 2000),
+}));
+results.push([
+  "arm-window close unwedges (dialog unmounted)",
+  armWindow.dialogs === 0,
+  armWindow,
+]);
+results.push([
+  "arm-window close restores inert",
+  armWindow.inert === 0,
+  armWindow,
+]);
+
 for (const [name, pass, detail] of results)
   console.log(pass ? "PASS" : "FAIL", name, pass ? "" : JSON.stringify(detail));
 await browser.close();
