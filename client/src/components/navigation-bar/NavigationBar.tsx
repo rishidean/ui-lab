@@ -1582,7 +1582,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   menu is open — the menu grows out of it and the two read
                   as one attached surface. */}
               <div
-                className="w-14 h-14 rounded-full"
+                className="nav-circle-surface w-14 h-14 rounded-full"
                 style={{
                   background: "var(--nav-circle-bg)",
                   border: "1.5px solid var(--nav-circle-border)",
@@ -2455,7 +2455,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     border and dark icon. Deliberately quieter than
                     the selected navigation circle on the left. */}
                 <span
-                  className="absolute inset-0 rounded-full"
+                  className="nav-circle-surface absolute inset-0 rounded-full"
                   style={{
                     background: "var(--utility-circle-bg)",
                     border: "1px solid var(--utility-circle-border)",
