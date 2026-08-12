@@ -193,6 +193,67 @@ results.push([
   { washAtRest, washEngaged },
 ]);
 
+// The panel is a lab affordance, but it must still be operable and
+// labelled — it renders inside the same stage the a11y suites cover.
+const panel = await page.evaluate(() => {
+  const q = s => document.querySelector(s);
+  const depth = q('input[type="range"][id*="depth"]');
+  const tempo = q('input[type="range"][id*="tempo"]');
+  const rm = q('input[type="checkbox"][id*="reduced"]');
+  const labelled = el =>
+    !!el &&
+    !!document.querySelector(`label[for="${el.id}"]`)?.textContent?.trim();
+  return {
+    present: !!depth && !!tempo && !!rm,
+    allLabelled: labelled(depth) && labelled(tempo) && labelled(rm),
+    depthRange: depth && [depth.min, depth.max],
+    tempoRange: tempo && [tempo.min, tempo.max],
+  };
+});
+results.push(
+  ["control panel renders all three controls", panel.present, panel],
+  ["every control has an associated label", panel.allLabelled, panel],
+  [
+    "ranges match the spec",
+    JSON.stringify(panel.depthRange) === '["0","1"]' &&
+      JSON.stringify(panel.tempoRange) === '["0.6","3"]',
+    panel,
+  ]
+);
+
+// Dragging depth to 0 must switch dormancy off entirely: the resting
+// tab ink becomes the full accent.
+const setRange = (sel, value) =>
+  page.evaluate(
+    ([s, v]) => {
+      const el = document.querySelector(s);
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value"
+      ).set;
+      setter.call(el, v);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    },
+    [sel, value]
+  );
+const inkNow = () =>
+  page.evaluate(
+    () => getComputedStyle(document.querySelector(".nav-tab-ink")).color
+  );
+
+await setRange('input[type="range"][id*="depth"]', "0");
+await page.waitForTimeout(700);
+const inkDepth0 = await inkNow();
+await setRange('input[type="range"][id*="depth"]', "1");
+await page.waitForTimeout(700);
+const inkDepth1 = await inkNow();
+const chromaOf = s => Number(s.match(/oklch\([\d.]+\s+([\d.]+)/)?.[1] ?? NaN);
+results.push([
+  "depth 0 switches dormancy off (resting ink regains chroma)",
+  chromaOf(inkDepth0) > 0.1 && chromaOf(inkDepth1) < 0.001,
+  { inkDepth0, inkDepth1 },
+]);
+
 for (const [name, pass, detail] of results)
   console.log(pass ? "PASS" : "FAIL", name, pass ? "" : JSON.stringify(detail));
 await browser.close();
