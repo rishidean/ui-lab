@@ -29,11 +29,14 @@
     #ff5fa8 46%,
     #e879f9 100%
   );
-  /* Engagement scalar: 0 = the bar is at rest and drains colour, 1 = it
-     is being operated and looks exactly as it always has. Defaults to 1
-     so .glass-nav stays correct for any consumer that never animates it.
-     NavigationBar writes this; nothing else should. */
+  /* Engagement scalar: 0 = the bar is at rest, 1 = it is being operated
+     and looks exactly as it always has. Defaults to 1 so the resting
+     appearance is opt-in. NavigationBar writes this; nothing else
+     should. */
   --nav-engage: 1;
+  /* How far the resting state travels: 0 = no dormancy, 1 = fully
+     neutral ink. The lab's demo exposes this as a slider. */
+  --nav-dormancy-depth: 1;
   /* The tab icon's resting ink: the accent's own lightness with the
      chroma removed, so going neutral cannot change its contrast against
      the circle. First declaration is the fallback for engines without
@@ -115,6 +118,9 @@
   --accent-700: #ff5fa8;
   --accent-soft: #ffb1d4;
   --nav-engage: 1;
+  /* How far the resting state travels: 0 = no dormancy, 1 = fully
+     neutral ink. The lab's demo exposes this as a slider. */
+  --nav-dormancy-depth: 1;
   --accent-dormant: #a9a7a8;
   --accent-dormant: oklch(from var(--accent-700) l 0 h);
 
@@ -181,18 +187,27 @@
   box-shadow:
     0 10px 28px rgb(20 20 10 / 0.12),
     inset 0 1px 0 rgb(255 255 255 / 0.8);
-  backdrop-filter: saturate(calc(0.3 + 1.15 * var(--nav-engage)))
-    blur(var(--blur-lg));
-  -webkit-backdrop-filter: saturate(calc(0.3 + 1.15 * var(--nav-engage)))
-    blur(var(--blur-lg));
+  backdrop-filter: saturate(1.45) blur(var(--blur-lg));
+  -webkit-backdrop-filter: saturate(1.45) blur(var(--blur-lg));
 }
 
-/* The tab glyph's ink, mixed from the same engagement scalar as the
-   glass so the two channels can never drift apart. */
+/* The tab glyph's ink — the ONE channel dormancy actually moves.
+   `--nav-dormancy-depth` scales how far the resting state travels, so a
+   consumer (or the lab's slider) can dial the effect from off (0) to
+   fully neutral (1) without touching the component.
+
+   A glass channel was tried here too — draining the panel's saturation,
+   then its opacity, so page colour behind the bar would grey out at
+   rest. Both were reverted: measured against four backdrops from
+   near-white to deep saturated, the pill's rendered interior never moved
+   more than 4/255 and was *identical* across all four, so it does not
+   composite its backdrop in any usable way. Don't re-add it without
+   re-running that test first. */
 .nav-tab-ink {
   color: color-mix(
     in oklch,
-    var(--accent-700) calc(var(--nav-engage) * 100%),
+    var(--accent-700)
+      calc((1 - (1 - var(--nav-engage)) * var(--nav-dormancy-depth)) * 100%),
     var(--accent-dormant)
   );
 }

@@ -9,41 +9,64 @@ await page.waitForTimeout(900);
 
 const results = [];
 
-// The CSS contract: one scalar drives glass saturation and icon ink.
+// The CSS contract: one scalar drives the tab ink, scaled by depth.
 // Probed on a detached node carrying the same classes, so this asserts
 // the stylesheet itself rather than whatever state the bar is in.
+//
+// A glass channel (saturation, then opacity) was tried and reverted —
+// measured against four backdrops from near-white to deep saturated, the
+// pill's rendered interior never moved more than 4/255 and was identical
+// across all four. The glass must therefore stay CONSTANT: these
+// assertions are what stops it being re-added without new evidence.
 const contract = await page.evaluate(() => {
   const el = document.createElement("div");
   el.className = "glass-nav nav-tab-ink";
   document.body.appendChild(el);
-  const at = v => {
+  const at = (v, depth = 1) => {
     el.style.setProperty("--nav-engage", String(v));
+    el.style.setProperty("--nav-dormancy-depth", String(depth));
     const cs = getComputedStyle(el);
     return { filter: cs.backdropFilter, color: cs.color };
   };
-  const rows = { rest: at(0), mid: at(0.5), engaged: at(1) };
-  const accent = getComputedStyle(document.documentElement)
-    .getPropertyValue("--accent-700")
-    .trim();
+  const rows = {
+    rest: at(0),
+    mid: at(0.5),
+    engaged: at(1),
+    restNoDepth: at(0, 0),
+    restHalfDepth: at(0, 0.5),
+  };
   el.remove();
-  return { ...rows, accent };
+  return rows;
 });
 
 results.push(
   [
-    "glass saturation is 1.45 at engage=1 (today's appearance)",
+    "glass saturation is a constant 1.45 (engaged appearance)",
     /saturate\(1\.45\)/.test(contract.engaged.filter),
     contract.engaged,
   ],
   [
-    "glass saturation drops to 0.3 at engage=0",
-    /saturate\(0\.3\)/.test(contract.rest.filter),
-    contract.rest,
+    "glass does NOT change with engagement (reverted channel stays out)",
+    contract.rest.filter === contract.engaged.filter,
+    { rest: contract.rest.filter, engaged: contract.engaged.filter },
   ],
   [
-    "glass saturation interpolates at engage=0.5",
-    /saturate\(0\.875\)/.test(contract.mid.filter),
-    contract.mid,
+    "depth 0 disables dormancy — rest ink equals engaged ink",
+    contract.restNoDepth.color === contract.engaged.color,
+    {
+      restNoDepth: contract.restNoDepth.color,
+      engaged: contract.engaged.color,
+    },
+  ],
+  [
+    "depth 0.5 lands the rest ink between the two extremes",
+    (() => {
+      const c = s => Number(s.match(/oklch\([\d.]+\s+([\d.]+)/)?.[1] ?? NaN);
+      const half = c(contract.restHalfDepth.color);
+      const full = c(contract.engaged.color);
+      return half > 0.001 && half < full - 0.001;
+    })(),
+    { half: contract.restHalfDepth.color, engaged: contract.engaged.color },
   ],
   [
     "icon ink has zero chroma at engage=0",
