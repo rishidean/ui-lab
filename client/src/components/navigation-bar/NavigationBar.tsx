@@ -1698,29 +1698,33 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   role="menu"
                   aria-label="Navigate"
                   onKeyDown={handleMenuKeyDown}
+                  /* No boxShadow in these variants on purpose. Animated
+                     shadows have to be LITERALS (framer will not
+                     interpolate var() strings), and a literal cannot be
+                     theme-aware — this one carried the light preset's
+                     weak drop shadow and a full-strength white inset into
+                     the dark preset, which is what made the menu's top
+                     edge read as a bright bar. Letting .glass-overlay own
+                     the shadow keeps it theme-correct; the grow still
+                     reads through scale, radius, and opacity, and the lit
+                     edge now comes from .glass-rim. */
                   initial={{
                     opacity: 0,
                     scaleX: 0.85,
                     scaleY: 0.45,
                     borderRadius: 28,
-                    boxShadow:
-                      "0 4px 14px rgb(20 20 10 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9)",
                   }}
                   animate={{
                     opacity: 1,
                     scaleX: 1,
                     scaleY: 1,
                     borderRadius: 21,
-                    boxShadow:
-                      "0 18px 44px rgb(20 20 10 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.9)",
                   }}
                   exit={{
                     opacity: 0,
                     scaleX: 0.88,
                     scaleY: 0.5,
                     borderRadius: 28,
-                    boxShadow:
-                      "0 4px 14px rgb(20 20 10 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9)",
                   }}
                   transition={menuGrowTransition}
                   className="glass-overlay glass-rim absolute z-40 pointer-events-auto p-1.5 min-w-[210px] overflow-hidden"
