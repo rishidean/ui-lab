@@ -153,3 +153,92 @@ component.
 - **It may simply be too subtle to keep.** That is an acceptable
   outcome — the branch exists so it can be judged on screen, and the
   design is deliberately shaped so reverting is a small diff.
+
+---
+
+## Amendment — 2026-08-11, after measurement
+
+The saturation-only design above was built, measured, and found not to
+work. Recording why, because the reason is the interesting part.
+
+### What the measurement showed
+
+With the implementation complete and behaving exactly as specified, a
+pixel A/B of dormant vs engaged at identical geometry showed **0.6% of
+the bar-row pixels changing, and 0% of the page above** — all of it the
+tab glyph. The glass channel contributed nothing.
+
+Cause: `.glass-nav` composites to **86–93% opacity** (a white gradient at
+0.78/0.6 alpha over a 0.66-alpha warm neutral). Only a sliver of the
+backdrop reaches the eye, so `saturate()` has almost nothing to act on.
+Confirmed from several directions: headless Chromium *does* render
+`backdrop-filter` (verified against a synthetic case); no ancestor
+creates a backdrop root; card chroma swept 0.055 → 0.28 never moved the
+delta off 1/255; a much sheerer bar (30% composite) reached only 3/255;
+and the bar rendered over a deliberately vivid gradient is visually
+identical in both states.
+
+Colouring the demo's placeholder cards — done, and kept — did not change
+this. The limit is the glass's opacity, not the content's chroma.
+
+**Conclusion: saturation alone cannot carry this effect. Opacity is the
+channel that can.** This is what the original idea actually described:
+"starts out translucent, and then when interacted with it becomes
+opaque."
+
+### Revised design
+
+**Three channels, one scalar.** `--nav-engage` (0 rest → 1 engaged) now
+drives glass *opacity* as well as saturation and ink. Engaged remains
+byte-identical to today; only rest changes.
+
+**Dormancy depth is a token, not a constant.** `--nav-dormancy-depth`
+(0 = no dormancy, 1 = maximum) scales how far the rest state travels on
+all three channels. `theme.css` ships a conservative default — it is
+copied into consumers' apps, where the content behind the bar is unknown
+and resting label legibility is real. The lab's own stage overrides it.
+
+**The a11y requirement is not relaxed.** Nothing in the existing suite
+gated this anyway: it checks token *pairs* resolved over the canvas, and
+the glass's opacity is not among them — a sheer bar would have passed
+untouched. Rather than loosen anything, the suite gains the assertion
+that was missing: label ink over the resting glass. That number is also
+surfaced live in the UI (below), so the trade-off is visible while it is
+being chosen rather than argued about afterwards.
+
+### The control panel
+
+The stage gains a small panel. It lives in the stage, not the showcase
+chrome, because the desktop demo canvas mounts the stage in an
+`<iframe src="?embed=1">` and CSS custom properties do not cross that
+boundary. Hidden in recording and presentation mode; collapsed to a
+single handle below 640px, where the stage renders bare and full-height.
+
+Three controls, each exposing a decision that cannot be discovered by
+clicking the demo:
+
+1. **Dormancy depth** — with the measured label-contrast ratio shown
+   live beside it, falling as the handle moves toward sheer. The
+   trade-off becomes the exhibit.
+2. **Reduced motion** — requires a new `reducedMotion?: boolean` override
+   prop on `NavigationBar`. Not scope creep: `BottomSheet` and
+   `UtilityModal` already take exactly this prop, and the flagship's
+   omission is an inconsistency.
+3. **Tempo** — the component already documents `TEMPO` as a knob ("raise
+   to make transitions more legible"). For a lab about choreography,
+   letting a visitor slow the bar and watch the serial beats is the
+   clearest possible way to show the work.
+
+Deliberately excluded: theme (already in the lab chrome), cosmetic
+tokens like blur radius (no decision behind them), and anything
+reachable by clicking the demo (tab switching, opening surfaces). The
+panel holds decisions you cannot discover by using the thing.
+
+### BREAKING: `SHEET_CLEAROUT_MS` becomes `sheetClearoutMs(tempo)`
+
+Tempo cannot be dynamic while a TEMPO-derived value is exported as a
+constant — consumers timing their sheet mount against it would desync at
+any non-default tempo. The export becomes a function of tempo, with the
+default argument reproducing today's value exactly. One real caller in
+this repo (`NavigationBarStage.tsx`); `index.ts`, the registry sample,
+and the Overview also reference it.
