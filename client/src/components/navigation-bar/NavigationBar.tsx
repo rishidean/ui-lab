@@ -1723,7 +1723,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                       "0 4px 14px rgb(20 20 10 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9)",
                   }}
                   transition={menuGrowTransition}
-                  className="glass-overlay absolute z-40 pointer-events-auto p-1.5 min-w-[210px] overflow-hidden"
+                  className="glass-overlay glass-rim absolute z-40 pointer-events-auto p-1.5 min-w-[210px] overflow-hidden"
                   style={{
                     left: MENU_ANCHOR.left,
                     bottom: MENU_ANCHOR.bottom,

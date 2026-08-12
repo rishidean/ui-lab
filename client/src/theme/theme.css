@@ -41,6 +41,17 @@
      1 = fully transparent. 0.8 lands close to the liquid-glass look:
      genuinely see-through, held together by the rim. */
   --nav-glass-drain: 0.8;
+  /* The lit edge shared by every glass surface: bright along the top
+     where the light is, nearly gone at the sides, picking up at the
+     bottom from bounce. Used by .glass-rim and the nav pill's own
+     dormancy-bound rim. */
+  --glass-rim: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.9),
+    rgb(255 255 255 / 0.12) 42%,
+    rgb(255 255 255 / 0.16) 62%,
+    rgb(255 255 255 / 0.5)
+  );
   /* The tab icon's resting ink: the accent's own lightness with the
      chroma removed, so going neutral cannot change its contrast against
      the circle. First declaration is the fallback for engines without
@@ -108,7 +119,7 @@
     rgb(255 255 255 / 0.96),
     rgb(250 249 243 / 0.9)
   );
-  --sheet-border: rgb(255 255 255 / 0.8);
+  --sheet-border: rgb(20 20 10 / 0.08);
   --sheet-grabber: rgb(20 20 10 / 0.16);
 
   /* Scrims: sheets/modals dim harder than the in-place filter. */
@@ -129,6 +140,15 @@
      1 = fully transparent. 0.8 lands close to the liquid-glass look:
      genuinely see-through, held together by the rim. */
   --nav-glass-drain: 0.8;
+  /* Dark glass catches less light; a full-strength white rim on a dark
+     surface reads as a sticker rather than an edge. */
+  --glass-rim: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.5),
+    rgb(255 255 255 / 0.05) 42%,
+    rgb(255 255 255 / 0.07) 62%,
+    rgb(255 255 255 / 0.24)
+  );
   --accent-dormant: #a9a7a8;
   --accent-dormant: oklch(from var(--accent-700) l 0 h);
 
@@ -175,7 +195,7 @@
     rgb(38 42 49 / 0.97),
     rgb(33 36 42 / 0.94)
   );
-  --sheet-border: rgb(255 255 255 / 0.12);
+  --sheet-border: rgb(255 255 255 / 0.06);
   --sheet-grabber: rgb(255 255 255 / 0.18);
 
   --scrim: rgb(0 0 0 / 0.5);
@@ -184,6 +204,34 @@
 }
 
 /* ═══ Shared component classes ═════════════════════════════════════ */
+
+/* Static glass surfaces (menu, sheets) get the same lit edge, always on.
+   Surfaces using this keep their border a QUIET hairline and drop any
+   `inset 0 1px 0` highlight — the rim replaces both, and stacking them is
+   exactly what makes a top edge look too thick. */
+/* NOTE: this deliberately does NOT set `position`. The rim's ::before is
+   absolutely positioned, so the host must already establish a containing
+   block — every current user does (the menu is absolute, the sheet is
+   fixed, the pill is relative). Forcing `position: relative` here would
+   silently override a host's own positioning; it broke the menu's
+   anchoring the first time this was written. */
+.glass-rim::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--glass-rim);
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
 
 /* One continuous frosted capsule — a single soft shadow and one inset
    highlight, so it doesn't compete with the circular buttons. */
@@ -271,13 +319,7 @@
   z-index: 0;
   padding: 1px;
   border-radius: inherit;
-  background: linear-gradient(
-    180deg,
-    rgb(255 255 255 / 0.95),
-    rgb(255 255 255 / 0.1) 42%,
-    rgb(255 255 255 / 0.14) 62%,
-    rgb(255 255 255 / 0.55)
-  );
+  background: var(--glass-rim);
   opacity: var(--nav-dormant);
   pointer-events: none;
   -webkit-mask:
@@ -287,18 +329,6 @@
   mask:
     linear-gradient(#000 0 0) content-box exclude,
     linear-gradient(#000 0 0);
-}
-
-/* Dark glass catches less light, and a full-strength white rim on a dark
-   surface reads as a sticker rather than an edge. */
-.dark .glass-nav::before {
-  background: linear-gradient(
-    180deg,
-    rgb(255 255 255 / 0.62),
-    rgb(255 255 255 / 0.06) 42%,
-    rgb(255 255 255 / 0.09) 62%,
-    rgb(255 255 255 / 0.3)
-  );
 }
 
 /* Dormancy, channel one: the tab glyph's ink. Rides the same scalar and
@@ -339,25 +369,23 @@
 
 /* Menu surface — same one-shadow-plus-inset system as the capsule. */
 .glass-overlay {
-  border: 1px solid rgb(255 255 255 / 0.8);
+  /* Quiet hairline only — the lit edge comes from .glass-rim. The old
+     `inset 0 1px 0` stacked with the border and read as a thick top. */
+  border: 1px solid rgb(20 20 10 / 0.08);
   background:
     linear-gradient(180deg, rgb(255 255 255 / 0.94), rgb(250 249 243 / 0.84)),
     rgb(255 255 255 / 0.86);
-  box-shadow:
-    0 18px 44px rgb(20 20 10 / 0.16),
-    inset 0 1px 0 rgb(255 255 255 / 0.9);
+  box-shadow: 0 18px 44px rgb(20 20 10 / 0.16);
   backdrop-filter: saturate(1.5) blur(var(--blur-lg));
   -webkit-backdrop-filter: saturate(1.5) blur(var(--blur-lg));
 }
 
 .dark .glass-overlay {
-  border: 1px solid rgb(255 255 255 / 0.12);
+  border: 1px solid rgb(255 255 255 / 0.06);
   background:
     linear-gradient(180deg, rgb(33 36 42 / 0.96), rgb(25 27 31 / 0.9)),
     rgb(19 20 23 / 0.88);
-  box-shadow:
-    0 18px 44px rgb(0 0 0 / 0.55),
-    inset 0 1px 0 rgb(255 255 255 / 0.08);
+  box-shadow: 0 18px 44px rgb(0 0 0 / 0.55);
 }
 
 /* Action labels rest as plain text on the capsule. The pill treatment
