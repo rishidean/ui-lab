@@ -13,11 +13,16 @@ const results = [];
 // Probed on a detached node carrying the same classes, so this asserts
 // the stylesheet itself rather than whatever state the bar is in.
 //
-// A glass channel (saturation, then opacity) was tried and reverted —
-// measured against four backdrops from near-white to deep saturated, the
-// pill's rendered interior never moved more than 4/255 and was identical
-// across all four. The glass must therefore stay CONSTANT: these
-// assertions are what stops it being re-added without new evidence.
+// Two channels ride the scalar: the glass's backdrop saturation and the
+// tab glyph's ink, both scaled by --nav-dormancy-depth.
+//
+// The glass channel was once measured as dead and reverted. That
+// measurement was wrong: the component painted a full-bleed canvas wash
+// BETWEEN the page and the bar, so backdrop-filter was sampling the wash
+// rather than the page. With the wash removed, a saturation swing moves
+// the rendered pill 15/255 instead of 1/255. If anyone reintroduces an
+// opaque layer under the cluster, this channel dies silently — which is
+// what the render-level assertion at the end of this file guards.
 const contract = await page.evaluate(() => {
   const el = document.createElement("div");
   el.className = "glass-nav nav-tab-ink";
@@ -41,14 +46,19 @@ const contract = await page.evaluate(() => {
 
 results.push(
   [
-    "glass saturation is a constant 1.45 (engaged appearance)",
+    "glass saturation is 1.45 when engaged (shipped appearance)",
     /saturate\(1\.45\)/.test(contract.engaged.filter),
     contract.engaged,
   ],
   [
-    "glass does NOT change with engagement (reverted channel stays out)",
-    contract.rest.filter === contract.engaged.filter,
-    { rest: contract.rest.filter, engaged: contract.engaged.filter },
+    "glass saturation drops to 0.3 at full dormancy",
+    /saturate\(0\.3\)/.test(contract.rest.filter),
+    contract.rest,
+  ],
+  [
+    "depth 0 disables the glass channel too",
+    /saturate\(1\.45\)/.test(contract.restNoDepth.filter),
+    contract.restNoDepth,
   ],
   [
     "depth 0 disables dormancy — rest ink equals engaged ink",
@@ -253,6 +263,87 @@ results.push([
   chromaOf(inkDepth0) > 0.1 && chromaOf(inkDepth1) < 0.001,
   { inkDepth0, inkDepth1 },
 ]);
+
+// RENDER-LEVEL guard. Every other assertion here reads computed style,
+// which stayed perfectly correct for weeks while the effect was in fact
+// invisible — a canvas wash sat between the page and the bar, so the
+// backdrop-filter sampled the wash. Computed style cannot see that. This
+// puts a vivid element behind the pill, swings the saturation, and
+// requires the PIXELS to move. It is the assertion that would have
+// caught the original bug.
+{
+  await page.evaluate(() => {
+    const p = document.querySelector(".glass-nav").getBoundingClientRect();
+    const d = document.createElement("div");
+    d.id = "dormancy-probe";
+    d.style.cssText =
+      `position:fixed;left:0;top:${p.top - 30}px;width:100%;` +
+      `height:${p.height + 60}px;z-index:1;` +
+      `background:linear-gradient(90deg,#7c3aed,#0ea5e9,#f59e0b);`;
+    document.querySelector(".navigation-demo").prepend(d);
+  });
+  await page.waitForTimeout(400);
+
+  const box = await page.evaluate(() => {
+    const r = document.querySelector(".glass-nav").getBoundingClientRect();
+    return {
+      x: Math.round(r.x + 14),
+      y: Math.round(r.y + 8),
+      width: Math.round(r.width - 28),
+      height: Math.round(r.height - 16),
+    };
+  });
+  const frames = [];
+  for (const f of ["saturate(0.3)", "saturate(1.45)"]) {
+    await page.evaluate(v => {
+      document.querySelector(".glass-nav").style.backdropFilter =
+        `${v} blur(var(--blur-lg))`;
+    }, f);
+    await page.waitForTimeout(320);
+    frames.push((await page.screenshot({ clip: box })).toString("base64"));
+  }
+  await page.evaluate(() => {
+    document.querySelector(".glass-nav").style.backdropFilter = "";
+    document.getElementById("dormancy-probe")?.remove();
+  });
+
+  const delta = await page.evaluate(async ([a, b]) => {
+    const load = s =>
+      new Promise(r => {
+        const i = new Image();
+        i.onload = () => r(i);
+        i.src = "data:image/png;base64," + s;
+      });
+    const [ia, ib] = await Promise.all([load(a), load(b)]);
+    const c = document.createElement("canvas");
+    c.width = ia.width;
+    c.height = ia.height;
+    const x = c.getContext("2d");
+    x.drawImage(ia, 0, 0);
+    const da = x.getImageData(0, 0, c.width, c.height).data;
+    x.clearRect(0, 0, c.width, c.height);
+    x.drawImage(ib, 0, 0);
+    const db = x.getImageData(0, 0, c.width, c.height).data;
+    let m = 0;
+    for (let i = 0; i < da.length; i += 4)
+      m = Math.max(
+        m,
+        Math.abs(da[i] - db[i]),
+        Math.abs(da[i + 1] - db[i + 1]),
+        Math.abs(da[i + 2] - db[i + 2])
+      );
+    return m;
+  }, frames);
+
+  results.push([
+    "glass dormancy actually reaches the pixels (nothing opaque under the bar)",
+    delta >= 8,
+    {
+      maxChannelDelta: delta,
+      note: "1/255 = something is masking the backdrop",
+    },
+  ]);
+}
 
 for (const [name, pass, detail] of results)
   console.log(pass ? "PASS" : "FAIL", name, pass ? "" : JSON.stringify(detail));

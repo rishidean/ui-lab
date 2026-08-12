@@ -187,8 +187,24 @@
   box-shadow:
     0 10px 28px rgb(20 20 10 / 0.12),
     inset 0 1px 0 rgb(255 255 255 / 0.8);
-  backdrop-filter: saturate(1.45) blur(var(--blur-lg));
-  -webkit-backdrop-filter: saturate(1.45) blur(var(--blur-lg));
+  /* Dormancy, channel two: the glass drains saturation from whatever sits
+     behind it at rest, so page colour greys out under the bar and blooms
+     back when the bar is engaged. 1.45 engaged, 0.3 fully dormant, scaled
+     by depth so 0 disables it.
+
+     This only works because the component no longer paints a canvas wash
+     between the page and the bar — with that wash in place a saturation
+     swing moved the rendered pill by 1/255 instead of 15/255. If you
+     reintroduce any opaque layer under the cluster, this channel dies
+     silently. */
+  backdrop-filter: saturate(
+      calc(1.45 - 1.15 * (1 - var(--nav-engage)) * var(--nav-dormancy-depth))
+    )
+    blur(var(--blur-lg));
+  -webkit-backdrop-filter: saturate(
+      calc(1.45 - 1.15 * (1 - var(--nav-engage)) * var(--nav-dormancy-depth))
+    )
+    blur(var(--blur-lg));
 }
 
 /* The tab glyph's ink — the ONE channel dormancy actually moves.

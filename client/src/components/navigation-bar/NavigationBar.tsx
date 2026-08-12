@@ -1479,16 +1479,22 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   return (
     <div className="relative px-[18px] pb-6 pointer-events-none" ref={navRef}>
-      {/* Dock wash — canvas fades up behind the floating cluster so it reads
-          against scrolling content (mirrors .pf__nav::before). */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[170px] z-0"
-        style={{
-          background:
-            "linear-gradient(to top, var(--bg-canvas) 26%, color-mix(in oklab, var(--accent-soft) 13%, var(--bg-canvas)) 58%, transparent 100%)",
-        }}
-      />
+      {/* There used to be a full-bleed "dock wash" here — a 170px gradient
+          fading the canvas up behind the cluster so the bar read against
+          scrolling content. It was removed deliberately, for two reasons.
+
+          It was full-bleed while the cluster is a centred max-w-lg group,
+          so on wide viewports it painted a broad band behind a narrow
+          control. And its bottom 26% was solid --bg-canvas laid exactly
+          where the bar sits, so it stood BETWEEN the page and the glass:
+          the bar's backdrop-filter was sampling the wash, not the page.
+          Measured, a saturation swing on the pill moved 1/255 with the
+          wash present and 15/255 without it.
+
+          The glass carries its own legibility (it composites to ~90%
+          opacity), so the bar still reads over scrolling content. If you
+          are dropping this into a very dense page and want the wash back,
+          it is one absolutely-positioned gradient — see git history. */}
       {/* Filter scrim — the page dims SLIGHTLY (lighter than the sheet
           scrims) once the strip has claimed its space, keeping attention
           on the options while the bar itself stays bright. Sits below the
