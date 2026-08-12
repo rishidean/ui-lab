@@ -154,8 +154,9 @@ const EASE_IN = [0.4, 0, 1, 1] as const;
 
 // Global tempo knob: every duration and delay is multiplied by this.
 // 1.0 = the nominal bands above; raise to make transitions more legible,
-// lower to tighten. Tuned by feel on device.
-const TEMPO = 1.3;
+// lower to tighten. Tuned by feel on device. Consumers may override it
+// with the `tempo` prop; the lab's demo exposes it as a slider.
+const DEFAULT_TEMPO = 1.3;
 
 const DUR = {
   press: 0.18, // pressed feedback, small fades
@@ -239,10 +240,13 @@ const SHEET_DELAYS = {
   labelFade: 0.05, // labels leave just after the recede begins
 };
 
-// Consumers flip isSheetOpen, wait this window, then measure the bar
-// and mount their surface. Derived from the recede band (0.25) + a
-// breath, × TEMPO — retuning the bar keeps launch timing in sync.
-export const SHEET_CLEAROUT_MS = Math.round((0.25 + 0.06) * TEMPO * 1000);
+// Consumers flip isSheetOpen, wait this window, then measure the bar and
+// mount their surface. Derived from the recede band (0.25) + a breath,
+// × tempo — so it MUST be a function of tempo: a constant would desync
+// the moment a consumer passes a non-default `tempo` prop.
+export function sheetClearoutMs(tempo: number = DEFAULT_TEMPO): number {
+  return Math.round((0.25 + 0.06) * tempo * 1000);
+}
 
 // ── Filter expansion — serial beats. The strip claims the RIGHT button's
 //    space (the left circle never moves):
@@ -352,6 +356,14 @@ export type NavigationBarProps = {
   /** The UtilityButton's action for the current tab (null hides it). */
   utilityAction?: UtilityAction | null;
   showUtilityButton?: boolean;
+  /** Override only; defaults to the system preference. Matches the same
+   *  prop on BottomSheet and UtilityModal. */
+  reducedMotion?: boolean;
+  /** Multiplies every duration and delay. 1.0 is the nominal band;
+   *  higher is more legible, lower is tighter. Defaults to 1.3. If you
+   *  pass this, derive your sheet timing from `sheetClearoutMs(tempo)`
+   *  with the SAME value, or the clear-out and your mount will desync. */
+  tempo?: number;
 };
 
 export const NavigationBar: React.FC<NavigationBarProps> = ({
@@ -383,6 +395,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   contextualActions = {},
   utilityAction,
   showUtilityButton = true,
+  reducedMotion,
+  tempo = DEFAULT_TEMPO,
 }) => {
   const [isNavigationMenuOpen, setIsNavigationMenuOpen] = useState(false);
   const menuId = React.useId();
@@ -394,9 +408,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     externalActiveTab || tabs[0]?.id || "home"
   );
 
-  const prefersReducedMotion = useReducedMotion();
-  const dur = (d: number) => (prefersReducedMotion ? 0 : d * TEMPO);
-  const del = (d: number) => (prefersReducedMotion ? 0 : d * TEMPO);
+  const systemReducedMotion = useReducedMotion();
+  const prefersReducedMotion = reducedMotion ?? !!systemReducedMotion;
+  const dur = (d: number) => (prefersReducedMotion ? 0 : d * tempo);
+  const del = (d: number) => (prefersReducedMotion ? 0 : d * tempo);
 
   // ── Assistant collapse-first close ─────────────────────────────────
   // A card that has STRETCHED unwinds in reverse of how it grew, in four
@@ -450,11 +465,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     if (assistantClosePhase !== "collapsing") return;
     const t = setTimeout(
       () => setAssistantClosePhase("collapsed"),
-      Math.round(ASSISTANT_COLLAPSE_S * TEMPO * 1000)
+      Math.round(ASSISTANT_COLLAPSE_S * tempo * 1000)
     );
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assistantClosePhase]);
+  }, [assistantClosePhase, tempo]);
   const assistantCollapsing = assistantClosePhase === "collapsing";
   // What the bar renders as. Lags the prop through the collapse beats so
   // the circles, actions row, and wipe all wait for beat four.
@@ -570,7 +585,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         if (searchInputRef.current) {
           timer = window.setTimeout(
             () => searchInputRef.current?.focus({ preventScroll: true }),
-            prefersReducedMotion ? 0 : 220 * TEMPO
+            prefersReducedMotion ? 0 : 220 * tempo
           );
         } else if (tries++ < 120) {
           raf = requestAnimationFrame(arm);
@@ -582,7 +597,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         if (timer !== undefined) window.clearTimeout(timer);
       };
     }
-  }, [isSearchOpen, prefersReducedMotion]);
+  }, [isSearchOpen, prefersReducedMotion, tempo]);
 
   // Search close (Cancel, Escape, Enter-submit): focus returns to the
   // utility button that opened it.
@@ -616,7 +631,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         if (assistantInputRef.current) {
           timer = window.setTimeout(
             () => assistantInputRef.current?.focus({ preventScroll: true }),
-            prefersReducedMotion ? 0 : 220 * TEMPO
+            prefersReducedMotion ? 0 : 220 * tempo
           );
         } else if (tries++ < 120) {
           raf = requestAnimationFrame(arm);
@@ -628,7 +643,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         if (timer !== undefined) window.clearTimeout(timer);
       };
     }
-  }, [isAssistantOpen, prefersReducedMotion]);
+  }, [isAssistantOpen, prefersReducedMotion, tempo]);
 
   // Close returns focus to the utility button, same as search.
   const prevAssistantOpenRef = useRef(isAssistantOpen);
@@ -690,10 +705,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     // Open morph is 0.24 + 0.06 delay; the stretch waits one extra beat.
     const t = setTimeout(
       () => setAssistantSurfaceReady(true),
-      prefersReducedMotion ? 0 : Math.round((0.24 + 0.06 + 0.1) * TEMPO * 1000)
+      prefersReducedMotion ? 0 : Math.round((0.24 + 0.06 + 0.1) * tempo * 1000)
     );
     return () => clearTimeout(t);
-  }, [isAssistantOpen, prefersReducedMotion]);
+  }, [isAssistantOpen, prefersReducedMotion, tempo]);
 
   // ── Assistant close/unmount lag ────────────────────────────────────
   // The close wipe runs as an ANIMATE retarget while the branch is still
@@ -729,13 +744,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         ? 0
         : Math.round(
             (ASSISTANT_CLOSE_WIPE_DELAY_S + ASSISTANT_CLOSE_WIPE_S) *
-              TEMPO *
+              tempo *
               1000
           )
     );
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assistantVisualOpen, assistantHeld, prefersReducedMotion]);
+  }, [assistantVisualOpen, assistantHeld, prefersReducedMotion, tempo]);
   // Mount immediately on open (assistantVisualOpen leads assistantHeld by
   // a render); hold through the collapse beats and the close wipe.
   const renderAssistantBranch = assistantVisualOpen || assistantHeld;

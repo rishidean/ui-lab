@@ -3,7 +3,7 @@
  * Part of Rishi's UI Lab — © 2026 Rishi Dean (rishidean.com)
  * MIT license · github.com/rishidean/ui-lab
  */
-export { NavigationBar, SHEET_CLEAROUT_MS } from "./NavigationBar";
+export { NavigationBar, sheetClearoutMs } from "./NavigationBar";
 export type {
   Action,
   AssistantMessage,

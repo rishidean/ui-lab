@@ -20,7 +20,7 @@
  */
 import {
   NavigationBar,
-  SHEET_CLEAROUT_MS,
+  sheetClearoutMs,
   type AssistantMessage,
 } from "@/components/navigation-bar";
 import { BottomSheet, type SheetOrigin } from "@/components/bottom-sheet";
@@ -236,7 +236,8 @@ export default function NavigationBarStage() {
       if (prepTimer.current) clearTimeout(prepTimer.current);
       prepTimer.current = setTimeout(
         mount,
-        prefersReducedMotion ? 0 : SHEET_CLEAROUT_MS
+        // Task 2 threads the stage's tempo state through here.
+        prefersReducedMotion ? 0 : sheetClearoutMs()
       );
     },
     [prefersReducedMotion]
