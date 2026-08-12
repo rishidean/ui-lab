@@ -199,7 +199,10 @@ const CLOSE_DELAYS = {
   menuFade: 0.0, // collapse runs 0 → menuClose (0.16)
   tabIconSwap: 0.02, // left icon transitions with the collapse, not after
   pillGrow: 0.22, // bar regrows after the menu has landed + a beat
-  actionsFadeIn: 0.3, // labels arrive in the regrow's final third
+  // Same raster trap as SCROLL_EXPAND_DELAYS.labelFadeIn: the pill grows
+  // from 0.22 for DUR.expand, so anything under 0.42 paints text onto a
+  // stretching texture.
+  actionsFadeIn: 0.44, // labels arrive once the regrow has landed
   // Bar finishes at pillGrow + expand ≈ 0.42; the utility dots the i.
   utilityButtonFadeIn: 0.46,
 };
@@ -220,7 +223,12 @@ const SCROLL_EXPAND_DELAYS = {
   logoFade: 0.0,
   tabIconFadeIn: 0.0,
   centerExpand: 0.0, // 1. bar regrows from the circle…
-  labelFadeIn: 0.1, //    labels arrive in the final third
+  // Was 0.1 — labels arrived ~130ms into a 260ms scale, i.e. while the
+  // pill's composited layer was still a stretched texture, so they
+  // rendered soft until Chrome re-rastered at the end. Waiting for the
+  // scale to land means they paint once, sharp, on a settled layer.
+  // GPU-only symptom: headless software rasterization never shows it.
+  labelFadeIn: 0.22, //   labels arrive once the regrow has landed
   rightReveal: 0.24, // 2. …then the right utility dots the i
 };
 
@@ -1320,39 +1328,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     repaintTimer.current = setTimeout(nudgePillText, 200);
   };
 
-  // A landing-only nudge fixes the raster AFTER the regrow, which leaves a
-  // visible beat of fuzzy labels DURING it: the pill is permanently
-  // composited (backdrop-filter), so scaleX stretches one cached bitmap
-  // instead of re-rasterizing, and the labels fade in while that stretch is
-  // happening. Nudging every frame for the duration of the regrow forces a
-  // fresh raster per frame, so the text is sharp throughout. This
-  // deliberately gives up the compositing win for ~300ms — the alternative
-  // is animating width (layout every frame, and a far riskier change to
-  // settled choreography).
-  const sustainRaf = useRef(0);
-  const sustainUntil = useRef(0);
-  const sustainPillRepaint = (ms: number) => {
-    if (prefersReducedMotion) return;
-    sustainUntil.current = performance.now() + ms;
-    if (sustainRaf.current) return;
-    const tick = () => {
-      nudgePillText();
-      if (performance.now() < sustainUntil.current) {
-        sustainRaf.current = requestAnimationFrame(tick);
-      } else {
-        sustainRaf.current = 0;
-        nudgePillText();
-      }
-    };
-    sustainRaf.current = requestAnimationFrame(tick);
-  };
-  useEffect(
-    () => () => {
-      if (sustainRaf.current) cancelAnimationFrame(sustainRaf.current);
-    },
-    []
-  );
-
   // Transition helpers — per-property timing so containers move first and
   // opacities follow, keeping the three controls on one continuous path.
   // Interrupted input (rapid open/close) has one behavior everywhere:
@@ -1905,12 +1880,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 height: assistantHeight,
               }}
               transition={centerPillTransition}
-              onAnimationStart={definition => {
-                // Any regrow toward full width: hold the raster fresh for
-                // the whole transform band plus the labels' fade tail.
-                if ((definition as { scaleX?: number }).scaleX === 1)
-                  sustainPillRepaint(Math.round(dur(DUR.expand) * 1000) + 260);
-              }}
               onAnimationComplete={definition => {
                 // Every regrow path (scroll expand, menu close) ends at
                 // scaleX 1 — re-raster once it lands.
