@@ -207,18 +207,13 @@
     blur(var(--blur-lg));
 }
 
-/* The tab glyph's ink — the ONE channel dormancy actually moves.
-   `--nav-dormancy-depth` scales how far the resting state travels, so a
-   consumer (or the lab's slider) can dial the effect from off (0) to
-   fully neutral (1) without touching the component.
+/* Dormancy, channel one: the tab glyph's ink. Rides the same scalar and
+   the same depth as the glass above, so the two can never drift.
 
-   A glass channel was tried here too — draining the panel's saturation,
-   then its opacity, so page colour behind the bar would grey out at
-   rest. Both were reverted: measured against four backdrops from
-   near-white to deep saturated, the pill's rendered interior never moved
-   more than 4/255 and was *identical* across all four, so it does not
-   composite its backdrop in any usable way. Don't re-add it without
-   re-running that test first. */
+   The dormant end is `--accent-dormant`, which is the accent's own
+   lightness with chroma stripped — so neutralizing the hue cannot change
+   the glyph's contrast against the circle. That makes the WCAG position
+   provable rather than tuned. */
 .nav-tab-ink {
   color: color-mix(
     in oklch,
