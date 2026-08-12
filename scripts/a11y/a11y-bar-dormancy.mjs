@@ -31,7 +31,11 @@ const contract = await page.evaluate(() => {
     el.style.setProperty("--nav-engage", String(v));
     el.style.setProperty("--nav-dormancy-depth", String(depth));
     const cs = getComputedStyle(el);
-    return { filter: cs.backdropFilter, color: cs.color };
+    return {
+      filter: cs.backdropFilter,
+      color: cs.color,
+      bg: cs.backgroundColor,
+    };
   };
   const rows = {
     rest: at(0),
@@ -54,6 +58,19 @@ results.push(
     "glass saturation drops to 0.3 at full dormancy",
     /saturate\(0\.3\)/.test(contract.rest.filter),
     contract.rest,
+  ],
+  [
+    "glass THINS at rest (the channel that actually reads)",
+    (() => {
+      const a = s => Number(s.match(/rgba?\([^)]*?([\d.]+)\s*\)/)?.[1] ?? NaN);
+      return a(contract.rest.bg) < a(contract.engaged.bg) - 0.05;
+    })(),
+    { rest: contract.rest.bg, engaged: contract.engaged.bg },
+  ],
+  [
+    "depth 0 leaves the glass at full opacity",
+    contract.restNoDepth.bg === contract.engaged.bg,
+    { restNoDepth: contract.restNoDepth.bg, engaged: contract.engaged.bg },
   ],
   [
     "depth 0 disables the glass channel too",
@@ -294,16 +311,17 @@ results.push([
     };
   });
   const frames = [];
-  for (const f of ["saturate(0.3)", "saturate(1.45)"]) {
+  for (const e of [0, 1]) {
     await page.evaluate(v => {
-      document.querySelector(".glass-nav").style.backdropFilter =
-        `${v} blur(var(--blur-lg))`;
-    }, f);
-    await page.waitForTimeout(320);
+      document.querySelectorAll("*").forEach(el => {
+        if (el.style && el.style.getPropertyValue("--nav-engage") !== "")
+          el.style.setProperty("--nav-engage", String(v));
+      });
+    }, e);
+    await page.waitForTimeout(420);
     frames.push((await page.screenshot({ clip: box })).toString("base64"));
   }
   await page.evaluate(() => {
-    document.querySelector(".glass-nav").style.backdropFilter = "";
     document.getElementById("dormancy-probe")?.remove();
   });
 
