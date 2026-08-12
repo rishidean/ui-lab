@@ -1495,6 +1495,33 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           opacity), so the bar still reads over scrolling content. If you
           are dropping this into a very dense page and want the wash back,
           it is one absolutely-positioned gradient — see git history. */}
+      {/* Menu scrim — the page dims behind the navigation menu, same as
+          the sheets and the filter strip. It is not only for focus: the
+          menu is glass now, so dimming what sits behind it is what keeps
+          the row labels legible over arbitrary page content. Dismissal
+          already runs through the document mousedown handler; the
+          onClick here is belt-and-braces and keeps the affordance
+          explicit. */}
+      <AnimatePresence>
+        {isNavigationMenuOpen && !isCollapsed && (
+          <motion.button
+            key="menu-scrim"
+            type="button"
+            aria-hidden="true"
+            tabIndex={-1}
+            className="fixed inset-0 z-0 pointer-events-auto cursor-pointer"
+            style={{ background: "var(--scrim)", border: 0, padding: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{
+              opacity: 0,
+              transition: { duration: dur(0.15), ease: EASE_IN },
+            }}
+            transition={{ duration: dur(0.2), ease: EASE }}
+            onClick={() => setIsNavigationMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
       {/* Filter scrim — the page dims SLIGHTLY (lighter than the sheet
           scrims) once the strip has claimed its space, keeping attention
           on the options while the bar itself stays bright. Sits below the
