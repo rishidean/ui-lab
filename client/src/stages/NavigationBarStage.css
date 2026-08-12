@@ -124,15 +124,20 @@
   --demo-hue: 146; /* green */
 }
 
+/* Saturated on purpose. The bar's dormancy drains colour from whatever
+   passes behind it, and it can only drain colour that is there — against
+   the near-white cards these used to be, the whole effect measured
+   8/255 and was invisible; at this weight it measures 27/255 and reads
+   at a glance. Real apps have real content; the stand-in should too. */
 .navigation-demo__ghost-card {
   display: flex;
   align-items: center;
   gap: 1rem;
   min-height: 7rem;
   padding: 1.35rem;
-  border: 1px solid oklch(0.88 0.06 var(--demo-hue) / 0.72);
+  border: 1px solid oklch(0.6 0.17 var(--demo-hue) / 0.5);
   border-radius: 1.35rem;
-  background: oklch(0.94 0.055 var(--demo-hue) / 0.82);
+  background: oklch(0.7 0.15 var(--demo-hue));
 }
 
 .navigation-demo__ghost-icon {
@@ -140,11 +145,11 @@
   height: 2.6rem;
   flex: 0 0 auto;
   border-radius: 0.85rem;
-  background: oklch(0.76 0.13 var(--demo-hue));
+  background: oklch(0.52 0.18 var(--demo-hue));
 }
 
 .navigation-demo__card-grid .navigation-demo__ghost-lines span {
-  background: oklch(0.8 0.05 var(--demo-hue));
+  background: oklch(0.85 0.09 var(--demo-hue) / 0.75);
 }
 
 .navigation-demo__ghost-lines {
@@ -374,8 +379,8 @@
    still read as surfaces, enough chroma left for the dormant glass to
    have something to drain. */
 .dark .navigation-demo__ghost-card {
-  border-color: oklch(0.46 0.06 var(--demo-hue) / 0.5);
-  background: oklch(0.33 0.05 var(--demo-hue) / 0.62);
+  border-color: oklch(0.55 0.14 var(--demo-hue) / 0.55);
+  background: oklch(0.46 0.13 var(--demo-hue));
 }
 
 .dark .navigation-demo__ghost-lines span {
@@ -383,7 +388,7 @@
 }
 
 .dark .navigation-demo__card-grid .navigation-demo__ghost-lines span {
-  background: oklch(0.5 0.05 var(--demo-hue));
+  background: oklch(0.72 0.1 var(--demo-hue) / 0.7);
 }
 
 .dark .navigation-demo__feature-orb {
@@ -400,7 +405,7 @@
 }
 
 .dark .navigation-demo__ghost-icon {
-  background: oklch(0.58 0.11 var(--demo-hue));
+  background: oklch(0.68 0.16 var(--demo-hue));
 }
 
 .dark .navigation-demo__sheet-row {
