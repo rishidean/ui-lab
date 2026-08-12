@@ -115,6 +115,39 @@ results.push(
   ]
 );
 
+// The rim: a masked gradient ring that carries the capsule's shape once
+// the fill drains. It must fade IN with dormancy (engaged, the quiet
+// hairline is enough) and must actually be a ring, not a filled box —
+// if the mask ever stops applying, the pseudo-element covers the pill.
+const rim = await page.evaluate(() => {
+  const pill = document.querySelector(".glass-nav");
+  const at = v => {
+    pill.style.setProperty("--nav-engage", String(v));
+    const cs = getComputedStyle(pill, "::before");
+    return {
+      opacity: cs.opacity,
+      hasGradient: cs.backgroundImage.includes("gradient"),
+      masked: cs.maskImage !== "none" || cs.webkitMaskImage !== "none",
+      padding: cs.paddingTop,
+    };
+  };
+  const rows = { engaged: at(1), rest: at(0) };
+  pill.style.removeProperty("--nav-engage");
+  return rows;
+});
+results.push(
+  [
+    "rim is a masked gradient ring (not a filled overlay)",
+    rim.rest.hasGradient && rim.rest.masked && rim.rest.padding === "1px",
+    rim.rest,
+  ],
+  [
+    "rim fades in with dormancy",
+    Number(rim.rest.opacity) > 0.9 && Number(rim.engaged.opacity) < 0.1,
+    { rest: rim.rest.opacity, engaged: rim.engaged.opacity },
+  ]
+);
+
 // The state machine: --nav-engage is 0 only at true rest.
 // Read it off the pill AND the tab glyph — they inherit from the same
 // animated ancestor, so if these two ever disagree the cascade broke.

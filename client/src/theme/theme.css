@@ -206,17 +206,10 @@
 }
 
 .glass-nav {
-  /* The rim is what makes a near-transparent capsule still read as an
-     OBJECT. As the fill drains at rest the edge brightens to compensate,
-     so the shape holds even when you can see straight through it — the
-     trick every liquid-glass bar leans on. Engaged, it settles back to
-     the quiet hairline. */
-  border: 1px solid
-    color-mix(
-      in oklab,
-      rgb(255 255 255 / 0.85) calc(var(--nav-dormant) * 100%),
-      rgb(20 20 10 / 0.1)
-    );
+  position: relative;
+  /* The quiet hairline the bar has always had. The luminous rim that
+     replaces it at rest lives in ::before — see below. */
+  border: 1px solid rgb(20 20 10 / 0.1);
   /* Dormancy, channel three: the glass THINS at rest, so the page shows
      through and the bar reads as chrome; engaged it solidifies under your
      finger. This is the channel that carries the effect — saturation
@@ -257,6 +250,57 @@
     blur(var(--blur-lg));
 }
 
+/* The rim — what makes a near-transparent capsule still read as an OBJECT.
+   A uniform bright outline looks like a drawn stroke; real glass catches
+   light unevenly, so this is a GRADIENT ring: bright along the top where
+   the light is, nearly gone at the sides, picking up again at the bottom
+   from bounce.
+
+   Technique: a 1px-padded pseudo-element whose gradient is masked so only
+   the padding ring survives (`exclude` subtracts the content box from the
+   full box). `border-image` cannot do this — it ignores border-radius, so
+   it would square off the capsule's ends. Keeping the rim in its own
+   layer also means the fill's animating alpha never tints it.
+
+   It fades in with dormancy: engaged, the quiet hairline above is enough;
+   at rest, the fill is gone and the rim is doing the work. */
+.glass-nav::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.95),
+    rgb(255 255 255 / 0.1) 42%,
+    rgb(255 255 255 / 0.14) 62%,
+    rgb(255 255 255 / 0.55)
+  );
+  opacity: var(--nav-dormant);
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+
+/* Dark glass catches less light, and a full-strength white rim on a dark
+   surface reads as a sticker rather than an edge. */
+.dark .glass-nav::before {
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.62),
+    rgb(255 255 255 / 0.06) 42%,
+    rgb(255 255 255 / 0.09) 62%,
+    rgb(255 255 255 / 0.3)
+  );
+}
+
 /* Dormancy, channel one: the tab glyph's ink. Rides the same scalar and
    the same depth as the glass above, so the two can never drift.
 
@@ -273,12 +317,7 @@
 }
 
 .dark .glass-nav {
-  border: 1px solid
-    color-mix(
-      in oklab,
-      rgb(255 255 255 / 0.6) calc(var(--nav-dormant) * 100%),
-      rgb(255 255 255 / 0.1)
-    );
+  border: 1px solid rgb(255 255 255 / 0.1);
   background:
     linear-gradient(
       180deg,
