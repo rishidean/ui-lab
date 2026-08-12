@@ -11,6 +11,15 @@ Each component here was invented for a real product, then extracted into a singl
 | **Navigation Bar**       | A glass bottom bar where navigation, actions, and filters share one morphing surface. Collapses on scroll down, expands on scroll up, with fully choreographed transitions.         |
 | **Press & Slide Picker** | Facebook-Reactions-style selection: long-press a chip, slide to an option, release to commit — with haptics, viewport-aware positioning, and an accessible click/keyboard fallback. |
 
+## Breaking changes
+
+**`SHEET_CLEAROUT_MS` → `sheetClearoutMs(tempo)`.** The Navigation Bar's
+sheet clear-out window was a constant; it's now a function, because a
+tempo-derived constant would desync from the bar's actual mount timing
+the moment a consumer passes a non-default `tempo` prop. Migration:
+replace `SHEET_CLEAROUT_MS` with `sheetClearoutMs()` — the default
+argument reproduces the old value exactly.
+
 ## Run locally
 
 ```bash
