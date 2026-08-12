@@ -253,6 +253,29 @@
   opacity: calc(1 - var(--nav-dormant) * var(--nav-glass-drain) * 0.55);
 }
 
+/* ...and they get the pill's lit edge too, or the cluster reads as two
+   materials: a capsule with a light-catching rim between two flat discs.
+   Same masked-gradient ring, same dormancy fade. The circles are round,
+   so `border-radius: inherit` picks up their full radius. */
+.nav-circle-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--glass-rim);
+  opacity: var(--nav-dormant);
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+
 .glass-nav {
   position: relative;
   /* The quiet hairline the bar has always had. The luminous rim that

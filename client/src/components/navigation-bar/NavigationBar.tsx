@@ -1303,21 +1303,55 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     },
     []
   );
+  const nudgePillText = () => {
+    const el = pillElRef.current;
+    if (!el) return;
+    el.style.textShadow = "0 0 0 rgba(0, 0, 0, 0)";
+    requestAnimationFrame(() => {
+      el.style.textShadow = "";
+    });
+  };
+
   const repaintPillText = () => {
-    const nudge = () => {
-      const el = pillElRef.current;
-      if (!el) return;
-      el.style.textShadow = "0 0 0 rgba(0, 0, 0, 0)";
-      requestAnimationFrame(() => {
-        el.style.textShadow = "";
-      });
-    };
-    nudge();
+    nudgePillText();
     // The labels' own fade can tail out ~30ms after the pill's scale lands
     // (scroll expand); a second nudge covers rasters settled in that gap.
     if (repaintTimer.current) clearTimeout(repaintTimer.current);
-    repaintTimer.current = setTimeout(nudge, 200);
+    repaintTimer.current = setTimeout(nudgePillText, 200);
   };
+
+  // A landing-only nudge fixes the raster AFTER the regrow, which leaves a
+  // visible beat of fuzzy labels DURING it: the pill is permanently
+  // composited (backdrop-filter), so scaleX stretches one cached bitmap
+  // instead of re-rasterizing, and the labels fade in while that stretch is
+  // happening. Nudging every frame for the duration of the regrow forces a
+  // fresh raster per frame, so the text is sharp throughout. This
+  // deliberately gives up the compositing win for ~300ms — the alternative
+  // is animating width (layout every frame, and a far riskier change to
+  // settled choreography).
+  const sustainRaf = useRef(0);
+  const sustainUntil = useRef(0);
+  const sustainPillRepaint = (ms: number) => {
+    if (prefersReducedMotion) return;
+    sustainUntil.current = performance.now() + ms;
+    if (sustainRaf.current) return;
+    const tick = () => {
+      nudgePillText();
+      if (performance.now() < sustainUntil.current) {
+        sustainRaf.current = requestAnimationFrame(tick);
+      } else {
+        sustainRaf.current = 0;
+        nudgePillText();
+      }
+    };
+    sustainRaf.current = requestAnimationFrame(tick);
+  };
+  useEffect(
+    () => () => {
+      if (sustainRaf.current) cancelAnimationFrame(sustainRaf.current);
+    },
+    []
+  );
 
   // Transition helpers — per-property timing so containers move first and
   // opacities follow, keeping the three controls on one continuous path.
@@ -1871,6 +1905,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 height: assistantHeight,
               }}
               transition={centerPillTransition}
+              onAnimationStart={definition => {
+                // Any regrow toward full width: hold the raster fresh for
+                // the whole transform band plus the labels' fade tail.
+                if ((definition as { scaleX?: number }).scaleX === 1)
+                  sustainPillRepaint(Math.round(dur(DUR.expand) * 1000) + 260);
+              }}
               onAnimationComplete={definition => {
                 // Every regrow path (scroll expand, menu close) ends at
                 // scaleX 1 — re-raster once it lands.
