@@ -199,10 +199,7 @@ const CLOSE_DELAYS = {
   menuFade: 0.0, // collapse runs 0 → menuClose (0.16)
   tabIconSwap: 0.02, // left icon transitions with the collapse, not after
   pillGrow: 0.22, // bar regrows after the menu has landed + a beat
-  // Same raster trap as SCROLL_EXPAND_DELAYS.labelFadeIn: the pill grows
-  // from 0.22 for DUR.expand, so anything under 0.42 paints text onto a
-  // stretching texture.
-  actionsFadeIn: 0.44, // labels arrive once the regrow has landed
+  actionsFadeIn: 0.3, // labels arrive in the regrow's final third
   // Bar finishes at pillGrow + expand ≈ 0.42; the utility dots the i.
   utilityButtonFadeIn: 0.46,
 };
@@ -223,12 +220,7 @@ const SCROLL_EXPAND_DELAYS = {
   logoFade: 0.0,
   tabIconFadeIn: 0.0,
   centerExpand: 0.0, // 1. bar regrows from the circle…
-  // Was 0.1 — labels arrived ~130ms into a 260ms scale, i.e. while the
-  // pill's composited layer was still a stretched texture, so they
-  // rendered soft until Chrome re-rastered at the end. Waiting for the
-  // scale to land means they paint once, sharp, on a settled layer.
-  // GPU-only symptom: headless software rasterization never shows it.
-  labelFadeIn: 0.22, //   labels arrive once the regrow has landed
+  labelFadeIn: 0.1, //    labels arrive in the final third
   rightReveal: 0.24, // 2. …then the right utility dots the i
 };
 
@@ -1320,6 +1312,29 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     });
   };
 
+  // KNOWN ISSUE — momentary label blur on regrow (GPU only).
+  //
+  // The pill is permanently composited (backdrop-filter). Chrome rasters
+  // that layer once, at the COLLAPSED size, then stretches the texture as
+  // scaleX animates; the text is soft until it re-rasters at rest. The
+  // nudge below is what makes it "resolve itself" a beat later.
+  //
+  // Tried and REVERTED, none of which fixed it on Rishi's machine:
+  //   1. rAF-driven repaint every frame through the regrow (measured 83
+  //      style writes vs ~2). Repainting writes into the same undersized
+  //      texture, so it cannot win.
+  //   2. Delaying the label fade until after scaleX lands (verified at
+  //      the pixel level: zero text pixels at any scaleX<1 sample). Still
+  //      blurry, and it cost the "labels arrive in the final third" beat,
+  //      so the original timing is restored.
+  // Also ruled out: stale bundle (served JS verified) and page zoom
+  // (devicePixelRatio 2, visualViewport.scale 1).
+  //
+  // The only fixes left are architectural: animate width instead of
+  // scaleX (layout every frame, no texture stretch, sharp text), or drop
+  // backdrop-filter for the duration so the layer is not composited (the
+  // glass would visibly flicker). Both are bigger changes than the
+  // symptom warrants — do not attempt a fourth point fix here.
   const repaintPillText = () => {
     nudgePillText();
     // The labels' own fade can tail out ~30ms after the pill's scale lands
