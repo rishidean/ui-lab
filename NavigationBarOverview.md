@@ -321,6 +321,55 @@ circles return together, mirroring search-close.
 The Scan demo shows the modal's internal states: permission request,
 denied/unavailable, and the active viewfinder.
 
+### Dormancy
+
+The bar is chrome until you use it. At rest, colour drains out; engage
+any surface and it returns.
+
+One scalar drives both channels: `--nav-engage`, animated from 0 (rest)
+to 1 (engaged). CSS derives everything else from it in `theme/theme.css`
+— the component never writes a colour.
+
+- **The glass.** `.glass-nav`'s `backdrop-filter` saturation runs from
+  `1.45` (engaged — the appearance the bar has always had) down to `0.3`
+  at full dormancy, so page colour passing under the pill reads gray at
+  rest and blooms back on engagement.
+- **The tab glyph.** Its ink runs from the accent to `--accent-dormant`,
+  a colour held at the accent's exact lightness with the chroma stripped
+  (`oklch(from var(--accent-700) l 0 h)`) — so going neutral cannot change
+  the icon's contrast against the circle, by construction rather than by
+  hand-tuning.
+
+Both channels are scaled by `--nav-dormancy-depth` (0 disables dormancy
+entirely, 1 is the full effect above); the lab's demo exposes it as a
+slider.
+
+Engaged means any non-rest bar state: the navigation menu, the filter
+strip, search, the assistant, a sheet, or a pressed action.
+Scroll-collapse counts as REST — a collapsed bar is already getting out
+of the way, and staying quiet there is the same intent as the dormancy
+itself. A committed filter chip keeps its accent wash in every state:
+dormancy never hides state, only the chrome around it.
+
+The glass channel shipped only after a mistake got corrected. The
+component used to paint a "dock wash" behind the floating cluster — a
+170px gradient fading the canvas up to `--bg-canvas` so the bar read
+against scrolling content. It was full-bleed while the cluster it sits
+behind is a centered `max-w-lg` group, and its bottom 26% was solid
+canvas colour laid exactly where the bar sits — between the page and the
+glass. `backdrop-filter` was sampling the wash, not the page: a
+saturation swing moved the rendered pill by 1/255, indistinguishable
+from noise, which read as "the channel doesn't work." Deleting the
+wash — the bar now floats directly over page content rather than over a
+canvas fade — fixed the measurement: the same swing now moves 15/255.
+The glass composites to roughly 90% opacity on its own, so legibility
+over scrolling content doesn't depend on the wash being there.
+
+The control panel that exposes dormancy depth, tempo, and a
+reduced-motion override (`client/src/stages/DemoControls.tsx`) is a lab
+affordance for this demo stage. It has no equivalent in
+`NavigationBar.tsx` — copying the component elsewhere gets none of it.
+
 ## Core States
 
 - Default (expanded)

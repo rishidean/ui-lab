@@ -177,8 +177,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     bottom: vh - origin.bottom,
     height: origin.height,
     borderRadius: origin.height / 2,
-    boxShadow:
-      "0 10px 28px rgb(20 20 10 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.8)",
+    // Drop shadow only. The lit edge is .glass-rim's gradient ring, which
+    // is theme-aware; this literal cannot be (framer will not interpolate
+    // var() strings), so at full strength it painted a near-white line on
+    // the dark preset's top edge.
+    boxShadow: "0 10px 28px rgb(20 20 10 / 0.12)",
   };
   const sheetState = {
     left: finalLeft,
@@ -186,8 +189,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     bottom: 12,
     height: sheetHeight,
     borderRadius: 28,
-    boxShadow:
-      "0 24px 60px rgb(20 20 10 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.9)",
+    boxShadow: "0 24px 60px rgb(20 20 10 / 0.2)",
   };
 
   return (
@@ -216,7 +218,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
-        className={cn("bottom-sheet", className)}
+        className={cn("bottom-sheet", "glass-rim", className)}
         // Reduced motion animates opacity only — the sheet's geometry is
         // then applied statically here, or it would render unpositioned.
         style={

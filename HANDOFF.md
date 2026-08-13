@@ -4,6 +4,62 @@ Working doc for continuing the lab's component work in a fresh session.
 Repo: `github.com/rishidean/ui-lab` (push to `main` auto-deploys on
 Railway via the Dockerfile). Owner: Rishi (rishidean).
 
+## Latest session (2026-08-13) — recap
+
+**Two fixes on `main`, then a long exploratory branch that is pushed but
+NOT merged.** Per-session detail in
+`session_handoffs/SessionHandoff_0813_11:40.md`.
+
+Shipped to `main` and deployed:
+
+1. **BottomSheet arm-window wedge** (`b294eb5`): closing ~580–1100ms
+   after mount permanently wedged the dialog (page left `inert`). The
+   drag-arm timer's `setOpened` re-render fired mid-exit and reset
+   framer's exit bookkeeping, so the child was never removed and
+   `onExitComplete` never fired. Gated on `useIsPresent()`. Covered by a
+   new arm-window case in `a11y-sheet.mjs`.
+2. **Assistant close in four beats** (`7fdf722`): transcript fades →
+   card contracts to the resting input row → row contents fade → the bar
+   returns exactly as it does pre-message.
+
+On branch **`nav-glass-activation`** (28 commits, unmerged):
+
+3. **Dormant-until-engaged bar.** At rest the glass thins and
+   desaturates and the tab glyph goes neutral; engaged it is byte-identical
+   to today. Three channels ride one intermediate — `--nav-dormant =
+(1 - --nav-engage) * --nav-dormancy-depth` — so they cannot drift.
+   `--nav-glass-drain` caps the sheerness. Spec + amendment in
+   `docs/superpowers/specs/2026-08-11-dormant-bar-design.md`.
+4. **The dock wash is gone, and finding it was the session.** The
+   component painted a full-bleed 170px gradient BETWEEN the page and the
+   bar, which made every backdrop effect measure as dead (1/255 with it,
+   15/255 without) and had already caused a working feature to be
+   reverted on false evidence. Do not reintroduce any opaque layer under
+   the cluster — the dormancy suite guards this at render level.
+5. **Gradient rim system** (`.glass-rim`): a masked gradient ring, bright
+   at the top, on the pill, both circles, the menu, and the sheet.
+   `border-image` cannot do this — it ignores `border-radius`.
+6. **Menu is glass and dims the page**, matching the sheets; it was ~99%
+   opaque while the bar sits at ~26%.
+7. **Two theme-blind shadow bugs fixed** (menu, sheet). Shadows inside
+   framer variants must be literals, so they cannot be theme-aware; both
+   carried the light preset's shadow plus a full-strength white inset
+   into dark mode — that inset was the "too thick top border". Zero
+   shadows now live inside animated variants; the circles were audited
+   and are clean.
+8. **Demo control panel** — dormancy depth, tempo, reduced motion. Needed
+   `tempo?: number` and `reducedMotion?: boolean` props, and BREAKING:
+   `SHEET_CLEAROUT_MS` → `sheetClearoutMs(tempo)`.
+
+Suite: 123 assertions, 0 failures.
+
+**Known issue, deliberately left:** momentary label blur on the pill's
+regrow — pre-existing, GPU-only, self-resolving. Four fixes failed and
+were reverted; the full record is in a comment above `repaintPillText`.
+The remaining options are structural (animate `width` instead of
+`scaleX`, or drop `backdrop-filter` for the duration) and cost more than
+the symptom. **Do not start a fifth point fix.**
+
 ## Latest session (2026-08-09, second session) — recap
 
 **Close symmetry, sheet morph unification, and the theme consistency
@@ -415,11 +471,17 @@ the two morph components in the stage (raw seconds, no TEMPO).
 
 ## NEXT UP (the reason for this handoff)
 
-Rishi's plan for the next session: **more minor tweaks to both the
-NavBar and the app** — nothing more specific queued yet; expect
-polish-scale items decided live. Both of the previous next-ups
-(sheet morph unification, theme consistency pass) SHIPPED in the
-2026-08-09 second session — see the latest-session recap.
+**Decide whether `nav-glass-activation` merges.** It is pushed and
+unmerged; `main` is untouched and still carries the uncommitted
+PressAndSlidePicker work. Merging is a deliberate call — it changes the
+flagship's resting appearance and ships a breaking export rename
+(`SHEET_CLEAROUT_MS` → `sheetClearoutMs(tempo)`).
+
+Worth a look on device before merging: the shipped dormancy default
+(depth 1, drain 0.8 — full liquid-glass at rest) was never explicitly
+ratified. Also note resting label legibility is now content-dependent:
+11.8:1 measured over the demo's content, but no test covers darker
+backdrops.
 
 Available whenever, as filed task chips: the BottomSheet arm-window
 wedge fix (pre-existing bug, deterministic repro in the chip) and the

@@ -26,7 +26,12 @@ import React, {
   useState,
   useLayoutEffect,
 } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import {
+  motion,
+  AnimatePresence,
+  useReducedMotion,
+  type TargetAndTransition,
+} from "motion/react";
 import { cn } from "@/lib/utils";
 import { focusWhenClear } from "@/lib/a11y";
 import { ChevronDown, Search as SearchGlyph, Sparkles, X } from "lucide-react";
@@ -149,8 +154,9 @@ const EASE_IN = [0.4, 0, 1, 1] as const;
 
 // Global tempo knob: every duration and delay is multiplied by this.
 // 1.0 = the nominal bands above; raise to make transitions more legible,
-// lower to tighten. Tuned by feel on device.
-const TEMPO = 1.3;
+// lower to tighten. Tuned by feel on device. Consumers may override it
+// with the `tempo` prop; the lab's demo exposes it as a slider.
+const DEFAULT_TEMPO = 1.3;
 
 const DUR = {
   press: 0.18, // pressed feedback, small fades
@@ -234,10 +240,13 @@ const SHEET_DELAYS = {
   labelFade: 0.05, // labels leave just after the recede begins
 };
 
-// Consumers flip isSheetOpen, wait this window, then measure the bar
-// and mount their surface. Derived from the recede band (0.25) + a
-// breath, × TEMPO — retuning the bar keeps launch timing in sync.
-export const SHEET_CLEAROUT_MS = Math.round((0.25 + 0.06) * TEMPO * 1000);
+// Consumers flip isSheetOpen, wait this window, then measure the bar and
+// mount their surface. Derived from the recede band (0.25) + a breath,
+// × tempo — so it MUST be a function of tempo: a constant would desync
+// the moment a consumer passes a non-default `tempo` prop.
+export function sheetClearoutMs(tempo: number = DEFAULT_TEMPO): number {
+  return Math.round((0.25 + 0.06) * tempo * 1000);
+}
 
 // ── Filter expansion — serial beats. The strip claims the RIGHT button's
 //    space (the left circle never moves):
@@ -347,6 +356,14 @@ export type NavigationBarProps = {
   /** The UtilityButton's action for the current tab (null hides it). */
   utilityAction?: UtilityAction | null;
   showUtilityButton?: boolean;
+  /** Override only; defaults to the system preference. Matches the same
+   *  prop on BottomSheet and UtilityModal. */
+  reducedMotion?: boolean;
+  /** Multiplies every duration and delay. 1.0 is the nominal band;
+   *  higher is more legible, lower is tighter. Defaults to 1.3. If you
+   *  pass this, derive your sheet timing from `sheetClearoutMs(tempo)`
+   *  with the SAME value, or the clear-out and your mount will desync. */
+  tempo?: number;
 };
 
 export const NavigationBar: React.FC<NavigationBarProps> = ({
@@ -378,6 +395,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   contextualActions = {},
   utilityAction,
   showUtilityButton = true,
+  reducedMotion,
+  tempo = DEFAULT_TEMPO,
 }) => {
   const [isNavigationMenuOpen, setIsNavigationMenuOpen] = useState(false);
   const menuId = React.useId();
@@ -389,9 +408,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     externalActiveTab || tabs[0]?.id || "home"
   );
 
-  const prefersReducedMotion = useReducedMotion();
-  const dur = (d: number) => (prefersReducedMotion ? 0 : d * TEMPO);
-  const del = (d: number) => (prefersReducedMotion ? 0 : d * TEMPO);
+  const systemReducedMotion = useReducedMotion();
+  const prefersReducedMotion = reducedMotion ?? !!systemReducedMotion;
+  const dur = (d: number) => (prefersReducedMotion ? 0 : d * tempo);
+  const del = (d: number) => (prefersReducedMotion ? 0 : d * tempo);
 
   // ── Assistant collapse-first close ─────────────────────────────────
   // A card that has STRETCHED unwinds in reverse of how it grew, in four
@@ -445,11 +465,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     if (assistantClosePhase !== "collapsing") return;
     const t = setTimeout(
       () => setAssistantClosePhase("collapsed"),
-      Math.round(ASSISTANT_COLLAPSE_S * TEMPO * 1000)
+      Math.round(ASSISTANT_COLLAPSE_S * tempo * 1000)
     );
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assistantClosePhase]);
+  }, [assistantClosePhase, tempo]);
   const assistantCollapsing = assistantClosePhase === "collapsing";
   // What the bar renders as. Lags the prop through the collapse beats so
   // the circles, actions row, and wipe all wait for beat four.
@@ -462,6 +482,17 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // Sheets and takeovers borrow the input modes' recede: circles leave,
   // the pill hands its full width to the incoming surface.
   const isBarSurrendered = isBarInputMode || isSheetOpen;
+
+  // Dormancy: the bar drains its colour when it is chrome and takes it
+  // back when it is the thing being operated. Every term here is a
+  // state the bar already tracks, so this can never disagree with the
+  // choreography. Scroll-collapse is deliberately NOT engagement — a
+  // collapsed bar is the definition of getting out of the way.
+  const isBarEngaged =
+    isBarSurrendered ||
+    isNavigationMenuOpen ||
+    isFilterExpanded ||
+    activeAction !== null;
 
   useEffect(() => {
     if (!externalActiveTab) return;
@@ -554,7 +585,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         if (searchInputRef.current) {
           timer = window.setTimeout(
             () => searchInputRef.current?.focus({ preventScroll: true }),
-            prefersReducedMotion ? 0 : 220 * TEMPO
+            prefersReducedMotion ? 0 : 220 * tempo
           );
         } else if (tries++ < 120) {
           raf = requestAnimationFrame(arm);
@@ -566,7 +597,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         if (timer !== undefined) window.clearTimeout(timer);
       };
     }
-  }, [isSearchOpen, prefersReducedMotion]);
+  }, [isSearchOpen, prefersReducedMotion, tempo]);
 
   // Search close (Cancel, Escape, Enter-submit): focus returns to the
   // utility button that opened it.
@@ -600,7 +631,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         if (assistantInputRef.current) {
           timer = window.setTimeout(
             () => assistantInputRef.current?.focus({ preventScroll: true }),
-            prefersReducedMotion ? 0 : 220 * TEMPO
+            prefersReducedMotion ? 0 : 220 * tempo
           );
         } else if (tries++ < 120) {
           raf = requestAnimationFrame(arm);
@@ -612,7 +643,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         if (timer !== undefined) window.clearTimeout(timer);
       };
     }
-  }, [isAssistantOpen, prefersReducedMotion]);
+  }, [isAssistantOpen, prefersReducedMotion, tempo]);
 
   // Close returns focus to the utility button, same as search.
   const prevAssistantOpenRef = useRef(isAssistantOpen);
@@ -674,10 +705,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     // Open morph is 0.24 + 0.06 delay; the stretch waits one extra beat.
     const t = setTimeout(
       () => setAssistantSurfaceReady(true),
-      prefersReducedMotion ? 0 : Math.round((0.24 + 0.06 + 0.1) * TEMPO * 1000)
+      prefersReducedMotion ? 0 : Math.round((0.24 + 0.06 + 0.1) * tempo * 1000)
     );
     return () => clearTimeout(t);
-  }, [isAssistantOpen, prefersReducedMotion]);
+  }, [isAssistantOpen, prefersReducedMotion, tempo]);
 
   // ── Assistant close/unmount lag ────────────────────────────────────
   // The close wipe runs as an ANIMATE retarget while the branch is still
@@ -713,13 +744,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         ? 0
         : Math.round(
             (ASSISTANT_CLOSE_WIPE_DELAY_S + ASSISTANT_CLOSE_WIPE_S) *
-              TEMPO *
+              tempo *
               1000
           )
     );
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assistantVisualOpen, assistantHeld, prefersReducedMotion]);
+  }, [assistantVisualOpen, assistantHeld, prefersReducedMotion, tempo]);
   // Mount immediately on open (assistantVisualOpen leads assistantHeld by
   // a render); hold through the collapse beats and the close wipe.
   const renderAssistantBranch = assistantVisualOpen || assistantHeld;
@@ -1272,20 +1303,44 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     },
     []
   );
+  const nudgePillText = () => {
+    const el = pillElRef.current;
+    if (!el) return;
+    el.style.textShadow = "0 0 0 rgba(0, 0, 0, 0)";
+    requestAnimationFrame(() => {
+      el.style.textShadow = "";
+    });
+  };
+
+  // KNOWN ISSUE — momentary label blur on regrow (GPU only).
+  //
+  // The pill is permanently composited (backdrop-filter). Chrome rasters
+  // that layer once, at the COLLAPSED size, then stretches the texture as
+  // scaleX animates; the text is soft until it re-rasters at rest. The
+  // nudge below is what makes it "resolve itself" a beat later.
+  //
+  // Tried and REVERTED, none of which fixed it on Rishi's machine:
+  //   1. rAF-driven repaint every frame through the regrow (measured 83
+  //      style writes vs ~2). Repainting writes into the same undersized
+  //      texture, so it cannot win.
+  //   2. Delaying the label fade until after scaleX lands (verified at
+  //      the pixel level: zero text pixels at any scaleX<1 sample). Still
+  //      blurry, and it cost the "labels arrive in the final third" beat,
+  //      so the original timing is restored.
+  // Also ruled out: stale bundle (served JS verified) and page zoom
+  // (devicePixelRatio 2, visualViewport.scale 1).
+  //
+  // The only fixes left are architectural: animate width instead of
+  // scaleX (layout every frame, no texture stretch, sharp text), or drop
+  // backdrop-filter for the duration so the layer is not composited (the
+  // glass would visibly flicker). Both are bigger changes than the
+  // symptom warrants — do not attempt a fourth point fix here.
   const repaintPillText = () => {
-    const nudge = () => {
-      const el = pillElRef.current;
-      if (!el) return;
-      el.style.textShadow = "0 0 0 rgba(0, 0, 0, 0)";
-      requestAnimationFrame(() => {
-        el.style.textShadow = "";
-      });
-    };
-    nudge();
+    nudgePillText();
     // The labels' own fade can tail out ~30ms after the pill's scale lands
     // (scroll expand); a second nudge covers rasters settled in that gap.
     if (repaintTimer.current) clearTimeout(repaintTimer.current);
-    repaintTimer.current = setTimeout(nudge, 200);
+    repaintTimer.current = setTimeout(nudgePillText, 200);
   };
 
   // Transition helpers — per-property timing so containers move first and
@@ -1448,16 +1503,49 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   return (
     <div className="relative px-[18px] pb-6 pointer-events-none" ref={navRef}>
-      {/* Dock wash — canvas fades up behind the floating cluster so it reads
-          against scrolling content (mirrors .pf__nav::before). */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[170px] z-0"
-        style={{
-          background:
-            "linear-gradient(to top, var(--bg-canvas) 26%, color-mix(in oklab, var(--accent-soft) 13%, var(--bg-canvas)) 58%, transparent 100%)",
-        }}
-      />
+      {/* There used to be a full-bleed "dock wash" here — a 170px gradient
+          fading the canvas up behind the cluster so the bar read against
+          scrolling content. It was removed deliberately, for two reasons.
+
+          It was full-bleed while the cluster is a centred max-w-lg group,
+          so on wide viewports it painted a broad band behind a narrow
+          control. And its bottom 26% was solid --bg-canvas laid exactly
+          where the bar sits, so it stood BETWEEN the page and the glass:
+          the bar's backdrop-filter was sampling the wash, not the page.
+          Measured, a saturation swing on the pill moved 1/255 with the
+          wash present and 15/255 without it.
+
+          The glass carries its own legibility (it composites to ~90%
+          opacity), so the bar still reads over scrolling content. If you
+          are dropping this into a very dense page and want the wash back,
+          it is one absolutely-positioned gradient — see git history. */}
+      {/* Menu scrim — the page dims behind the navigation menu, same as
+          the sheets and the filter strip. It is not only for focus: the
+          menu is glass now, so dimming what sits behind it is what keeps
+          the row labels legible over arbitrary page content. Dismissal
+          already runs through the document mousedown handler; the
+          onClick here is belt-and-braces and keeps the affordance
+          explicit. */}
+      <AnimatePresence>
+        {isNavigationMenuOpen && !isCollapsed && (
+          <motion.button
+            key="menu-scrim"
+            type="button"
+            aria-hidden="true"
+            tabIndex={-1}
+            className="fixed inset-0 z-0 pointer-events-auto cursor-pointer"
+            style={{ background: "var(--scrim)", border: 0, padding: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{
+              opacity: 0,
+              transition: { duration: dur(0.15), ease: EASE_IN },
+            }}
+            transition={{ duration: dur(0.2), ease: EASE }}
+            onClick={() => setIsNavigationMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
       {/* Filter scrim — the page dims SLIGHTLY (lighter than the sheet
           scrims) once the strip has claimed its space, keeping attention
           on the options while the bar itself stays bright. Sits below the
@@ -1491,7 +1579,27 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         )}
       </AnimatePresence>
       <div className="relative z-10 flex items-center gap-3 max-w-lg mx-auto">
-        <div className="flex items-center gap-2 w-full px-1 relative z-10">
+        <motion.div
+          className="flex items-center gap-2 w-full px-1 relative z-10"
+          // Dormancy is one inherited scalar: the pill's glass and the
+          // tab glyph's ink both derive from it in theme.css, so they
+          // can never fall out of step. Eager to engage, lazy to leave —
+          // the delay on the return also debounces travel between two
+          // engaged states, so closing the menu to open the filter
+          // never flashes dormant in between.
+          animate={
+            { "--nav-engage": isBarEngaged ? 1 : 0 } as TargetAndTransition
+          }
+          transition={
+            isBarEngaged
+              ? { duration: dur(DUR.direct), ease: EASE_OUT }
+              : {
+                  duration: dur(DUR.expand),
+                  ease: EASE_IN,
+                  delay: del(0.08),
+                }
+          }
+        >
           {/* LEFT: Tab Switcher / Logo */}
           <motion.div
             ref={navigationMenuContainerRef}
@@ -1525,7 +1633,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   menu is open — the menu grows out of it and the two read
                   as one attached surface. */}
               <div
-                className="w-14 h-14 rounded-full"
+                className="nav-circle-surface w-14 h-14 rounded-full"
                 style={{
                   background: "var(--nav-circle-bg)",
                   border: "1.5px solid var(--nav-circle-border)",
@@ -1579,8 +1687,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 ref={navigationButtonRef}
                 type="button"
                 onClick={handleNavigationButtonClick}
-                className="nav-circle-trigger absolute inset-[2px] rounded-full flex items-center justify-center transition-colors"
-                style={{ color: "var(--accent-700)" }}
+                className="nav-tab-ink nav-circle-trigger absolute inset-[2px] rounded-full flex items-center justify-center transition-colors"
                 aria-label={isCollapsed ? "Open controls" : undefined}
                 title={isCollapsed ? "Open controls" : undefined}
                 aria-haspopup="menu"
@@ -1642,32 +1749,36 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   role="menu"
                   aria-label="Navigate"
                   onKeyDown={handleMenuKeyDown}
+                  /* No boxShadow in these variants on purpose. Animated
+                     shadows have to be LITERALS (framer will not
+                     interpolate var() strings), and a literal cannot be
+                     theme-aware — this one carried the light preset's
+                     weak drop shadow and a full-strength white inset into
+                     the dark preset, which is what made the menu's top
+                     edge read as a bright bar. Letting .glass-overlay own
+                     the shadow keeps it theme-correct; the grow still
+                     reads through scale, radius, and opacity, and the lit
+                     edge now comes from .glass-rim. */
                   initial={{
                     opacity: 0,
                     scaleX: 0.85,
                     scaleY: 0.45,
                     borderRadius: 28,
-                    boxShadow:
-                      "0 4px 14px rgb(20 20 10 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9)",
                   }}
                   animate={{
                     opacity: 1,
                     scaleX: 1,
                     scaleY: 1,
                     borderRadius: 21,
-                    boxShadow:
-                      "0 18px 44px rgb(20 20 10 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.9)",
                   }}
                   exit={{
                     opacity: 0,
                     scaleX: 0.88,
                     scaleY: 0.5,
                     borderRadius: 28,
-                    boxShadow:
-                      "0 4px 14px rgb(20 20 10 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9)",
                   }}
                   transition={menuGrowTransition}
-                  className="glass-overlay absolute z-40 pointer-events-auto p-1.5 min-w-[210px] overflow-hidden"
+                  className="glass-overlay glass-rim absolute z-40 pointer-events-auto p-1.5 min-w-[210px] overflow-hidden"
                   style={{
                     left: MENU_ANCHOR.left,
                     bottom: MENU_ANCHOR.bottom,
@@ -2399,7 +2510,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     border and dark icon. Deliberately quieter than
                     the selected navigation circle on the left. */}
                 <span
-                  className="absolute inset-0 rounded-full"
+                  className="nav-circle-surface absolute inset-0 rounded-full"
                   style={{
                     background: "var(--utility-circle-bg)",
                     border: "1px solid var(--utility-circle-border)",
@@ -2438,7 +2549,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               </motion.button>
             </motion.div>
           )}
-        </div>
+        </motion.div>
       </div>
     </div>
   );

@@ -20,12 +20,13 @@
  */
 import {
   NavigationBar,
-  SHEET_CLEAROUT_MS,
+  sheetClearoutMs,
   type AssistantMessage,
 } from "@/components/navigation-bar";
 import { BottomSheet, type SheetOrigin } from "@/components/bottom-sheet";
 import { UtilityModal } from "@/components/utility-modal";
 import { focusWhenClear } from "@/lib/a11y";
+import { useRecordingMode } from "@/lab/recording";
 import {
   navigationContextualActions,
   navigationFilters,
@@ -35,6 +36,7 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Camera, X } from "lucide-react";
 import { type UIEvent, useCallback, useEffect, useRef, useState } from "react";
+import DemoControls from "./DemoControls";
 import "./NavigationBarStage.css";
 
 const ghostCards = [72, 48, 84, 60, 94, 56, 78, 66];
@@ -138,6 +140,19 @@ export default function NavigationBarStage() {
   const [lastAction, setLastAction] = useState("Navigation Bar ready");
   const prefersReducedMotion = useReducedMotion();
 
+  // ── Demo controls (lab-only) ──
+  // Recording mode (H / ?recording=1) is the app's existing "hide every
+  // demo affordance" gate (see LabShell, Showcase) — reused here rather
+  // than inventing a second mechanism, since a control panel showing up
+  // in a screen recording would defeat the point of that mode.
+  const chromeHidden = useRecordingMode();
+  const [depth, setDepth] = useState(1);
+  const [tempo, setTempo] = useState(1.3);
+  const [reducedMotionOverride, setReducedMotionOverride] = useState(false);
+  // Read once at mount — never on every render — so the panel starts
+  // open on wide viewports and collapsed on narrow ones.
+  const [controlsDefaultOpen] = useState(() => window.innerWidth >= 640);
+
   // ── Assistant mode (in-bar chat) ──
   // The stage owns the transcript so it survives close/reopen; replies
   // are canned with a delay long enough that pending → reply → stretch
@@ -236,10 +251,10 @@ export default function NavigationBarStage() {
       if (prepTimer.current) clearTimeout(prepTimer.current);
       prepTimer.current = setTimeout(
         mount,
-        prefersReducedMotion ? 0 : SHEET_CLEAROUT_MS
+        prefersReducedMotion ? 0 : sheetClearoutMs(tempo)
       );
     },
-    [prefersReducedMotion]
+    [prefersReducedMotion, tempo]
   );
 
   const [utility, setUtility] = useState<"scan" | null>(null);
@@ -396,7 +411,21 @@ export default function NavigationBarStage() {
   const cardsForView = [...ghostCards.slice(rot), ...ghostCards.slice(0, rot)];
 
   return (
-    <main className="navigation-demo">
+    <main
+      className="navigation-demo"
+      style={{ "--nav-dormancy-depth": depth } as React.CSSProperties}
+    >
+      {!chromeHidden && (
+        <DemoControls
+          depth={depth}
+          onDepth={setDepth}
+          tempo={tempo}
+          onTempo={setTempo}
+          reducedMotion={reducedMotionOverride}
+          onReducedMotion={setReducedMotionOverride}
+          defaultOpen={controlsDefaultOpen}
+        />
+      )}
       <div
         ref={scrollAreaRef}
         className="navigation-demo__scroll-area"
@@ -446,6 +475,8 @@ export default function NavigationBarStage() {
 
       <div className="navigation-demo__nav-shell">
         <NavigationBar
+          tempo={tempo}
+          reducedMotion={reducedMotionOverride || undefined}
           isCollapsed={isCollapsed}
           activeTab={activeTab}
           activeFilter={activeFilter}
