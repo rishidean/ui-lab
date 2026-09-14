@@ -39,6 +39,7 @@ import { type UIEvent, useCallback, useEffect, useRef, useState } from "react";
 import DemoControls from "./DemoControls";
 import "./NavigationBarStage.css";
 
+/** Per-tile height weights; rotated per filter so the grid reshuffles. */
 const ghostCards = [72, 48, 84, 60, 94, 56, 78, 66];
 const ASSISTANT_REPLIES = [
   "You spent $342 on dining this month — 18% under your usual pace.",
@@ -433,14 +434,7 @@ export default function NavigationBarStage() {
         onScroll={handleScroll}
       >
         <div className="navigation-demo__content" aria-hidden="true">
-          <div className="navigation-demo__feature-card">
-            <div className="navigation-demo__feature-orb" />
-            <div className="navigation-demo__feature-lines">
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
+          <div className="navigation-demo__feature-card" />
 
           {/* The "main view" the filter governs: cards reshuffle per filter
               value and the grid runs a short content transition DURING the
@@ -457,17 +451,14 @@ export default function NavigationBarStage() {
               delay: prefersReducedMotion ? 0 : 0.12,
             }}
           >
-            {cardsForView.map((width, index) => (
+            {cardsForView.map((weight, index) => (
               <div
                 className="navigation-demo__ghost-card"
-                key={`${width}-${index}`}
-              >
-                <span className="navigation-demo__ghost-icon" />
-                <div className="navigation-demo__ghost-lines">
-                  <span style={{ width: `${width}%` }} />
-                  <span style={{ width: `${Math.max(32, width - 22)}%` }} />
-                </div>
-              </div>
+                key={`${weight}-${index}`}
+                // Plain tiles; the weight only varies height so the
+                // per-filter reshuffle still visibly changes the page.
+                style={{ minHeight: `${5.5 + weight / 24}rem` }}
+              />
             ))}
           </motion.div>
         </div>
