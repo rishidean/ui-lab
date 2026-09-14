@@ -54,6 +54,14 @@ const EASE_IN = [0.4, 0, 1, 1] as const;
 // band); expanding only a small upward nudge (12–24px band). Movements under
 // ~10px are ignored, and a short cooldown prevents rapid toggling when the
 // scroll position hovers around a boundary.
+/** Numeric demo-control override from the query string, clamped to the
+    panel's own range; falls back to the default when absent or unparsable. */
+function demoParam(name: string, fallback: number, min: number, max: number) {
+  const raw = new URLSearchParams(window.location.search).get(name);
+  const n = raw === null ? NaN : Number(raw);
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+}
+
 const COLLAPSE_AFTER_PX = 56;
 const EXPAND_AFTER_PX = 16;
 const MIN_SCROLL_DELTA = 10;
@@ -147,9 +155,17 @@ export default function NavigationBarStage() {
   // than inventing a second mechanism, since a control panel showing up
   // in a screen recording would defeat the point of that mode.
   const chromeHidden = useRecordingMode();
-  const [depth, setDepth] = useState(1);
-  const [tempo, setTempo] = useState(1.3);
-  const [reducedMotionOverride, setReducedMotionOverride] = useState(false);
+  // Initial values can ride the URL (?depth=0.65&tempo=1.5&rm=1) so a
+  // recording — where the panel itself is hidden — can still pin them.
+  const [depth, setDepth] = useState(() =>
+    demoParam("depth", 1, 0, 1)
+  );
+  const [tempo, setTempo] = useState(() =>
+    demoParam("tempo", 1.3, 0.6, 3)
+  );
+  const [reducedMotionOverride, setReducedMotionOverride] = useState(
+    () => new URLSearchParams(window.location.search).get("rm") === "1"
+  );
   // Read once at mount — never on every render — so the panel starts
   // open on wide viewports and collapsed on narrow ones.
   const [controlsDefaultOpen] = useState(() => window.innerWidth >= 640);
