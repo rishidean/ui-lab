@@ -32,8 +32,7 @@ import {
   useReducedMotion,
   type TargetAndTransition,
 } from "motion/react";
-import { cn } from "@/lib/utils";
-import { focusWhenClear } from "@/lib/a11y";
+import { cn, focusWhenClear } from "./lib";
 import { ChevronDown, Search as SearchGlyph, Sparkles, X } from "lucide-react";
 import "./navigation-bar.css";
 
