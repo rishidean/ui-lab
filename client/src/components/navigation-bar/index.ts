@@ -14,3 +14,5 @@ export type {
   Tab,
   UtilityAction,
 } from "./NavigationBar";
+export { useCollapseOnScroll } from "./useCollapseOnScroll";
+export type { CollapseScrollEvent } from "./useCollapseOnScroll";
