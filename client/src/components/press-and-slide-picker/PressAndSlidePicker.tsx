@@ -25,6 +25,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  Fragment,
   type CSSProperties,
   type ReactNode,
 } from "react";
@@ -68,6 +69,38 @@ interface StripState {
   anchorRect: DOMRect;
   activeIndex: number;
   currentIndex: number;
+  layout: StripLayout;
+}
+
+/**
+ * Where the strip goes and how its items are ordered. The selected option
+ * always sits at the end nearest the chip (the finger), then a divider,
+ * then the rest in their natural order; the strip grows away from the
+ * chip in whichever direction has room. Horizontal is preferred (labels
+ * read naturally); vertical is used when a horizontal strip would have to
+ * squeeze labels below C.minLegibleIw.
+ */
+interface StripLayout {
+  axis: "x" | "y";
+  /** +1: grows right / down from the chip. -1: grows left / up. */
+  dir: 1 | -1;
+  /** Option indices in display order along the axis. */
+  order: number[];
+  /** Display slot of the selected (current) option. */
+  selSlot: number;
+  /** Slot after which the divider sits (in display order). */
+  dividerAfter: number;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  /** Item size along the axis (effective item width, or item height). */
+  itemLen: number;
+  /** Item size across the axis. */
+  itemCross: number;
+  /** Horizontal only: items too narrow for dot + label — drop the dot,
+   *  12px label — rather than clip or go vertical. */
+  compact: boolean;
 }
 
 // ═══════════════════════════════════════════
@@ -124,6 +157,12 @@ const C = {
   // pulled toward the nearest slot's centre — 0 would be a free slider,
   // 1 would be the old discrete hop. It locks fully on lift or leave.
   thumbPull: 0.35,
+  // Divider between the selected option and the rest: gap + line + gap.
+  dividerGap: 3,
+  dividerLine: 1,
+  // Below this per-item width a horizontal strip stops being legible;
+  // the layout switches to a vertical strip instead of squeezing labels.
+  minLegibleIw: 64,
   // JS unmount timer must match the CSS exit animation, or the exit gets
   // clipped/overrun whenever TEMPO is retuned.
   dismissMs: Math.round(DUR.stripOut * TEMPO * 1000),
@@ -133,34 +172,163 @@ const C = {
 // Viewport-aware positioning
 // ═══════════════════════════════════════════
 
-/** Left edge of slot `i` inside the strip's border box. */
-function slotLeft(i: number, iw: number) {
-  return C.padX + i * (iw + C.stripGap);
+/** Start of display slot `k` along the strip's axis, inside its border box. */
+function slotStart(layout: Pick<StripLayout, "itemLen" | "dividerAfter">, k: number) {
+  const pad = C.padX;
+  const extra = k > layout.dividerAfter ? C.dividerGap * 2 + C.dividerLine : 0;
+  return pad + k * (layout.itemLen + C.stripGap) + extra;
 }
 
-function metrics(anchor: DOMRect, n: number, iw: number) {
+/** Widest label in the set, in px — memoised per set. Measured with the
+ *  item's own font; a canvas is cheap and honest. */
+const labelNeedCache = new Map<string, number>();
+function widestLabel(options: PickerOption[]) {
+  const key = options.map(o => o.label).join("\u0000");
+  const hit = labelNeedCache.get(key);
+  if (hit !== undefined) return hit;
+  let widest = 0;
+  const ctx = typeof document !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
+  if (ctx) {
+    ctx.font = '500 13px "DM Sans", ui-sans-serif, system-ui, sans-serif';
+    for (const o of options) widest = Math.max(widest, ctx.measureText(o.label).width);
+  } else {
+    for (const o of options) widest = Math.max(widest, o.label.length * 6.2);
+  }
+  labelNeedCache.set(key, Math.ceil(widest));
+  return Math.ceil(widest);
+}
+
+function stripLength(n: number, itemLen: number) {
+  return n * itemLen + (n - 1) * C.stripGap + C.padX * 2 + C.dividerGap * 2 + C.dividerLine;
+}
+
+/**
+ * Pick the placement. Tries, in order: horizontal growing right, then
+ * left (each first at the requested item width, then compressed down to
+ * minLegibleIw); then vertical growing down, then up; then a compressed
+ * horizontal centred on the chip as the last resort.
+ */
+function computeLayout(
+  anchor: DOMRect,
+  options: PickerOption[],
+  currentIndex: number,
+  iw: number
+): StripLayout {
+  const n = options.length;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const maxStripW = vw - C.vpPad * 2;
-  const idealW = n * iw + (n - 1) * C.stripGap + C.padX * 2;
-  let effectiveIw = iw;
-  if (idealW > maxStripW) {
-    effectiveIw = Math.max(
-      40,
-      Math.floor((maxStripW - C.padX * 2 - (n - 1) * C.stripGap) / n)
-    );
-  }
-  const sw = n * effectiveIw + (n - 1) * C.stripGap + C.padX * 2;
-  const chipCenterX = anchor.left + anchor.width / 2;
-  let left = chipCenterX - sw / 2;
-  left = Math.max(C.vpPad, Math.min(left, vw - sw - C.vpPad));
-  const sh = C.itemH + C.padY * 2;
-  const below = vh - anchor.bottom;
+  // A horizontal item must still fit its longest label (measured, not
+  // guessed). Full: dot + gap + label + air. Compact: no dot, 12px label.
+  // Below compact, prefer a vertical strip over clipping — the finger
+  // reads a column as easily as a row.
+  const widest = widestLabel(options);
+  const needFull = Math.ceil(widest + 8 + 6.4 + 8);
+  const needCompact = Math.max(C.minLegibleIw, Math.ceil(widest * (12 / 13) + 8));
+  const cx = anchor.left + anchor.width / 2;
+  const cy = anchor.top + anchor.height / 2;
+  const rest = Array.from({ length: n }, (_, i) => i).filter(i => i !== currentIndex);
+  const crossH = C.itemH + C.padY * 2;
+
+  // Horizontal: the strip sits below the chip (above if no room below);
+  // its near end aligns the selected slot's centre with the chip's centre.
   const top =
-    below >= sh + C.stripGap || below >= anchor.top
+    vh - anchor.bottom >= crossH + C.stripGap || vh - anchor.bottom >= anchor.top
       ? anchor.bottom + C.stripGap
-      : Math.max(C.vpPad, anchor.top - sh - C.stripGap);
-  return { left, top, sw, sh, effectiveIw };
+      : Math.max(C.vpPad, anchor.top - crossH - C.stripGap);
+  const horizontal = (dir: 1 | -1, itemLen: number, compact = false): StripLayout | null => {
+    const len = stripLength(n, itemLen);
+    const near = cx - C.padX - itemLen / 2; // x of the near end for dir +1
+    const left = dir === 1 ? near : cx + C.padX + itemLen / 2 - len;
+    if (left < C.vpPad || left + len > vw - C.vpPad) return null;
+    return {
+      axis: "x",
+      dir,
+      order: dir === 1 ? [currentIndex, ...rest] : [...rest, currentIndex],
+      selSlot: dir === 1 ? 0 : n - 1,
+      dividerAfter: dir === 1 ? 0 : n - 2,
+      left,
+      top,
+      width: len,
+      height: crossH,
+      itemLen,
+      itemCross: C.itemH,
+      compact,
+    };
+  };
+  // Vertical: centred on the chip's x (clamped), growing down or up from it.
+  const vertical = (dir: 1 | -1): StripLayout | null => {
+    const len = stripLength(n, C.itemH);
+    const width = iw + C.padX * 2;
+    const vtop = dir === 1 ? anchor.bottom + C.stripGap : anchor.top - C.stripGap - len;
+    if (vtop < C.vpPad || vtop + len > vh - C.vpPad) return null;
+    const left = Math.max(C.vpPad, Math.min(cx - width / 2, vw - width - C.vpPad));
+    return {
+      axis: "y",
+      dir,
+      order: dir === 1 ? [currentIndex, ...rest] : [...rest, currentIndex],
+      selSlot: dir === 1 ? 0 : n - 1,
+      dividerAfter: dir === 1 ? 0 : n - 2,
+      left,
+      top: vtop,
+      width,
+      height: len,
+      itemLen: C.itemH,
+      itemCross: iw,
+      compact: false,
+    };
+  };
+  // Widest item that lets a horizontal strip fit on the given side. The
+  // strip's near end sits half an item past the chip's centre, so the
+  // length budget is (room from the centre to the edge) + itemLen/2 + padX:
+  //   n·itemLen + fixed ≤ room + itemLen/2 + padX  →  itemLen ≤ (room + padX − fixed) / (n − ½)
+  const fitIw = (dir: 1 | -1) => {
+    const room = dir === 1 ? vw - C.vpPad - cx : cx - C.vpPad;
+    const fixed = (n - 1) * C.stripGap + C.padX * 2 + C.dividerGap * 2 + C.dividerLine;
+    return Math.floor((room + C.padX - fixed) / (n - 0.5));
+  };
+
+  for (const dir of [1, -1] as const) {
+    const h = horizontal(dir, iw);
+    if (h) return h;
+  }
+  for (const dir of [1, -1] as const) {
+    const w = Math.min(iw, fitIw(dir));
+    if (w >= needFull) {
+      const h = horizontal(dir, w);
+      if (h) return h;
+    }
+  }
+  for (const dir of [1, -1] as const) {
+    const w = Math.min(iw, fitIw(dir));
+    if (w >= needCompact) {
+      const h = horizontal(dir, w, true);
+      if (h) return h;
+    }
+  }
+  for (const dir of [1, -1] as const) {
+    const v = vertical(dir);
+    if (v) return v;
+  }
+  // Last resort: compressed horizontal, centred and clamped.
+  const maxLen = vw - C.vpPad * 2;
+  const fixed = (n - 1) * C.stripGap + C.padX * 2 + C.dividerGap * 2 + C.dividerLine;
+  const itemLen = Math.max(40, Math.min(iw, Math.floor((maxLen - fixed) / n)));
+  const len = stripLength(n, itemLen);
+  const left = Math.max(C.vpPad, Math.min(cx - len / 2, vw - len - C.vpPad));
+  return {
+    axis: "x",
+    dir: 1,
+    order: [currentIndex, ...rest],
+    selSlot: 0,
+    dividerAfter: 0,
+    left,
+    top,
+    width: len,
+    height: crossH,
+    itemLen,
+    itemCross: C.itemH,
+    compact: true,
+  };
 }
 
 // ═══════════════════════════════════════════
@@ -169,43 +337,48 @@ function metrics(anchor: DOMRect, n: number, iw: number) {
 
 interface StripProps {
   stripRef: React.RefObject<HTMLDivElement | null>;
-  anchor: DOMRect | null;
+  layout: StripLayout | null;
   options: PickerOption[];
   activeIndex: number;
   currentIndex: number;
-  iw: number;
   dismissing: boolean;
 }
 
 function Strip({
   stripRef,
-  anchor,
+  layout,
   options,
   activeIndex,
   currentIndex,
-  iw,
   dismissing,
 }: StripProps) {
   const thumbRef = useRef<HTMLDivElement | null>(null);
-  const n = options.length;
-  const m = anchor ? metrics(anchor, n, iw) : null;
-  const restX = m ? slotLeft(activeIndex, m.effectiveIw) : 0;
+  const restStart = layout ? slotStart(layout, layout.selSlot) : 0;
+  const axis = layout?.axis ?? "x";
   // Mount only: after that the pointer handlers own the transform.
   useLayoutEffect(() => {
-    if (thumbRef.current) thumbRef.current.style.transform = `translateX(${restX}px)`;
+    if (thumbRef.current)
+      thumbRef.current.style.transform =
+        axis === "x" ? `translateX(${restStart}px)` : `translateY(${restStart}px)`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  if (!anchor || !m) return null;
-  const { left, top, effectiveIw } = m;
+  if (!layout) return null;
+  const vertical = layout.axis === "y";
+  const compact = layout.compact;
   return (
     <div
       ref={stripRef}
-      className={cn("glass-overlay psp-strip", dismissing && "psp-strip--out")}
+      className={cn(
+        "glass-overlay psp-strip",
+        vertical && "psp-strip--vertical",
+        dismissing && "psp-strip--out"
+      )}
       style={{
         ...MOTION_VARS,
-        left,
-        top,
-        gap: C.stripGap,
+        left: layout.left,
+        top: layout.top,
+        width: layout.width,
+        height: layout.height,
         padding: `${C.padY}px ${C.padX}px`,
       }}
     >
@@ -218,37 +391,56 @@ function Strip({
         className="psp-thumb"
         style={
           {
-            width: effectiveIw,
-            height: C.itemH,
-            top: C.padY,
+            width: vertical ? layout.itemCross : layout.itemLen,
+            height: vertical ? layout.itemLen : layout.itemCross,
+            top: vertical ? 0 : C.padY,
+            left: vertical ? C.padX : 0,
             "--psp-option-color": options[activeIndex]?.color,
           } as CSSProperties
         }
       />
-      {options.map((o, i) => {
-        const act = i === activeIndex;
-        const cur = i === currentIndex;
+      {layout.order.map((optIdx, k) => {
+        const o = options[optIdx];
+        const act = optIdx === activeIndex;
+        const cur = optIdx === currentIndex;
+        const pos = slotStart(layout, k);
         return (
-          <div
-            key={o.key}
-            data-idx={i}
-            className={cn(
-              "psp-item",
-              act && "psp-item--active",
-              cur && "psp-item--current",
-              effectiveIw < 60 && "psp-item--compact"
+          <Fragment key={o.key}>
+            {k === layout.dividerAfter + 1 && (
+              <div
+                aria-hidden="true"
+                className="psp-divider"
+                style={
+                  vertical
+                    ? { top: pos - C.dividerGap - C.dividerLine, left: C.padX, width: layout.itemCross }
+                    : { left: pos - C.dividerGap - C.dividerLine, top: C.padY, height: layout.itemCross }
+                }
+              />
             )}
-            style={
-              {
-                width: effectiveIw,
-                height: C.itemH,
-                "--psp-option-color": o.color,
-              } as CSSProperties
-            }
-          >
-            <div className="psp-item__dot" />
-            <span className="psp-item__label">{o.label}</span>
-          </div>
+            <div
+              data-idx={optIdx}
+              data-slot={k}
+              className={cn(
+                "psp-item",
+                act && "psp-item--active",
+                cur && "psp-item--current",
+                compact && "psp-item--compact"
+              )}
+              style={
+                {
+                  position: "absolute",
+                  left: vertical ? C.padX : pos,
+                  top: vertical ? pos : C.padY,
+                  width: vertical ? layout.itemCross : layout.itemLen,
+                  height: vertical ? layout.itemLen : layout.itemCross,
+                  "--psp-option-color": o.color,
+                } as CSSProperties
+              }
+            >
+              <div className="psp-item__dot" />
+              <span className="psp-item__label">{o.label}</span>
+            </div>
+          </Fragment>
         );
       })}
     </div>
@@ -310,6 +502,7 @@ export function PressAndSlidePicker({
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeIdx = useRef(currentIndex);
   const anchorRect = useRef<DOMRect | null>(null);
+  const layoutRef = useRef<StripLayout | null>(null);
   const isOpenRef = useRef(false);
   const enteredStrip = useRef(false);
   const touchId = useRef<number | null>(null);
@@ -365,107 +558,90 @@ export function PressAndSlidePicker({
     }
   }, [fallbackOpen, fallbackFocusIdx]);
 
-  const indexAtX = useCallback(
-    (x: number): number | null => {
-      const strip = stripRef.current;
-      if (strip) {
-        const els = Array.from(
-          strip.querySelectorAll<HTMLElement>("[data-idx]")
-        );
-        for (const el of els) {
-          const rect = el.getBoundingClientRect();
-          if (x >= rect.left - 4 && x <= rect.right + 4)
-            return +el.dataset.idx!;
-        }
-        return null;
-      }
-      const anchor = anchorRect.current;
-      if (!anchor) return null;
-      const { left, effectiveIw } = metrics(anchor, options.length, itemWidth);
-      for (let i = 0; i < options.length; i++) {
-        const l = left + C.padX + i * (effectiveIw + C.stripGap);
-        if (x >= l - 4 && x <= l + effectiveIw + 4) return i;
-      }
-      return null;
-    },
-    [options.length, itemWidth]
-  );
+  /** Option index under a viewport point, or null when off the strip. */
+  const indexAt = useCallback((x: number, y: number): number | null => {
+    const l = layoutRef.current;
+    if (!l) return null;
+    const p = l.axis === "x" ? x - l.left : y - l.top;
+    for (let k = 0; k < l.order.length; k++) {
+      const start = slotStart(l, k);
+      if (p >= start - 4 && p <= start + l.itemLen + 4) return l.order[k];
+    }
+    return null;
+  }, []);
 
-  const isInZone = useCallback(
-    (x: number, y: number): boolean => {
-      const strip = stripRef.current;
-      if (strip) {
-        const rect = strip.getBoundingClientRect();
-        return (
-          x >= rect.left - C.haloX &&
-          x <= rect.right + C.haloX &&
-          y >= rect.top - C.haloY &&
-          y <= rect.bottom + C.haloY
-        );
-      }
-      const anchor = anchorRect.current;
-      if (!anchor) return false;
-      const { left, top, sw, sh } = metrics(anchor, options.length, itemWidth);
-      return (
-        x >= left - C.haloX &&
-        x <= left + sw + C.haloX &&
-        y >= top - C.haloY &&
-        y <= top + sh + C.haloY
-      );
-    },
-    [options.length, itemWidth]
-  );
+  const isInZone = useCallback((x: number, y: number): boolean => {
+    const l = layoutRef.current;
+    if (!l) return false;
+    const hx = l.axis === "x" ? C.haloX : C.haloY;
+    const hy = l.axis === "x" ? C.haloY : C.haloX;
+    return (
+      x >= l.left - hx && x <= l.left + l.width + hx && y >= l.top - hy && y <= l.top + l.height + hy
+    );
+  }, []);
+
+  /** Distance from the press point across the strip's axis — the "walked
+   *  away" measure that cancels the gesture outside the zone. */
+  const crossDistance = useCallback((x: number, y: number): number => {
+    const l = layoutRef.current;
+    return l?.axis === "y" ? Math.abs(x - startX.current) : Math.abs(y - startY.current);
+  }, []);
 
   // The sliding pill. trackThumb follows the finger (magnetised toward
   // the nearest slot); settleThumb locks it into a slot with the longer
   // ease — on lift, on leaving the zone, and while the strip dismisses.
   const thumbEl = () =>
     stripRef.current?.querySelector<HTMLElement>(".psp-thumb") ?? null;
-  const trackThumb = useCallback(
-    (x: number) => {
-      const strip = stripRef.current;
-      const el = thumbEl();
-      const anchor = anchorRect.current;
-      if (!strip || !el || !anchor || prefersReducedMotion()) return;
-      const n = options.length;
-      const { effectiveIw: iw } = metrics(anchor, n, itemWidth);
-      const pitch = iw + C.stripGap;
-      const lx = x - strip.getBoundingClientRect().left;
-      const i = Math.max(0, Math.min(n - 1, Math.round((lx - C.padX - iw / 2) / pitch)));
-      const center = slotLeft(i, iw) + iw / 2;
-      const pulled = center + (lx - center) * C.thumbPull;
-      const left = Math.max(C.padX, Math.min(slotLeft(n - 1, iw), pulled - iw / 2));
-      el.classList.remove("psp-thumb--settle");
-      el.style.transform = `translateX(${left}px)`;
-    },
-    [options.length, itemWidth]
-  );
-  const settleThumb = useCallback(
-    (idx: number) => {
-      const el = thumbEl();
-      const anchor = anchorRect.current;
-      if (!el || !anchor) return;
-      const { effectiveIw: iw } = metrics(anchor, options.length, itemWidth);
-      el.classList.add("psp-thumb--settle");
-      el.style.transform = `translateX(${slotLeft(idx, iw)}px)`;
-    },
-    [options.length, itemWidth]
-  );
+  const thumbTransform = (l: StripLayout, pos: number) =>
+    l.axis === "x" ? `translateX(${pos}px)` : `translateY(${pos}px)`;
+  const trackThumb = useCallback((x: number, y: number) => {
+    const l = layoutRef.current;
+    const el = thumbEl();
+    if (!l || !el || prefersReducedMotion()) return;
+    const p = l.axis === "x" ? x - l.left : y - l.top;
+    const n = l.order.length;
+    // Nearest slot by centre, then pull the pill part-way toward the finger.
+    let k = 0;
+    let best = Infinity;
+    for (let i = 0; i < n; i++) {
+      const d = Math.abs(p - (slotStart(l, i) + l.itemLen / 2));
+      if (d < best) { best = d; k = i; }
+    }
+    const center = slotStart(l, k) + l.itemLen / 2;
+    const pulled = center + (p - center) * C.thumbPull;
+    const pos = Math.max(slotStart(l, 0), Math.min(slotStart(l, n - 1), pulled - l.itemLen / 2));
+    el.classList.remove("psp-thumb--settle");
+    el.style.transform = thumbTransform(l, pos);
+  }, []);
+  const settleThumb = useCallback((optIdx: number) => {
+    const l = layoutRef.current;
+    const el = thumbEl();
+    if (!l || !el) return;
+    const k = Math.max(0, l.order.indexOf(optIdx));
+    el.classList.add("psp-thumb--settle");
+    el.style.transform = thumbTransform(l, slotStart(l, k));
+  }, []);
 
   const openStrip = useCallback(() => {
     if (!chipRef.current || disabled) return;
     const rect = chipRef.current.getBoundingClientRect();
     const idx = optionIndexMap[valueRef.current] ?? 0;
     anchorRect.current = rect;
+    layoutRef.current = computeLayout(rect, options, idx, itemWidth);
     activeIdx.current = idx;
     isOpenRef.current = true;
     enteredStrip.current = false;
     suppressClick.current = true;
     setFallbackOpen(false);
     haptic("medium");
-    setStripState({ anchorRect: rect, activeIndex: idx, currentIndex: idx });
+    setStripState({
+      anchorRect: rect,
+      activeIndex: idx,
+      currentIndex: idx,
+      layout: layoutRef.current,
+    });
     setDismissing(false);
-  }, [optionIndexMap, disabled]);
+  }, [optionIndexMap, disabled, options, itemWidth]);
   hold.current = {
     arm: () => {
       if (longPressTimer.current) clearTimeout(longPressTimer.current);
@@ -568,10 +744,7 @@ export function PressAndSlidePicker({
         return;
       }
       e.preventDefault();
-      if (
-        Math.abs(t.clientY - startY.current) > C.escY &&
-        !isInZone(t.clientX, t.clientY)
-      ) {
+      if (crossDistance(t.clientX, t.clientY) > C.escY && !isInZone(t.clientX, t.clientY)) {
         dismissStrip(false);
         touchId.current = null;
         return;
@@ -584,8 +757,8 @@ export function PressAndSlidePicker({
         settleThumb(activeIdx.current);
         return;
       }
-      trackThumb(t.clientX);
-      updateActive(indexAtX(t.clientX));
+      trackThumb(t.clientX, t.clientY);
+      updateActive(indexAt(t.clientX, t.clientY));
     };
     const onTouchEnd = (e: TouchEvent) => {
       let t: Touch | null = null;
@@ -618,7 +791,8 @@ export function PressAndSlidePicker({
     trackThumb,
     settleThumb,
     isInZone,
-    indexAtX,
+    indexAt,
+    crossDistance,
     longPressDuration,
     disabled,
   ]);
@@ -644,10 +818,7 @@ export function PressAndSlidePicker({
           }
           return;
         }
-        if (
-          Math.abs(me.clientY - startY.current) > C.escY &&
-          !isInZone(me.clientX, me.clientY)
-        ) {
+        if (crossDistance(me.clientX, me.clientY) > C.escY && !isInZone(me.clientX, me.clientY)) {
           dismissStrip(false);
           return;
         }
@@ -659,8 +830,8 @@ export function PressAndSlidePicker({
           settleThumb(activeIdx.current);
           return;
         }
-        trackThumb(me.clientX);
-        updateActive(indexAtX(me.clientX));
+        trackThumb(me.clientX, me.clientY);
+        updateActive(indexAt(me.clientX, me.clientY));
       };
       const onMouseUp = () => {
         hold.current.disarm();
@@ -692,7 +863,8 @@ export function PressAndSlidePicker({
     trackThumb,
     settleThumb,
     isInZone,
-    indexAtX,
+    indexAt,
+    crossDistance,
     longPressDuration,
     disabled,
   ]);
@@ -860,11 +1032,10 @@ export function PressAndSlidePicker({
         createPortal(
           <Strip
             stripRef={stripRef}
-            anchor={stripState?.anchorRect ?? anchorRect.current}
+            layout={stripState?.layout ?? layoutRef.current}
             options={options}
             activeIndex={stripState?.activeIndex ?? activeIdx.current}
             currentIndex={stripState?.currentIndex ?? currentIndex}
-            iw={itemWidth}
             dismissing={dismissing}
           />,
           document.body

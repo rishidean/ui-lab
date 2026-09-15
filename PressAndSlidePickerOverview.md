@@ -21,6 +21,24 @@ all URL-pinnable as `?set=&hold=&item=` for recordings), embedded in
 the site's demo canvas like the bar, with the panel hung from the left
 so it never covers the chips. Covered by `scripts/a11y/a11y-picker-stage.mjs`.
 
+## Ordering and orientation (2026-09-15, Rishi's iterations #2–3)
+
+The selected option always sits at the end of the strip nearest the
+chip (the finger), then a hairline divider, then the rest in their
+natural order. The strip grows away from the chip in whichever
+direction has room — `computeLayout` tries, in order: horizontal
+growing right, then left, at the requested item width; the same two
+compressed (full: dot + label + air; compact: no dot, 12px label — the
+longest label is measured with a canvas, not guessed); then vertical
+growing down, then up; then a compressed horizontal centred on the
+chip. Horizontal strips sit below the chip (above if no room). The
+gesture tracks along the strip's axis and cancels on the cross axis
+(`C.escY`), so a column reads to the finger exactly as a row does. The
+fallback listbox keeps natural order — keyboard users expect a stable
+list. Covered by the ordering / vertical / bottom-row assertions in
+`a11y-picker-stage.mjs`; the stage's "Workflow (5, long labels)" set is
+the one that goes vertical at phone width.
+
 ## Sliding thumb (2026-09-15, Rishi's iteration #1)
 
 The strip's highlight is one pill (`.psp-thumb`) that glides under the

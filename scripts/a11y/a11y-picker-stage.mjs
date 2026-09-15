@@ -62,13 +62,23 @@ const settled = await tx();
 push("thumb locks onto the nearest slot on leaving", Math.abs(settled - slots[1]) < 1, { settled, slot: slots[1] });
 await page.mouse.move(midX, s1.y + s1.height / 2, { steps: 4 }); // back in
 await page.waitForTimeout(140);
-const last = await items.nth(n - 1).boundingBox();
-await page.mouse.move(last.x + last.width / 2, last.y + last.height / 2, { steps: 12 });
+// Ordering: the selected option sits at the end nearest the chip, then a
+// divider, then the rest in natural order.
+const labels = await items.allTextContents();
+const selSlot = labels.findIndex(l => l.trim() === before);
+push("selected option sits at an end of the strip", selSlot === 0 || selSlot === n - 1, { labels, before });
+push("a divider separates it from the rest", (await page.locator(".psp-strip .psp-divider").count()) === 1, null);
+const restLabels = labels.filter((_, i) => i !== selSlot).map(l => l.trim());
+push("the rest keep their natural order", JSON.stringify(restLabels) === JSON.stringify(["To Do", "In Progress", "Done", "Blocked"].filter(l => l !== before)), restLabels);
+// Slide to the far end (the slot farthest from the selected one) and release.
+const farSlot = selSlot === 0 ? n - 1 : 0;
+const far = await items.nth(farSlot).boundingBox();
+await page.mouse.move(far.x + far.width / 2, far.y + far.height / 2, { steps: 12 });
 await page.waitForTimeout(150);
 await page.mouse.up();
 await page.waitForTimeout(400);
 const after = (await chip.textContent())?.trim();
-push("release commits the option under the finger", after !== before && after?.includes("Blocked"), { before, after });
+push("release commits the option under the finger", after !== before && after === labels[farSlot].trim(), { before, after, expected: labels[farSlot] });
 push("strip closes on release", (await page.locator(".psp-strip").count()) === 0, null);
 
 // Demo controls (headless when embedded, so open it the way the site does).
@@ -105,6 +115,52 @@ push("600ms hold: it opens after 600ms", (await page.locator(".psp-strip").count
 await page.keyboard.press("Escape");
 await page.mouse.up();
 
+// Orientation: long labels cannot fit a row at phone width, so the strip
+// turns vertical — growing down from a top row, up from a bottom row —
+// with the selected option at the end nearest the chip.
+await page.evaluate(() => window.postMessage({ type: "lab:demo-controls", open: true }, window.location.origin));
+await page.waitForTimeout(200);
+await page.selectOption("#demo-controls-set", "workflow");
+await page.evaluate(() => {
+  const el = document.querySelector("#demo-controls-hold");
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+  setter.call(el, "275");
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+});
+await page.waitForTimeout(200);
+const vchip = page.locator(".psp-chip").nth(1);
+const vb = await vchip.boundingBox();
+const vbefore = (await vchip.textContent())?.trim();
+await page.mouse.move(vb.x + vb.width / 2, vb.y + vb.height / 2);
+await page.mouse.down();
+await page.waitForTimeout(400);
+push("long labels: strip is vertical", (await page.locator(".psp-strip--vertical").count()) === 1, null);
+const vlabels = (await page.locator(".psp-strip .psp-item__label").allTextContents()).map(l => l.trim());
+push("vertical: selected option is at the top (nearest the chip)", vlabels[0] === vbefore, { vlabels, vbefore });
+const vitems = page.locator(".psp-strip .psp-item");
+const vlast = await vitems.nth(vlabels.length - 1).boundingBox();
+await page.mouse.move(vlast.x + vlast.width / 2, vlast.y + vlast.height / 2, { steps: 12 });
+await page.waitForTimeout(150);
+await page.mouse.up();
+await page.waitForTimeout(400);
+const vafter = (await vchip.textContent())?.trim();
+push("vertical: sliding down and releasing commits", vafter === vlabels[vlabels.length - 1], { vbefore, vafter });
+// Bottom row: grows up, selected at the bottom.
+await page.evaluate(() => { const el = document.querySelector(".picker-demo__scroll-area"); el.scrollTop = el.scrollHeight; });
+await page.waitForTimeout(300);
+const lchip = page.locator(".psp-chip").nth(7);
+const lb = await lchip.boundingBox();
+const lbefore = (await lchip.textContent())?.trim();
+await page.mouse.move(lb.x + lb.width / 2, lb.y + lb.height / 2);
+await page.mouse.down();
+await page.waitForTimeout(400);
+const lstrip = await page.locator(".psp-strip").boundingBox();
+const llabels = (await page.locator(".psp-strip .psp-item__label").allTextContents()).map(l => l.trim());
+push("bottom row: strip grows upward", lstrip !== null && lstrip.y + lstrip.height <= lb.y + 1, lstrip && { stripBottom: lstrip.y + lstrip.height, chipTop: lb.y });
+push("bottom row: selected option is at the bottom (nearest the chip)", llabels[llabels.length - 1] === lbefore, { llabels, lbefore });
+await page.keyboard.press("Escape");
+await page.mouse.up();
+await page.waitForTimeout(300);
 push("no page errors", errors.length === 0, errors);
 for (const [name, pass, detail] of results)
   console.log(pass ? "PASS" : "FAIL", name, pass ? "" : JSON.stringify(detail));

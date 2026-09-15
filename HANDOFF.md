@@ -35,6 +35,14 @@ Railway via the Dockerfile). Owner: Rishi (rishidean).
    `com.dropbox.ignored` (the repo lives in Dropbox; see the memory note
    on git stalls).
 
+8. **Picker iterations (Rishi's three):** (1) the strip's highlight is
+   one pill that glides under the finger and locks into a slot; (2) the
+   selected option sits at the end nearest the chip, divider, then the
+   rest in natural order; (3) the strip grows away from the chip in
+   whichever direction has room — horizontal (full, then compact without
+   dots) before vertical, with the longest label canvas-measured. The
+   stage's "Workflow (5, long labels)" set shows vertical at phone width.
+
 Next for the picker: usage examples on the Code tab like the bar's
 (`client/src/examples/press-and-slide-picker/`), then a shared-strip
 `PressAndSlideGroup` if the list use case wants one.

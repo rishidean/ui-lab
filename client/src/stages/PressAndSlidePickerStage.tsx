@@ -14,6 +14,7 @@ import {
   priorityPickerOptions,
   sizePickerOptions,
   statusPickerOptions,
+  workflowPickerOptions,
 } from "@/demos/pressAndSlidePickerDemo";
 import { useRecordingMode } from "@/lab/recording";
 import { useState } from "react";
@@ -21,11 +22,12 @@ import DemoControls, { RangeRow, SelectRow } from "./DemoControls";
 import { demoParam, demoParamEnum, useDemoControls } from "./useDemoControls";
 import "./PressAndSlidePickerStage.css";
 
-type OptionSet = "status" | "priority" | "size";
+type OptionSet = "status" | "priority" | "size" | "workflow";
 const OPTION_SETS: Record<OptionSet, { label: string; options: PickerOption[] }> = {
   status: { label: "Status (4)", options: statusPickerOptions },
   priority: { label: "Priority (3)", options: priorityPickerOptions },
   size: { label: "T-shirt size (5)", options: sizePickerOptions },
+  workflow: { label: "Workflow (5, long labels)", options: workflowPickerOptions },
 };
 
 /** Eight rows; each remembers its own value per option set. Title

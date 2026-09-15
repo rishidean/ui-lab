@@ -85,11 +85,14 @@ to supply your own trigger, `disabled`.
 
 - **Gesture.** Press and hold for `longPressDuration`. A hairline ring
   sweeps the chip over exactly that time, so the hold reads as
-  registering. The strip appears below the chip (above if there is no
-  room), current value pre-highlighted. Tracking starts once the pointer
-  enters the strip's hit zone; crossing an option fires a light haptic;
-  release commits (heavy haptic on change). Moving far away or pressing
-  Escape cancels.
+  registering. The strip appears with the selected option at the end
+  nearest the chip, a divider, then the rest in order; it grows away
+  from the chip in whichever direction has room (right, left, down, or
+  up — long labels go vertical rather than clip). Tracking starts once
+  the pointer enters the strip's hit zone; one pill glides under the
+  finger and locks into a slot; crossing an option fires a light haptic;
+  release commits (heavy haptic on change). Moving away across the
+  strip's axis or pressing Escape cancels.
 - **Tap.** Plain click, Enter, Space, or ArrowDown opens the fallback
   `role="listbox"`: arrow keys rove, Enter or Space selects, Escape or
   click-away dismisses and returns focus to the chip.
