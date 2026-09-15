@@ -4,6 +4,28 @@ Working doc for continuing the lab's component work in a fresh session.
 Repo: `github.com/rishidean/ui-lab` (push to `main` auto-deploys on
 Railway via the Dockerfile). Owner: Rishi (rishidean).
 
+## Latest session (2026-09-14) — recap
+
+**NavigationBar demo canvas and a headless recording pipeline.** Both
+on `main` and deployed (`c2ebd72`, `39858f7`):
+
+1. **Canvas cards are plain gradient tiles** — no icons, no skeleton
+   lines. The saturated skeleton cards shouted over the bar on screen and
+   in recordings. Pastel in light, dusty low-lightness in dark; the four
+   content hues stay so the dormant glass still has chroma to drain.
+2. **Recording pipeline.** `scripts/record/nav-bar.mjs` drives the
+   ten-beat click-through in recording mode via Playwright (tap ring at
+   every click, pauses scaled to tempo) → WebM → ffmpeg. Assets and a
+   README in `demos/navigation-bar/` (full, 1.25×, and a bar-focused
+   360px crop with the full-screen Scan beat cut). Playwright caps
+   recordings at 1×; QuickTime over the same URL is the crisp path.
+3. **Demo controls ride the URL** — `?depth=0.65&tempo=1.5&rm=0` — so a
+   recording (panel hidden) can still pin them. Read once at mount,
+   clamped to the panel's ranges.
+
+Suite still 123 / 0. The PressAndSlidePicker overhaul remains
+uncommitted in the working tree, untouched.
+
 ## Latest session (2026-08-13) — recap
 
 **Two fixes on `main`, then a long exploratory branch that is pushed but
@@ -343,6 +365,20 @@ verified, and is pushed/deployed:
    covers ArrowUp + checked-row assertions, a11y-triggers asserts the
    Search gate, all `menuitem` selectors → `menuitemradio`. Suite is now
    63 assertions, 0 failures.
+6. **PressAndSlidePicker overhaul:** fixed the strip-lands-far-from-chip
+   bug (no portal + the stage's `scale(1.35)` wrapper — a transformed
+   ancestor is the containing block for `position: fixed`; strip,
+   fallback listbox, and click-away now portal to `document.body`) and
+   brought the picker onto the design system: fully-rounded
+   `.glass-overlay` capsules holding 34px pill chips (the filter strip's
+   proportions — pill = state, active option tinted in its own hue via
+   color-mix with `--gray-900` label ink), DM Sans, site EASE/TEMPO
+   motion (injected style tag replaced by co-located CSS),
+   `:focus-visible` ring conventions, dismiss-on-scroll/resize. Stage
+   lost its scale transform + dark token overrides (now
+   theme-aware, demos `renderChip`). Original spec preserved at
+   `docs/superpowers/specs/2026-08-05-press-and-slide-picker-design.md`;
+   record in `PressAndSlidePickerOverview.md`.
 
 Design specs live in `docs/superpowers/specs/`, plans in
 `docs/superpowers/plans/`.
@@ -376,8 +412,10 @@ Design specs live in `docs/superpowers/specs/`, plans in
   contract — Aurora (light, :root) and Ink (dark, .dark) presets, glass
   classes included. Shell has a sun/moon toggle (ThemeContext,
   localStorage). Animated shadows stay literal in components (framer
-  can't interpolate var() strings). PressAndSlidePicker deliberately
-  untouched by all of this.
+  can't interpolate var() strings). PressAndSlidePicker joined the
+  contract in the 2026-08-05 overhaul (glass-overlay surfaces, DM Sans,
+  radius/text tokens, site motion grammar, portal to body — see
+  `PressAndSlidePickerOverview.md`).
 
 ## The flagship: NavigationBar
 
@@ -471,17 +509,27 @@ the two morph components in the stage (raw seconds, no TEMPO).
 
 ## NEXT UP (the reason for this handoff)
 
-**Decide whether `nav-glass-activation` merges.** It is pushed and
-unmerged; `main` is untouched and still carries the uncommitted
-PressAndSlidePicker work. Merging is a deliberate call — it changes the
-flagship's resting appearance and ships a breaking export rename
-(`SHEET_CLEAROUT_MS` → `sheetClearoutMs(tempo)`).
+The dormant-bar work merged at `f2784db` and deployed; the choreography
+is done and is not to be reopened. What is NOT done is the adoption
+story — Rishi's call, 2026-09-14: the bar should drop in like a shadcn
+component. That is item 0; the rest of the list is unchanged.
 
-Worth a look on device before merging: the shipped dormancy default
-(depth 1, drain 0.8 — full liquid-glass at rest) was never explicitly
-ratified. Also note resting label legibility is now content-dependent:
-11.8:1 measured over the demo's content, but no test covers darker
-backdrops.
+0. **NavigationBar drop-in pass** — three gaps and how to close them.
+   See "Drop-in pass: the plan" below for the detail.
+1. **Overall site UI and functionality** — the lab site itself, not the
+   components. Existing leftovers that fold into this: the registry
+   `dependencies` arrays are prose today and should link to their
+   file/source; README still needs a Bottom Sheet row and a Theming
+   section.
+2. **Resume PressAndSlidePicker** — its overhaul is still uncommitted in
+   the working tree (5 modified, 4 untracked files). Decide commit vs
+   discard when picking it up.
+
+Worth a look on device whenever convenient: the dormancy defaults (depth
+1, drain 0.8 — full liquid-glass at rest) were judged from screenshots
+only, never ratified on hardware. Both are single tokens in `theme.css`.
+Note too that resting label legibility is now content-dependent — 11.8:1
+measured over the demo's content, but no test covers darker backdrops.
 
 Available whenever, as filed task chips: the BottomSheet arm-window
 wedge fix (pre-existing bug, deterministic repro in the chip) and the
@@ -514,6 +562,131 @@ keyboard semantics with plain (non-inert) focus return for those two,
 `focusWhenClear` for every inert-guarded surface's focus return,
 `:focus-visible` rings throughout — see the latest-session recap above for
 the full list.)
+
+### Drop-in pass: the plan (2026-09-14)
+
+Three things a reader hits today when they try to lift the bar into
+their own app. Each has a state-of-play and a recommended fix; the
+suggested order is at the end.
+
+**Gap 1 — dependencies, and the shadcn shape.** What the component
+actually needs right now, measured from its imports and from
+`theme.css`:
+
+| Need | Where it lives today | Notes |
+| --- | --- | --- |
+| `react`, `motion`, `lucide-react` | npm | Fine — shadcn declares these the same way. |
+| `cn` (clsx + tailwind-merge) | `@/lib/utils` | Same as shadcn's `lib/utils`. |
+| `focusWhenClear` | `@/lib/a11y` | Ten lines; the bar uses only this export. |
+| Tailwind utilities | ~57 `className`s, arbitrary values (`h-[34px]`, `max-w-lg`) | Tailwind v4, no config file — a peer requirement, as with shadcn. |
+| Bar-specific CSS | `theme.css` lines ~218–545 (`.glass-nav`, `.nav-*`, `.glass-overlay`, `.glass-rim`, assistant bubbles) | ~330 lines of component CSS living in the site's theme file. This is the real blocker. |
+| Tokens | `theme.css` `:root` / `.dark` presets (`--accent-*`, `--text-*`, `--radius-*`, `--nav-*`, `--glass-rim`, `--bg-*`) | The bar reads perhaps 25 of the file's variables. |
+| BottomSheet / UtilityModal | separate components | NOT imported by the bar — the stage routes to them. They are optional companions, not dependencies. Say so. |
+
+Recommended fix, in order:
+
+1. **Extract the bar's CSS out of `theme.css`** into
+   `navigation-bar/navigation-bar.css`, imported by the component
+   (the picker already does this — co-located CSS, no injected style
+   tag). `theme.css` keeps only tokens. After this, "copy the folder"
+   is true.
+2. **Ship a `tokens.css` next to it** — the minimal `:root` / `.dark`
+   block of variables the bar reads, with the Bench presets as defaults,
+   annotated required vs cosmetic. Consumers paste it into their globals
+   or remap it to their system. Grep the extracted CSS + TSX for `var(`
+   to build the list; do not hand-write it.
+3. **Fold `cn` and `focusWhenClear` into the folder** (or list them as
+   files-to-copy, shadcn-style). Both are tiny; a second copy costs
+   nothing and removes two `@/` imports.
+4. **Registry manifest.** shadcn's registry-item schema
+   (`{ name, type: "registry:component", files[], dependencies[],
+   registryDependencies[], cssVars }`) is exactly this inventory in
+   JSON. Serve it as `/r/navigation-bar.json` and the drop-in becomes
+   `npx shadcn add https://lab.rishidean.com/r/navigation-bar.json`.
+   The site leftover "registry `dependencies` arrays should link to
+   their file/source" folds into this — generate the prose list from the
+   manifest instead of maintaining both. Stretch goal; 1–3 are the
+   substance.
+
+Keep Tailwind. Converting 57 classNames to plain CSS is a week of
+regression risk for a component whose whole value is choreography, and
+shadcn consumers already have Tailwind. What must NOT happen: motion
+timings becoming props (drop-in-first rule — internals stay in-file
+constants).
+
+**Gap 2 — usage examples.** Today there is one 140-line mega-snippet in
+`registry.tsx` (`navigationBarUsage`) showing every prop at once, plus
+the 650-line stage as the "real" example. Neither is a starting point.
+
+Recommended fix: **tiered, runnable examples as real files** under
+`client/src/examples/navigation-bar/`, rendered on the Code tab via
+`?raw` imports so they are typechecked and cannot rot:
+
+- `01-minimal.tsx` — tabs + contextual actions + `onActionClick`
+  logging. ~25 lines. No utilities, no sheets, no scroll. Proves it
+  works.
+- `02-collapse-on-scroll.tsx` — adds `isCollapsed`. Every consumer
+  needs this and today the hysteresis lives as ~60 lines in the stage
+  (`COLLAPSE_AFTER_PX`, the arm band, cooldown). Export it from the
+  component folder as `useCollapseOnScroll(scrollRef)` — this passes
+  the drop-in rule because it is app-critical for every consumer, not
+  an internal knob.
+- `03-search.tsx` — `isSearchOpen` / `onSearchSubmit`. Bar-internal,
+  zero extra components.
+- `04-workflow-sheet.tsx` — Deposit → `isSheetOpen`, `sheetClearoutMs`,
+  `actionBarRef`, mount `<BottomSheet>`. The one pattern people will
+  get wrong; show it in isolation.
+- `05-assistant.tsx` — the in-bar chat morph with an owned transcript.
+
+The mega-snippet then shrinks to the prop table plus links to these.
+Keep its three contract comments (styling, keyboard, utility routing)
+— they are the best prose in the repo — but move them into the README
+of the component folder where a copier will actually find them.
+
+**Gap 3 — sizing.** There is no sizing story. Everything is a literal:
+circles `w-14 h-14` (56px), chips `h-[34px]`, labels `text-[14px]` /
+`text-[13px]`, cluster `max-w-lg` (512px) centred with `gap-3`, menu
+`min-w-[210px]`, `ASSISTANT_INPUT_ROW_PX = 36`,
+`ASSISTANT_HEIGHT_CAP = 0.62`, `EDGE_FADE_PX = 28`. The fixed shell
+(bottom, safe-area inset, `pointer-events: none` wrapper) and the page's
+bottom padding (15rem in the demo) are the consumer's job and nowhere
+documented.
+
+Recommended fix — guidance first, then one affordance:
+
+1. **Guidance** (component README): the bar is designed for a 360–512px
+   cluster and stays centred at `max-w-lg` on wider screens; the
+   consumer owns the fixed shell + `env(safe-area-inset-bottom)` + page
+   bottom padding so content is not hidden; do not scale it with CSS
+   `zoom` or `transform` — a transformed ancestor becomes the containing
+   block for `position: fixed` and the picker already paid for that
+   lesson (2026-08-05).
+2. **Affordance: a `size` prop with presets, implemented as CSS
+   variables on the root.** `compact` (48px circle / 30px chip / 13px
+   label), `default` (56 / 34 / 14), `large` (64 / 38 / 15). Set
+   `--nav-circle`, `--nav-chip-h`, `--nav-label`, `--nav-max-w` once on
+   the root and have the Tailwind arbitrary values read them
+   (`w-[var(--nav-circle)]`). Three presets, not a free number: a free
+   number invites values the choreography was never tuned for.
+3. **Audit the literal pixels.** Rect-driven motion (sheet origins,
+   pill stretch, menu absorb) uses `getBoundingClientRect` and is
+   size-agnostic; the risk is the handful of literals above. Derive
+   `ASSISTANT_INPUT_ROW_PX`, the menu `min-w`, and `EDGE_FADE_PX` from
+   the variables and leave the rest alone.
+4. **Prove it.** One more `scripts/a11y`-style script that renders each
+   preset, walks Deposit / menu / filter / search, and asserts nothing
+   overflows except Trade's intentional five-action scroll — with
+   screenshots into `scripts/a11y/shots/`. Without this, `size` will
+   quietly break the choreography for one preset and nobody will know.
+
+**Suggested order:** Gap 1 steps 1–3 (CSS extraction, tokens, fold the
+helpers — this is the prerequisite for everything else being honest)
+→ Gap 3 steps 2–4 (size variables, literal audit, preset test)
+→ Gap 2 (examples; write them against the finished folder so they are
+right the first time) → Gap 1 step 4 (manifest). Each of the first three
+is a single-session job; the manifest is an afternoon once the folder
+is clean. Re-run the dormancy suite after the CSS extraction: it
+measures backdrop effects at render level and will catch a lost rule.
 
 ## Remaining roadmap after that
 
