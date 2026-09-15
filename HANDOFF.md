@@ -4,6 +4,41 @@ Working doc for continuing the lab's component work in a fresh session.
 Repo: `github.com/rishidean/ui-lab` (push to `main` auto-deploys on
 Railway via the Dockerfile). Owner: Rishi (rishidean).
 
+## Latest session (2026-09-15) — recap
+
+**NavigationBar drop-in pass — merged to `main` and deployed.**
+Design in `docs/superpowers/specs/2026-09-14-navigation-bar-drop-in-design.md`.
+The component now stands on its own as something a stranger can copy
+out of the lab:
+
+1. **CSS split into three layers.** `theme/glass.css` holds the three
+   shared glass primitives, `navigation-bar.css` holds the component's
+   own rules, and `theme/theme.css` is tokens-only — no component-specific
+   CSS left behind in the shared theme file.
+2. **`lib.ts`** folds `cn` and `focusWhenClear` into the component
+   folder so it is self-contained; a consumer with an existing `cn` can
+   delete it and repoint one import.
+3. **A variable collector plus a drift test.** `scripts/registry/collect-vars.mjs`
+   prints the exact `:root` / `.dark` block the component reads;
+   `a11y-tokens.mjs` uses it to catch the README's pasted block drifting
+   from the real token contract.
+4. **`size="compact" | "default" | "large"` presets**, each writing five
+   root variables (`--nav-circle`, `--nav-chip-h`, `--nav-label`,
+   `--nav-chip-px`, `--nav-max-w`). Covered by `a11y-sizes.mjs`.
+5. **`useCollapseOnScroll`** ships with the bar (scroll hysteresis,
+   overlay-aware, cooldown-gated). Covered by `a11y-collapse.mjs`.
+6. **Five runnable examples** (`client/src/examples/navigation-bar/01-minimal.tsx`
+   … `05-assistant.tsx`), each live at `/navigation-bar?example=<id>` and
+   listed on the Code tab. Covered by `a11y-examples.mjs`.
+7. **The component README** (`client/src/components/navigation-bar/README.md`):
+   install, the generated CSS variable block, minimal usage, sizing, the
+   styling/keyboard/utility contracts, and what the consumer still owns.
+   The registry's `navigationBarUsage` string shrank to prop wiring plus
+   a pointer at the README; its three long contract comments moved there
+   as prose.
+
+Suite: 186 PASS / 0 FAIL (123 → 186 across the pass).
+
 ## Latest session (2026-09-14) — recap
 
 **NavigationBar demo canvas and a headless recording pipeline.** Both
@@ -509,13 +544,17 @@ the two morph components in the stage (raw seconds, no TEMPO).
 
 ## NEXT UP (the reason for this handoff)
 
-The dormant-bar work merged at `f2784db` and deployed; the choreography
-is done and is not to be reopened. What is NOT done is the adoption
-story — Rishi's call, 2026-09-14: the bar should drop in like a shadcn
-component. That is item 0; the rest of the list is unchanged.
+**The NavigationBar drop-in pass is merged and live**:
+the CSS split (`glass.css` / `navigation-bar.css` / tokens-only
+`theme.css`), the self-contained `lib.ts`, the variable collector +
+drift test, `size` presets, `useCollapseOnScroll`, five runnable
+examples, and the component README. One item stayed open: the optional
+shadcn registry manifest (spec §7 of
+`docs/superpowers/specs/2026-09-14-navigation-bar-drop-in-design.md`) —
+decide now that the folder is clean.
 
-0. **NavigationBar drop-in pass** — three gaps and how to close them.
-   See "Drop-in pass: the plan" below for the detail.
+0. ~~**NavigationBar drop-in pass**~~ — DONE 2026-09-15 (see the latest
+   recap). The plan below is kept as the record of what was decided.
 1. **Overall site UI and functionality** — the lab site itself, not the
    components. Existing leftovers that fold into this: the registry
    `dependencies` arrays are prose today and should link to their
@@ -563,7 +602,7 @@ keyboard semantics with plain (non-inert) focus return for those two,
 `:focus-visible` rings throughout — see the latest-session recap above for
 the full list.)
 
-### Drop-in pass: the plan (2026-09-14)
+### Drop-in pass: the plan (2026-09-14) — implemented 2026-09-15
 
 Three things a reader hits today when they try to lift the bar into
 their own app. Each has a state-of-play and a recommended fix; the

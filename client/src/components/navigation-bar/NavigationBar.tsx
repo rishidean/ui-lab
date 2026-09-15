@@ -32,9 +32,9 @@ import {
   useReducedMotion,
   type TargetAndTransition,
 } from "motion/react";
-import { cn } from "@/lib/utils";
-import { focusWhenClear } from "@/lib/a11y";
+import { cn, focusWhenClear } from "./lib";
 import { ChevronDown, Search as SearchGlyph, Sparkles, X } from "lucide-react";
+import "./navigation-bar.css";
 
 // Default collapsed-state glyph: a small brand dot. A brand mark, not a
 // placeholder icon — consumers pass `logo` to supply their own.
@@ -157,6 +157,22 @@ const EASE_IN = [0.4, 0, 1, 1] as const;
 // lower to tighten. Tuned by feel on device. Consumers may override it
 // with the `tempo` prop; the lab's demo exposes it as a slider.
 const DEFAULT_TEMPO = 1.3;
+
+/** Three tuned scales. Not a free number: the choreography (pill
+ *  stretch, menu absorb, assistant stretch) was verified at these three
+ *  and nowhere else. Each preset writes five custom properties on the
+ *  bar's root; every size-bearing class reads them. */
+export type NavigationBarSize = "compact" | "default" | "large";
+export const NAV_SIZE_SPECS: Record<
+  NavigationBarSize,
+  { circle: number; chip: number; label: number; chipPx: number; maxW: string }
+> = {
+  // large keeps the default label: the pill's row does not widen with the circles, so 15px overflowed two actions at 390px.
+  // large also tightens the chip padding: its bigger circle slots leave the action row 8px narrower at 390px.
+  compact: { circle: 48, chip: 30, label: 13, chipPx: 16, maxW: "28rem" },
+  default: { circle: 56, chip: 34, label: 14, chipPx: 16, maxW: "32rem" },
+  large: { circle: 60, chip: 38, label: 14, chipPx: 12, maxW: "36rem" },
+};
 
 const DUR = {
   press: 0.18, // pressed feedback, small fades
@@ -364,6 +380,8 @@ export type NavigationBarProps = {
    *  pass this, derive your sheet timing from `sheetClearoutMs(tempo)`
    *  with the SAME value, or the clear-out and your mount will desync. */
   tempo?: number;
+  /** Cluster scale — circle, chip height, label size, max width. */
+  size?: NavigationBarSize;
 };
 
 export const NavigationBar: React.FC<NavigationBarProps> = ({
@@ -397,7 +415,17 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   showUtilityButton = true,
   reducedMotion,
   tempo = DEFAULT_TEMPO,
+  size = "default",
 }) => {
+  const sizeSpec = NAV_SIZE_SPECS[size];
+  const sizeVars = {
+    "--nav-circle": `${sizeSpec.circle}px`,
+    "--nav-chip-h": `${sizeSpec.chip}px`,
+    "--nav-label": `${sizeSpec.label}px`,
+    "--nav-chip-px": `${sizeSpec.chipPx}px`,
+    "--nav-max-w": sizeSpec.maxW,
+  } as React.CSSProperties;
+
   const [isNavigationMenuOpen, setIsNavigationMenuOpen] = useState(false);
   const menuId = React.useId();
   const menuItemRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -668,7 +696,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // the viewport, re-clamped on resize. Reopen-with-history runs two
   // beats: the open morph lands the plain input first, then the card
   // stretches to fit (assistantSurfaceReady gates the second beat).
-  const ASSISTANT_INPUT_ROW_PX = 36;
+  const ASSISTANT_INPUT_ROW_PX = sizeSpec.chip + 2;
   const ASSISTANT_HEIGHT_CAP = 0.62;
 
   const [assistantContentH, setAssistantContentH] = useState(0);
@@ -1502,12 +1530,16 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   };
 
   return (
-    <div className="relative px-[18px] pb-6 pointer-events-none" ref={navRef}>
+    <div
+      className="relative px-[18px] pb-6 pointer-events-none"
+      style={sizeVars}
+      ref={navRef}
+    >
       {/* There used to be a full-bleed "dock wash" here — a 170px gradient
           fading the canvas up behind the cluster so the bar read against
           scrolling content. It was removed deliberately, for two reasons.
 
-          It was full-bleed while the cluster is a centred max-w-lg group,
+          It was full-bleed while the cluster is a centred max-w-[var(--nav-max-w)] group,
           so on wide viewports it painted a broad band behind a narrow
           control. And its bottom 26% was solid --bg-canvas laid exactly
           where the bar sits, so it stood BETWEEN the page and the glass:
@@ -1578,7 +1610,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           />
         )}
       </AnimatePresence>
-      <div className="relative z-10 flex items-center gap-3 max-w-lg mx-auto">
+      <div className="relative z-10 flex items-center gap-3 max-w-[var(--nav-max-w)] mx-auto">
         <motion.div
           className="flex items-center gap-2 w-full px-1 relative z-10"
           // Dormancy is one inherited scalar: the pill's glass and the
@@ -1603,12 +1635,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           {/* LEFT: Tab Switcher / Logo */}
           <motion.div
             ref={navigationMenuContainerRef}
-            className="relative h-14 flex items-center"
+            className="relative h-[var(--nav-circle)] flex items-center"
             style={{
               pointerEvents: isBarSurrendered ? "none" : "auto",
             }}
             animate={{
-              width: isBarSurrendered ? 0 : 56,
+              width: isBarSurrendered ? 0 : sizeSpec.circle,
               // Sheets and takeovers now recede the circle exactly like
               // search/assistant — width and opacity together, not a
               // fade-in-place. Filter expansion leaves it FIXED — the strip
@@ -1619,7 +1651,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             transition={{ duration: dur(0.25), ease: EASE }}
           >
             <motion.div
-              className="relative w-14 h-14 group pointer-events-auto"
+              className="relative shrink-0 w-[var(--nav-circle)] h-[var(--nav-circle)] group pointer-events-auto"
               whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
               /* Collapsed press dips slightly deeper before the expansion. */
               whileTap={
@@ -1633,7 +1665,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   menu is open — the menu grows out of it and the two read
                   as one attached surface. */}
               <div
-                className="nav-circle-surface w-14 h-14 rounded-full"
+                className="nav-circle-surface w-[var(--nav-circle)] h-[var(--nav-circle)] rounded-full"
                 style={{
                   background: "var(--nav-circle-bg)",
                   border: "1.5px solid var(--nav-circle-border)",
@@ -1778,7 +1810,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     borderRadius: 28,
                   }}
                   transition={menuGrowTransition}
-                  className="glass-overlay glass-rim absolute z-40 pointer-events-auto p-1.5 min-w-[210px] overflow-hidden"
+                  className="glass-overlay glass-rim absolute z-40 pointer-events-auto p-1.5 min-w-[calc(var(--nav-circle)*3.75)] overflow-hidden"
                   style={{
                     left: MENU_ANCHOR.left,
                     bottom: MENU_ANCHOR.bottom,
@@ -2066,7 +2098,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                           setAssistantFocusRing(lastInputWasKeyboard.current)
                         }
                         data-kbd={assistantFocusRing ? "true" : undefined}
-                        className="nav-search-input min-w-0 flex-1 bg-transparent text-[14px] font-medium outline-none placeholder:text-[color:var(--text-quaternary)]"
+                        className="nav-search-input min-w-0 flex-1 bg-transparent text-[length:var(--nav-label)] font-medium outline-none placeholder:text-[color:var(--text-quaternary)]"
                         style={{ color: "var(--text-primary)" }}
                       />
                       {assistantDraft && (
@@ -2091,7 +2123,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                       <button
                         type="button"
                         onClick={onAssistantClose}
-                        className="nav-search-control shrink-0 rounded-full px-2.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
+                        className="nav-search-control shrink-0 rounded-full px-2.5 py-1.5 text-[length:calc(var(--nav-label)-1px)] font-semibold transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
                         style={{ color: "var(--select-fg)" }}
                       >
                         Cancel
@@ -2143,7 +2175,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                         setSearchFocusRing(lastInputWasKeyboard.current)
                       }
                       data-kbd={searchFocusRing ? "true" : undefined}
-                      className="nav-search-input min-w-0 flex-1 bg-transparent text-[14px] font-medium outline-none placeholder:text-[color:var(--text-quaternary)]"
+                      className="nav-search-input min-w-0 flex-1 bg-transparent text-[length:var(--nav-label)] font-medium outline-none placeholder:text-[color:var(--text-quaternary)]"
                       style={{ color: "var(--text-primary)" }}
                     />
                     {/* Clear resets the query; Cancel exits search. Two
@@ -2171,7 +2203,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     <button
                       type="button"
                       onClick={onSearchClose}
-                      className="nav-search-control shrink-0 rounded-full px-2.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
+                      className="nav-search-control shrink-0 rounded-full px-2.5 py-1.5 text-[length:calc(var(--nav-label)-1px)] font-semibold transition-colors hover:bg-[var(--action-ghost-bg-hover)]"
                       style={{ color: "var(--select-fg)" }}
                     >
                       Cancel
@@ -2275,7 +2307,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                             prefersReducedMotion ? undefined : { scale: 0.96 }
                           }
                           className={cn(
-                            "nav-filter-option relative z-10 flex-[1_1_0%] min-w-fit h-[34px] px-4 rounded-full text-[13px] font-medium whitespace-nowrap",
+                            "nav-filter-option relative z-10 flex-[1_1_0%] min-w-fit h-[var(--nav-chip-h)] px-[var(--nav-chip-px)] rounded-full text-[length:calc(var(--nav-label)-1px)] font-medium whitespace-nowrap",
                             "transition-colors duration-200",
                             isVisuallyActive
                               ? "text-[color:var(--select-fg)]"
@@ -2373,7 +2405,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                               /* min-w-fit: with few actions chips stretch to
                                  fill; with many the row scrolls horizontally
                                  instead of squishing labels. */
-                              "nav-action-chip group/action flex-[1_1_0%] min-w-fit h-[34px] px-4 rounded-full flex items-center justify-center text-center",
+                              "nav-action-chip group/action flex-[1_1_0%] min-w-fit h-[var(--nav-chip-h)] px-[var(--nav-chip-px)] rounded-full flex items-center justify-center text-center",
                               isEngaged && "nav-action-chip--active"
                             )}
                             whileTap={
@@ -2401,7 +2433,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                                    Medium weight distinguishes "current value"
                                    from the heavier action verbs. */
                                 <>
-                                  <span className="text-[14px] font-medium text-inherit">
+                                  <span className="text-[length:var(--nav-label)] font-medium text-inherit">
                                     {currentFilterOption?.label ?? action.label}
                                   </span>
                                   <ChevronDown
@@ -2423,7 +2455,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                                       className="text-[color:var(--text-tertiary)]"
                                     />
                                   )}
-                                  <span className="text-[14px] font-semibold tracking-[-0.01em] text-inherit">
+                                  <span className="text-[length:var(--nav-label)] font-semibold tracking-[-0.01em] text-inherit">
                                     {action.label}
                                   </span>
                                 </>
@@ -2442,7 +2474,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           {/* RIGHT: Action button (Chat/AI) */}
           {showUtilityButton && utilityAction && (
             <motion.div
-              className="relative h-14 flex items-center"
+              className="relative h-[var(--nav-circle)] flex items-center"
               style={{
                 // Disabled the moment a utility transition begins — the
                 // surface owns the interaction until it closes.
@@ -2459,7 +2491,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 // the strip widens into it (width collapses only after the
                 // undot fade; see utilityButtonTransition).
                 width:
-                  isCollapsed || isBarSurrendered || isFilterExpanded ? 0 : 56,
+                  isCollapsed || isBarSurrendered || isFilterExpanded
+                    ? 0
+                    : sizeSpec.circle,
                 // Hidden states shrink it slightly as it fades, so every
                 // return reads as a pop-in — dotting the horizontal "i".
                 scale:
@@ -2501,7 +2535,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     ? isSheetOpen && !activeAction
                     : undefined
                 }
-                className="nav-circle-trigger group relative w-14 h-14 rounded-full flex items-center justify-center pointer-events-auto"
+                className="nav-circle-trigger group relative shrink-0 w-[var(--nav-circle)] h-[var(--nav-circle)] rounded-full flex items-center justify-center pointer-events-auto"
                 whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.93 }}
                 transition={{ duration: dur(0.18), ease: EASE }}

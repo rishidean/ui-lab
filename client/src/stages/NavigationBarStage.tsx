@@ -20,8 +20,11 @@
  */
 import {
   NavigationBar,
+  NAV_SIZE_SPECS,
   sheetClearoutMs,
+  useCollapseOnScroll,
   type AssistantMessage,
+  type NavigationBarSize,
 } from "@/components/navigation-bar";
 import { BottomSheet, type SheetOrigin } from "@/components/bottom-sheet";
 import { UtilityModal } from "@/components/utility-modal";
@@ -35,7 +38,7 @@ import {
 } from "@/demos/navigationBarDemo";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Camera, X } from "lucide-react";
-import { type UIEvent, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import DemoControls from "./DemoControls";
 import "./NavigationBarStage.css";
 
@@ -50,10 +53,6 @@ const EASE = [0.2, 0, 0, 1] as const;
 const EASE_OUT = [0, 0, 0.2, 1] as const;
 const EASE_IN = [0.4, 0, 1, 1] as const;
 
-// Scroll hysteresis: collapsing requires a decisive downward pull (48–72px
-// band); expanding only a small upward nudge (12–24px band). Movements under
-// ~10px are ignored, and a short cooldown prevents rapid toggling when the
-// scroll position hovers around a boundary.
 /** Numeric demo-control override from the query string, clamped to the
     panel's own range; falls back to the default when absent or unparsable. */
 function demoParam(name: string, fallback: number, min: number, max: number) {
@@ -61,12 +60,6 @@ function demoParam(name: string, fallback: number, min: number, max: number) {
   const n = raw === null ? NaN : Number(raw);
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 }
-
-const COLLAPSE_AFTER_PX = 56;
-const EXPAND_AFTER_PX = 16;
-const MIN_SCROLL_DELTA = 10;
-const TOGGLE_COOLDOWN_MS = 350;
-const ALWAYS_EXPANDED_ABOVE = 20;
 
 // ── UtilityButton surfaces ──────────────────────────────────────────────
 // Every kind runs the same clear-out first (both circles recede, labels
@@ -138,11 +131,8 @@ function ScanView({ onClose }: { onClose: () => void }) {
 
 export default function NavigationBarStage() {
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
-  const anchorScrollRef = useRef(0);
-  const collapsedRef = useRef(false);
   const [activeTab, setActiveTab] = useState("home");
   const [activeFilter, setActiveFilter] = useState("pending");
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [openSheet, setOpenSheet] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -166,6 +156,12 @@ export default function NavigationBarStage() {
   const [reducedMotionOverride, setReducedMotionOverride] = useState(
     () => new URLSearchParams(window.location.search).get("rm") === "1"
   );
+  const [size, setSize] = useState<NavigationBarSize>(() => {
+    const raw = new URLSearchParams(window.location.search).get("size");
+    return raw && Object.hasOwn(NAV_SIZE_SPECS, raw)
+      ? (raw as NavigationBarSize)
+      : "default";
+  });
   // Read once at mount — never on every render — so the panel starts
   // open on wide viewports and collapsed on narrow ones.
   const [controlsDefaultOpen] = useState(() => window.innerWidth >= 640);
@@ -335,78 +331,28 @@ export default function NavigationBarStage() {
 
   // (Escape is handled by the UtilityModal itself.)
 
-  const lastToggleAtRef = useRef(0);
-  const overlayOpenRef = useRef(false);
-  // Collapse is disabled while any overlay state is active.
-  useEffect(() => {
-    overlayOpenRef.current =
-      openSheet !== null ||
-      sheetPrep ||
-      isSearchOpen ||
-      isAssistantOpen ||
-      utility !== null ||
-      utilityClosing ||
-      utilSheet !== null;
-  }, [
-    openSheet,
-    sheetPrep,
-    isSearchOpen,
-    isAssistantOpen,
-    utility,
-    utilityClosing,
-    utilSheet,
-  ]);
-
-  const setCollapsed = useCallback((next: boolean, anchor: number) => {
-    collapsedRef.current = next;
-    anchorScrollRef.current = anchor;
-    lastToggleAtRef.current = Date.now();
-    setIsCollapsed(next);
-    if (next) {
-      setIsSearchOpen(false);
-      setIsAssistantOpen(false);
-    }
-  }, []);
-
-  const handleScroll = useCallback(
-    (event: UIEvent<HTMLDivElement>) => {
-      const scrollTop = event.currentTarget.scrollTop;
-
-      if (scrollTop < ALWAYS_EXPANDED_ABOVE) {
-        if (collapsedRef.current) setCollapsed(false, scrollTop);
-        anchorScrollRef.current = scrollTop;
-        return;
-      }
-
-      const delta = scrollTop - anchorScrollRef.current;
-      if (Math.abs(delta) < MIN_SCROLL_DELTA) return; // ignore jitter
-
-      // No collapse while a sheet, search, or utility is open; keep the
-      // anchor fresh so closing doesn't inherit stale scroll distance.
-      if (overlayOpenRef.current) {
-        anchorScrollRef.current = scrollTop;
-        return;
-      }
-
-      const cooling = Date.now() - lastToggleAtRef.current < TOGGLE_COOLDOWN_MS;
-
-      if (!collapsedRef.current) {
-        if (delta > COLLAPSE_AFTER_PX && !cooling)
-          setCollapsed(true, scrollTop);
-        else if (delta < 0) anchorScrollRef.current = scrollTop; // ratchet up
-      } else {
-        if (delta < -EXPAND_AFTER_PX && !cooling)
-          setCollapsed(false, scrollTop);
-        else if (delta > 0) anchorScrollRef.current = scrollTop; // ratchet down
+  const overlayOpen =
+    openSheet !== null ||
+    sheetPrep ||
+    isSearchOpen ||
+    isAssistantOpen ||
+    utility !== null ||
+    utilityClosing ||
+    utilSheet !== null;
+  const { isCollapsed, onScroll: handleScroll, expand } = useCollapseOnScroll({
+    overlayOpen,
+    onChange: collapsed => {
+      if (collapsed) {
+        setIsSearchOpen(false);
+        setIsAssistantOpen(false);
       }
     },
-    [setCollapsed]
-  );
+  });
 
   const expandFromLogo = useCallback(() => {
-    setCollapsed(false, scrollAreaRef.current?.scrollTop ?? 0);
+    expand();
     scrollAreaRef.current?.scrollBy({ top: -140, behavior: "smooth" });
-  }, [setCollapsed]);
+  }, [expand]);
 
   // The engaged action stays highlighted until the sheet has contracted
   // back into the bar (cleared in onExitComplete).
@@ -440,6 +386,8 @@ export default function NavigationBarStage() {
           onTempo={setTempo}
           reducedMotion={reducedMotionOverride}
           onReducedMotion={setReducedMotionOverride}
+          size={size}
+          onSize={setSize}
           defaultOpen={controlsDefaultOpen}
         />
       )}
@@ -483,6 +431,7 @@ export default function NavigationBarStage() {
       <div className="navigation-demo__nav-shell">
         <NavigationBar
           tempo={tempo}
+          size={size}
           reducedMotion={reducedMotionOverride || undefined}
           isCollapsed={isCollapsed}
           activeTab={activeTab}

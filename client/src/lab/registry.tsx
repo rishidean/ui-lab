@@ -13,6 +13,10 @@ import navigationBarSource from "@/components/navigation-bar/NavigationBar.tsx?r
 import pressAndSlidePickerSource from "@/components/press-and-slide-picker/PressAndSlidePicker.tsx?raw";
 import bottomSheetSource from "@/components/bottom-sheet/BottomSheet.tsx?raw";
 import utilityModalSource from "@/components/utility-modal/UtilityModal.tsx?raw";
+import {
+  navigationBarExamples,
+  type LabExample,
+} from "@/examples/navigation-bar";
 
 export const LAB_NAME = "Rishi's UI Lab";
 export const LAB_TAGLINE =
@@ -67,6 +71,8 @@ export type LabComponent = {
   sourceFile: string;
   dependencies: string[];
   usage: string;
+  /** Runnable host pages, shown on the Code tab and at ?example=<id>. */
+  examples?: LabExample[];
   tryIt: string[];
   showcase: ShowcaseMeta;
   aliases?: string[];
@@ -174,51 +180,10 @@ const utilityActions = {
 />
 
 /*
- * Styling contract: the component reads the token contract in
- * client/src/theme/theme.css (accent family, text scale, select pill,
- * glass classes, scrims — with Bench (light) and Bench (dark) presets).
- * Copy theme.css alongside the component and edit a preset block, or
- * remap the variables to your own design system.
- */
-
-/*
- * Keyboard contract: the tab menu is a role="menu" — ArrowUp/ArrowDown,
- * Home/End, Enter/Space, Escape. The filter is a role="radiogroup" —
- * arrow keys rove the roving tabindex, Enter/Space selects. The
- * UtilityButton sets aria-haspopup="dialog" whenever the active
- * UtilityAction has opensDialog: true. The menu and filter are plain
- * popovers, not focus traps: roving tabindex + Escape + focus return
- * to their origin control, no inert containment. The sheet and modal
- * surfaces (BottomSheet, UtilityModal) go further — they contain focus
- * via useInertOutside (@/lib/a11y), which makes everything outside them
- * inert while open, and likewise return focus to their origin control
- * on close. :focus-visible rings are styled throughout every surface;
- * mouse/touch interaction stays ring-free — including the search input,
- * whose ring is modality-gated (text inputs match :focus-visible on any
- * focus, so the bar tracks keyboard vs pointer and applies the ring
- * only to keyboard-driven focus).
- */
-
-/*
- * Utility surfaces — the bar renders only the UtilityButton; WHICH
- * surface opens is your routing decision inside onUtilityClick:
- *
- *   AI     → set isAssistantOpen (bar-internal mode, like Search — no
- *            clear-out, no dialog. The bar morphs into a chat input,
- *            then stretches upward into a conversation card once you
- *            append messages via onAssistantSubmit).
- *   Search → set isSearchOpen (the bar itself morphs into the field).
- *   Sheets → flip isSheetOpen, wait sheetClearoutMs(), then mount a
- *            BottomSheet (@/components/bottom-sheet) from the
- *            UtilityButton's rect. Workflow sheets from ActionButtons
- *            use the same pattern: isSheetOpen + sheetClearoutMs() from
- *            the bar's rect (actionBarRef).
- *   Modals → same clear-out, then mount a UtilityModal
- *            (@/components/utility-modal) from the UtilityButton's
- *            CENTER point — a full-screen circle-reveal takeover.
- *
- * The demo stage (client/src/stages/NavigationBarStage.tsx) wires all
- * three; each companion component has its own page with API and usage.
+ * Runnable examples (Code tab, or /navigation-bar?example=<id>):
+ *   01-minimal · 02-collapse-on-scroll · 03-search · 04-workflow-sheet
+ *   · 05-assistant. Install, CSS variables, sizing, and the styling /
+ * keyboard / utility contracts: client/src/components/navigation-bar/README.md
  */`;
 
 const pressAndSlidePickerUsage = `import { PressAndSlidePicker } from "@/components/press-and-slide-picker";
@@ -349,11 +314,10 @@ export const labComponents: LabComponent[] = [
       "react",
       "motion",
       "lucide-react",
-      "clsx + tailwind-merge (cn)",
-      "theme/theme.css (token contract)",
-      "@/components/bottom-sheet (sheet surfaces)",
-      "@/components/utility-modal (modal takeovers)",
-      "@/lib/a11y (focusWhenClear — focus return past inert)",
+      "clsx + tailwind-merge (cn, copied into the folder)",
+      "theme/theme.css (tokens — see README for the generated list)",
+      "theme/glass.css (shared glass primitives)",
+      "optional: @/components/bottom-sheet, @/components/utility-modal (companion surfaces)",
     ],
     showcase: {
       category: "navigation / motion",
@@ -451,6 +415,7 @@ export const labComponents: LabComponent[] = [
       ],
     },
     usage: navigationBarUsage,
+    examples: navigationBarExamples,
     tryIt: [
       "Leave the bar alone — it desaturates and the tab icon goes neutral; touch any surface (menu, filter, search, assistant, sheet, or a pressed action) and colour returns",
       "Scroll the canvas down to collapse the bar, up to expand it",
@@ -602,6 +567,7 @@ export const labComponents: LabComponent[] = [
       "lucide-react",
       "clsx + tailwind-merge (cn)",
       "theme/theme.css (token contract)",
+      "theme/glass.css (.glass-rim — the lit edge)",
       "@/lib/a11y (useInertOutside — dialog containment)",
     ],
     showcase: {
