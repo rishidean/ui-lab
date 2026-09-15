@@ -4,7 +4,8 @@
 import { readFileSync } from "node:fs";
 
 const READ_RE = /var\(\s*(--[a-zA-Z0-9-]+)/g;
-const DEF_RE = /^\s*(--[a-zA-Z0-9-]+)\s*:/gm;
+// Matches CSS declarations and quoted keys in a TSX style object (the size vars are written inline by the component).
+const DEF_RE = /^\s*"?(--[a-zA-Z0-9-]+)"?\s*:/gm;
 
 /** Returns `{ [name]: value }` for one `selector { ... }` block. */
 function block(css, selector) {

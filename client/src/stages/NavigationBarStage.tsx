@@ -20,8 +20,10 @@
  */
 import {
   NavigationBar,
+  NAV_SIZE_SPECS,
   sheetClearoutMs,
   type AssistantMessage,
+  type NavigationBarSize,
 } from "@/components/navigation-bar";
 import { BottomSheet, type SheetOrigin } from "@/components/bottom-sheet";
 import { UtilityModal } from "@/components/utility-modal";
@@ -166,6 +168,10 @@ export default function NavigationBarStage() {
   const [reducedMotionOverride, setReducedMotionOverride] = useState(
     () => new URLSearchParams(window.location.search).get("rm") === "1"
   );
+  const [size, setSize] = useState<NavigationBarSize>(() => {
+    const raw = new URLSearchParams(window.location.search).get("size");
+    return raw && raw in NAV_SIZE_SPECS ? (raw as NavigationBarSize) : "default";
+  });
   // Read once at mount — never on every render — so the panel starts
   // open on wide viewports and collapsed on narrow ones.
   const [controlsDefaultOpen] = useState(() => window.innerWidth >= 640);
@@ -440,6 +446,8 @@ export default function NavigationBarStage() {
           onTempo={setTempo}
           reducedMotion={reducedMotionOverride}
           onReducedMotion={setReducedMotionOverride}
+          size={size}
+          onSize={setSize}
           defaultOpen={controlsDefaultOpen}
         />
       )}
@@ -483,6 +491,7 @@ export default function NavigationBarStage() {
       <div className="navigation-demo__nav-shell">
         <NavigationBar
           tempo={tempo}
+          size={size}
           reducedMotion={reducedMotionOverride || undefined}
           isCollapsed={isCollapsed}
           activeTab={activeTab}

@@ -6,6 +6,8 @@
  * this — it has no equivalent in the component itself.
  */
 import type { ChangeEvent } from "react";
+import { NAV_SIZE_SPECS } from "@/components/navigation-bar";
+import type { NavigationBarSize } from "@/components/navigation-bar";
 import "./DemoControls.css";
 
 interface DemoControlsProps {
@@ -15,6 +17,8 @@ interface DemoControlsProps {
   onTempo: (value: number) => void;
   reducedMotion: boolean;
   onReducedMotion: (value: boolean) => void;
+  size: NavigationBarSize;
+  onSize: (value: NavigationBarSize) => void;
   /** Read once by the stage (e.g. from window.innerWidth) — this
    *  component never touches `window` itself. */
   defaultOpen: boolean;
@@ -27,6 +31,8 @@ export default function DemoControls({
   onTempo,
   reducedMotion,
   onReducedMotion,
+  size,
+  onSize,
   defaultOpen,
 }: DemoControlsProps) {
   return (
@@ -76,6 +82,29 @@ export default function DemoControls({
               onTempo(Number(event.target.value))
             }
           />
+        </div>
+
+        <div className="demo-controls__row">
+          <label htmlFor="demo-controls-size" className="demo-controls__label">
+            <span>Size</span>
+            <span className="demo-controls__value">
+              {NAV_SIZE_SPECS[size].circle}px
+            </span>
+          </label>
+          <select
+            id="demo-controls-size"
+            className="demo-controls__select"
+            value={size}
+            onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+              onSize(event.target.value as NavigationBarSize)
+            }
+          >
+            {(Object.keys(NAV_SIZE_SPECS) as NavigationBarSize[]).map(s => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="demo-controls__row demo-controls__row--checkbox">

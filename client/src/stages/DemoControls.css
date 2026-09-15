@@ -131,3 +131,13 @@
   outline: 2px solid var(--text-secondary);
   outline-offset: 2px;
 }
+
+.demo-controls__select {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
