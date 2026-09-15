@@ -3,7 +3,6 @@
  * card (hosting the real component) and the scripted presentation-mode
  * beat visual. Both read the --lab-* palette set by lab/Showcase.tsx.
  */
-import { useState } from "react";
 import {
   PressAndSlidePicker,
   type PickerOption,
@@ -43,69 +42,6 @@ export const frequencyOptions: PickerOption[] = [
     bg: "rgba(251,191,36,0.16)",
   },
 ];
-
-const ITEM_WIDTH = 92;
-
-/**
- * The Demo-tab card: digest-frequency scenario around the real picker,
- * with a live readout panel beside it.
- */
-export function PickerDemo({ mobile }: { mobile: boolean }) {
-  const [value, setValue] = useState("weekly");
-  const [lastEvent, setLastEvent] = useState("idle");
-  const index = frequencyOptions.findIndex(o => o.key === value);
-
-  return (
-    <div className="lab-picker-demo">
-      <div
-        className="lab-picker-demo__card"
-        style={{ width: mobile ? 390 : 520 }}
-      >
-        {mobile && (
-          <div aria-hidden="true" className="lab-picker-demo__handle" />
-        )}
-        <div className="lab-picker-demo__eyebrow">digest frequency</div>
-        <div className="lab-picker-demo__question">
-          How often should we write?
-        </div>
-        <PressAndSlidePicker
-          options={frequencyOptions}
-          value={value}
-          onChange={key => {
-            setValue(key);
-            setLastEvent("change");
-          }}
-          itemWidth={ITEM_WIDTH}
-        />
-      </div>
-
-      <div className="lab-picker-demo__readout">
-        <div className="lab-picker-demo__readout-title">readout</div>
-        {[
-          {
-            k: "value",
-            v: frequencyOptions[index]?.label ?? "—",
-            cls: "lab-picker-demo__readout-value--acc",
-          },
-          { k: "index", v: `${index} / ${frequencyOptions.length - 1}` },
-          { k: "last event", v: lastEvent },
-          {
-            k: "px per option",
-            v: `${ITEM_WIDTH}px`,
-            cls: "lab-picker-demo__readout-value--muted",
-          },
-        ].map(row => (
-          <div key={row.k} className="lab-picker-demo__readout-row">
-            <span className="lab-picker-demo__readout-key">{row.k}</span>
-            <span className={`lab-picker-demo__readout-value ${row.cls ?? ""}`}>
-              {row.v}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 /**
  * Presentation-mode visual: a scripted, non-interactive replica of the

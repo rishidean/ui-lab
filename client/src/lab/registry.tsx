@@ -475,6 +475,7 @@ export const labComponents: LabComponent[] = [
     accent:
       "linear-gradient(135deg, #93c5fd 0%, #fcd34d 40%, #86efac 75%, #fca5a5 100%)",
     Stage: PressAndSlidePickerStage,
+    demoControls: true,
     source: pressAndSlidePickerSource,
     sourceFile: "PressAndSlidePicker.tsx",
     dependencies: [
@@ -576,10 +577,11 @@ export const labComponents: LabComponent[] = [
     },
     usage: pressAndSlidePickerUsage,
     tryIt: [
-      "Long-press the chip, keep holding, slide across the strip, release",
+      "Long-press any row's status chip, keep holding, slide across the strip, release — each row is its own picker",
       "Plain-click the chip for the keyboard-friendly fallback picker",
       "Try it on a phone — haptics fire as you cross options",
       "Press Escape mid-gesture to bail out without committing",
+      'Open "controls" above the canvas to swap the option set (status / priority / t-shirt size), the long-press hold, and the option width',
     ],
     aliases: ["picker"],
   },

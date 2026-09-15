@@ -34,7 +34,7 @@ import {
 import { useRecordingMode } from "@/lab/recording";
 import { useTheme } from "@/contexts/ThemeContext";
 import { ThemeToggle } from "@/lab/ThemeToggle";
-import { PickerBeatVisual, PickerDemo } from "@/lab/PickerShowcase";
+import { PickerBeatVisual } from "@/lab/PickerShowcase";
 import { pad2, PALETTES } from "@/lab/labTheme";
 import "./Showcase.css";
 
@@ -46,11 +46,6 @@ const BEAT_VISUALS: Record<
   ComponentType<{ beat: PresentationBeat }>
 > = {
   "press-and-slide-picker": PickerBeatVisual,
-};
-
-/** Per-slug interactive Demo-tab surfaces; others embed their Stage. */
-const DEMOS: Record<string, ComponentType<{ mobile: boolean }>> = {
-  "press-and-slide-picker": PickerDemo,
 };
 
 const TABS = [
@@ -407,7 +402,6 @@ export function Showcase({ component }: { component: LabComponent }) {
     labComponents.findIndex(c => c.slug === component.slug) + 1
   );
   const meta = component.showcase;
-  const Demo = DEMOS[component.slug];
   const BeatVisual = BEAT_VISUALS[component.slug];
   const currentBeat = beats?.[beat];
 
@@ -536,20 +530,16 @@ export function Showcase({ component }: { component: LabComponent }) {
                       tab === "demo" ? "" : "lab-canvas__keep--hidden"
                     }`}
                   >
-                    {Demo ? (
-                      <Demo mobile={view === "mobile"} />
-                    ) : (
-                      <iframe
-                        key={theme}
-                        ref={frameRef}
-                        onLoad={() => postControls(controlsOpen)}
-                        src={`/${component.slug}?embed=1`}
-                        title={`${component.name} demo`}
-                        className={`lab-frame ${
-                          view === "mobile" ? "lab-frame--mobile" : ""
-                        }`}
-                      />
-                    )}
+                    <iframe
+                      key={theme}
+                      ref={frameRef}
+                      onLoad={() => postControls(controlsOpen)}
+                      src={`/${component.slug}?embed=1`}
+                      title={`${component.name} demo`}
+                      className={`lab-frame ${
+                        view === "mobile" ? "lab-frame--mobile" : ""
+                      }`}
+                    />
                   </div>
 
                   {tab === "code" && <CodePanels component={component} />}

@@ -118,6 +118,19 @@ push("zip link points at the served zip", zipHref === "/r/navigation-bar.zip", z
 await page.locator('[role="tab"]', { hasText: "Props" }).click();
 await page.waitForTimeout(300);
 push("toolbar is gone on the Props tab", (await page.locator(".lab-canvas-tools").count()) === 0, null);
+// The picker page gets the same toolbar: viewport toggle + controls pill
+// driving its own stage's panel.
+await page.goto("http://localhost:4999/press-and-slide-picker");
+await page.waitForTimeout(1200);
+push("picker: toolbar with viewport toggle", (await page.locator(".lab-canvas-tools .lab-view-toggle").count()) === 1, null);
+push("picker: controls pill present", (await page.locator(".lab-tool-pill").count()) === 1, null);
+push("picker: demo embeds the stage iframe", (await page.locator("iframe.lab-frame").count()) === 1, null);
+const pframe = page.frameLocator("iframe.lab-frame");
+await page.waitForTimeout(800);
+push("picker: stage shows the task list", (await pframe.locator(".picker-demo__row").count()) === 8, null);
+await page.locator(".lab-tool-pill").click();
+await page.waitForTimeout(300);
+push("picker: controls pill opens its panel", (await pframe.locator(".demo-controls--headless:not([hidden])").count()) === 1, null);
 push("no page errors", errors.length === 0, errors);
 
 for (const [name, pass, detail] of results)

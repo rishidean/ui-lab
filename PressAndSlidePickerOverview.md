@@ -10,6 +10,17 @@ spec (pre-lab, 2026-08-05 import) is preserved verbatim at
 deviations from it are recorded here. See `HANDOFF.md` for session
 continuity.
 
+## Demo stage (2026-09-15)
+
+The stage is a task list — eight rows of gradient tiles (the
+NavigationBar stage's tile grammar) each carrying one picker as its
+status chip — because changing a status in a list is the problem the
+component exists for. It shares the lab's DemoControls panel (option
+set: status / priority / t-shirt size; long-press hold; option width;
+all URL-pinnable as `?set=&hold=&item=` for recordings), embedded in
+the site's demo canvas like the bar, with the panel hung from the left
+so it never covers the chips. Covered by `scripts/a11y/a11y-picker-stage.mjs`.
+
 ## Purpose
 
 The most frequent operation in a task tool is changing status, and in most

@@ -71,6 +71,11 @@
   padding-top: 0.85rem;
 }
 
+.demo-controls--left {
+  right: auto;
+  left: 0.85rem;
+}
+
 .demo-controls__legend {
   position: absolute;
   width: 1px;

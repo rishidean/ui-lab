@@ -1,28 +1,42 @@
 /*
- * Gallery Plinth reminder: the canvas stays visually silent (theme canvas
- * token) while the picker's glass surfaces carry the lab treatment. No
- * per-page token overrides — the component is theme-aware now.
+ * PressAndSlidePicker demo stage styles.
+ * Part of Rishi's UI Lab — © 2026 Rishi Dean (rishidean.com)
+ * MIT license · github.com/rishidean/ui-lab
+ *
+ * Sibling of NavigationBarStage.css: the canvas stays quiet, content is
+ * gradient tiles with no skeleton controls, and the picker is the only
+ * high-fidelity surface. No transform anywhere here — a transformed
+ * ancestor would re-base the picker's fixed-position strip.
  */
 .picker-demo {
-  display: grid;
+  position: relative;
   width: 100%;
-  min-height: 100%;
-  place-items: center;
-  padding: clamp(4.5rem, 10vw, 8rem) 1.25rem;
+  height: 100%;
+  overflow: hidden;
   background: var(--bg-canvas);
 }
 
-.picker-demo__stage {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  gap: 2rem;
-  text-align: center;
+.picker-demo__scroll-area {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.picker-demo__scroll-area::-webkit-scrollbar {
+  display: none;
+}
+
+.picker-demo__content {
+  width: min(100% - 2rem, 46rem);
+  margin-inline: auto;
+  padding: clamp(3rem, 9vh, 5rem) 0 6rem;
 }
 
 .picker-demo__instruction {
-  max-width: 29rem;
-  margin: 0;
+  margin: 0 0 1.25rem;
   color: var(--text-tertiary);
   font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   font-size: clamp(0.78rem, 1.5vw, 0.9rem);
@@ -31,64 +45,87 @@
   letter-spacing: -0.005em;
 }
 
-/* No transform here — a scaled ancestor used to re-base the picker's
-   fixed-position strip (transformed ancestors become the containing block
-   for fixed descendants). Prominence comes from the stage's renderChip. */
-.picker-demo__object {
+.picker-demo__list {
   display: grid;
-  min-width: 8rem;
-  min-height: 4rem;
-  place-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-/* Recording-scale trigger: the component's own chip-pill formula (see
-   PressAndSlidePicker.css), sized up. Pill = state, sentence case, DM Sans. */
-.picker-demo__chip {
-  display: inline-flex;
+/* One task row: a title line and a meta line as gradient tiles (the
+   NavigationBar stage's tile grammar, one hue), the status chip at the
+   right. Chip sits above the tiles so its strip can overlay neighbours. */
+.picker-demo__row {
+  --demo-hue: 264;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: 1.25rem;
+  row-gap: 0.55rem;
   align-items: center;
-  gap: 0.55rem;
-  height: 2.6rem;
-  padding: 0 1.3rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid oklch(0.9 0.02 var(--demo-hue) / 0.7);
+  border-radius: 1.35rem;
+  background: linear-gradient(
+    150deg,
+    oklch(0.975 0.01 var(--demo-hue)),
+    oklch(0.95 0.02 var(--demo-hue))
+  );
+}
+
+.picker-demo__row:nth-child(4n + 2) { --demo-hue: 172; }
+.picker-demo__row:nth-child(4n + 3) { --demo-hue: 42; }
+.picker-demo__row:nth-child(4n + 4) { --demo-hue: 146; }
+
+.picker-demo__title,
+.picker-demo__meta {
+  display: block;
+  height: 0.7rem;
   border-radius: 999px;
-  border: 1px solid
-    color-mix(in oklab, var(--psp-option-color) 18%, transparent);
-  background: color-mix(in oklab, var(--psp-option-color) 9%, transparent);
-  color: color-mix(in oklab, var(--psp-option-color) 58%, var(--gray-900));
-  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  transition:
-    background 0.16s cubic-bezier(0.2, 0, 0, 1),
-    border-color 0.16s cubic-bezier(0.2, 0, 0, 1),
-    box-shadow 0.16s cubic-bezier(0.2, 0, 0, 1);
+  background: oklch(0.86 0.06 var(--demo-hue) / 0.8);
 }
 
-.picker-demo__chip--engaged {
-  border-color: color-mix(in oklab, var(--psp-option-color) 34%, transparent);
-  background: color-mix(in oklab, var(--psp-option-color) 16%, transparent);
-  box-shadow: inset 0 1px 2px rgb(49 36 72 / 0.08);
+.picker-demo__meta {
+  width: 28%;
+  height: 0.5rem;
+  background: oklch(0.86 0.06 var(--demo-hue) / 0.45);
 }
 
-.picker-demo__chip-dot {
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 999px;
-  flex-shrink: 0;
-  background: var(--psp-option-color);
+.picker-demo__row > :last-child {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  justify-self: end;
 }
 
-@media (max-width: 30rem) {
-  .picker-demo {
-    padding-inline: 0.85rem;
+@media (max-width: 36rem) {
+  .picker-demo__content {
+    width: min(100% - 1.25rem, 46rem);
+    padding-top: 2rem;
   }
 
-  .picker-demo__stage {
-    gap: 1.6rem;
+  .picker-demo__row {
+    padding: 0.95rem 1rem;
+    column-gap: 0.85rem;
   }
+}
 
-  .picker-demo__instruction {
-    max-width: 20rem;
-  }
+/* ── Ink (dark) ────────────────────────────────────────────────────── */
+
+.dark .picker-demo__row {
+  border-color: oklch(0.36 0.03 var(--demo-hue) / 0.6);
+  background: linear-gradient(
+    150deg,
+    oklch(0.29 0.03 var(--demo-hue)),
+    oklch(0.235 0.025 var(--demo-hue))
+  );
+}
+
+.dark .picker-demo__title,
+.dark .picker-demo__meta {
+  background: oklch(0.5 0.05 var(--demo-hue) / 0.6);
+}
+
+.dark .picker-demo__meta {
+  background: oklch(0.5 0.05 var(--demo-hue) / 0.35);
 }

@@ -4,6 +4,30 @@ Working doc for continuing the lab's component work in a fresh session.
 Repo: `github.com/rishidean/ui-lab` (push to `main` auto-deploys on
 Railway via the Dockerfile). Owner: Rishi (rishidean).
 
+## Latest session (2026-09-15, later) — picker lands, site siblings
+
+1. **PressAndSlidePicker overhaul committed** (`3109c95`) after six weeks
+   uncommitted: portal-to-body positioning fix, design-system surfaces,
+   co-located CSS. Record in `PressAndSlidePickerOverview.md`.
+2. **Picker stage is a task list** — eight rows, one picker each, the
+   nav stage's tile grammar; option set / hold / width tunables. The
+   custom `PickerDemo` card on the showcase is gone; every component now
+   embeds its stage iframe and gets the same toolbar (viewport toggle +
+   controls pill).
+3. **DemoControls is a shared shell** (`stages/DemoControls.tsx`: panel +
+   `RangeRow`/`SelectRow`/`CheckRow`; `stages/useDemoControls.ts`: the
+   embed/postMessage/open plumbing and `demoParam`/`demoParamEnum`).
+   `align="left"` hangs the panel from the left for stages whose live
+   controls sit at the right edge.
+4. Tests: `a11y-picker-stage.mjs` (long-press → slide → commit, option
+   set switch, hold timing) and `a11y-site.mjs` extended to the picker
+   page.
+
+Next for the picker, in order (Rishi's call): make it drop-in #2 through
+the registry pipeline (folder is already self-contained; needs the
+`install` entry + build script generalised to a second component), then
+a discoverability affordance for the hold.
+
 ## Latest session (2026-09-15) — recap
 
 **NavigationBar drop-in pass — merged to `main` and deployed.**

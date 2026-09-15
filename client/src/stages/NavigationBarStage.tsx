@@ -39,7 +39,8 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Camera, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import DemoControls from "./DemoControls";
+import DemoControls, { CheckRow, RangeRow, SelectRow } from "./DemoControls";
+import { demoParam, demoParamEnum, useDemoControls } from "./useDemoControls";
 import "./NavigationBarStage.css";
 
 /** Per-tile height weights; rotated per filter so the grid reshuffles. */
@@ -52,14 +53,6 @@ const ASSISTANT_REPLIES = [
 const EASE = [0.2, 0, 0, 1] as const;
 const EASE_OUT = [0, 0, 0.2, 1] as const;
 const EASE_IN = [0.4, 0, 1, 1] as const;
-
-/** Numeric demo-control override from the query string, clamped to the
-    panel's own range; falls back to the default when absent or unparsable. */
-function demoParam(name: string, fallback: number, min: number, max: number) {
-  const raw = new URLSearchParams(window.location.search).get(name);
-  const n = raw === null ? NaN : Number(raw);
-  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
-}
 
 // ── UtilityButton surfaces ──────────────────────────────────────────────
 // Every kind runs the same clear-out first (both circles recede, labels
@@ -156,33 +149,10 @@ export default function NavigationBarStage() {
   const [reducedMotionOverride, setReducedMotionOverride] = useState(
     () => new URLSearchParams(window.location.search).get("rm") === "1"
   );
-  const [size, setSize] = useState<NavigationBarSize>(() => {
-    const raw = new URLSearchParams(window.location.search).get("size");
-    return raw && Object.hasOwn(NAV_SIZE_SPECS, raw)
-      ? (raw as NavigationBarSize)
-      : "default";
-  });
-  // Embedded in the lab site's demo canvas (?embed=1): the site's own
-  // toolbar pill opens and closes the panel via postMessage, and the
-  // panel renders headless (no summary row). Standalone (phones, the
-  // bare route): a <details> that starts open on wide viewports.
-  const [embedded] = useState(() =>
-    new URLSearchParams(window.location.search).has("embed")
+  const [size, setSize] = useState<NavigationBarSize>(() =>
+    demoParamEnum("size", "default", Object.keys(NAV_SIZE_SPECS) as NavigationBarSize[])
   );
-  const [controlsOpen, setControlsOpen] = useState(
-    () => !embedded && window.innerWidth >= 640
-  );
-  useEffect(() => {
-    if (!embedded) return;
-    const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; open?: unknown };
-      if (data?.type === "lab:demo-controls" && typeof data.open === "boolean")
-        setControlsOpen(data.open);
-    };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [embedded]);
+  const controls = useDemoControls();
 
   // ── Assistant mode (in-bar chat) ──
   // The stage owns the transcript so it survives close/reopen; replies
@@ -398,18 +368,46 @@ export default function NavigationBarStage() {
     >
       {!chromeHidden && (
         <DemoControls
-          depth={depth}
-          onDepth={setDepth}
-          tempo={tempo}
-          onTempo={setTempo}
-          reducedMotion={reducedMotionOverride}
-          onReducedMotion={setReducedMotionOverride}
-          size={size}
-          onSize={setSize}
-          open={controlsOpen}
-          onOpenChange={setControlsOpen}
-          headless={embedded}
-        />
+          legend="NavigationBar tunables"
+          open={controls.open}
+          onOpenChange={controls.setOpen}
+          headless={controls.headless}
+        >
+          <RangeRow
+            id="demo-controls-depth"
+            label="Dormancy depth"
+            value={depth}
+            display={`${Math.round(depth * 100)}%`}
+            min={0}
+            max={1}
+            step={0.05}
+            onChange={setDepth}
+          />
+          <RangeRow
+            id="demo-controls-tempo"
+            label="Tempo"
+            value={tempo}
+            display={`${tempo.toFixed(1)}×`}
+            min={0.6}
+            max={3}
+            step={0.1}
+            onChange={setTempo}
+          />
+          <SelectRow
+            id="demo-controls-size"
+            label="Size"
+            value={size}
+            display={`${NAV_SIZE_SPECS[size].circle}px`}
+            options={(Object.keys(NAV_SIZE_SPECS) as NavigationBarSize[]).map(s => ({ value: s, label: s }))}
+            onChange={setSize}
+          />
+          <CheckRow
+            id="demo-controls-reduced-motion"
+            label="Reduced motion override"
+            checked={reducedMotionOverride}
+            onChange={setReducedMotionOverride}
+          />
+        </DemoControls>
       )}
       <div
         ref={scrollAreaRef}
