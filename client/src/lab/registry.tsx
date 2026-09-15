@@ -225,8 +225,16 @@ const [status, setStatus] = useState("todo");
  * Interaction model: long-press (touch or mouse) opens the strip; slide to an
  * option and release to commit. A plain click opens an accessible fallback
  * listbox with full keyboard support. Haptics fire on supported devices.
- * Styling reads --surface-overlay, --border-subtle, --shadow-lg, and the text
- * scale variables — scope them per-page to restyle (see the demo's CSS).
+ *
+ * Styling contract: the strip and fallback are portaled to document.body —
+ * fully-rounded glass capsules (.glass-overlay from theme/glass.css) holding 34px
+ * rounded-full pill chips, the NavigationBar filter strip's proportions.
+ * Pill = state: options rest as ghost dot+label chips; the active option
+ * carries a tint pill in its own hue (color-mix 16% bg / 28% border, label
+ * ink mixed with --gray-900 so it reads in both themes). Per-option colors
+ * stay props (option.color / option.bg). DM Sans, text-scale tokens,
+ * --blur-lg. Motion follows the site grammar — EASE curves, TEMPO-scaled
+ * durations, no overshoot.
  */`;
 
 const bottomSheetUsage = `import { useRef, useState } from "react";
@@ -461,7 +469,7 @@ export const labComponents: LabComponent[] = [
     name: "Press & Slide Picker",
     tagline: "Facebook-Reactions-style selection: long-press, slide, release.",
     description:
-      "A one-gesture picker for small option sets. Long-press the chip and a strip of options springs out; slide to the one you want and release to commit — with haptic ticks along the way. A plain click opens an accessible fallback listbox with full keyboard navigation, so the fast path never excludes anyone. Viewport-aware positioning keeps the strip on screen anywhere you mount it.",
+      "A one-gesture picker for small option sets. Long-press the chip and a strip of options springs out; slide to the one you want and release to commit — with haptic ticks along the way. A plain click opens an accessible fallback listbox with full keyboard navigation, so the fast path never excludes anyone. The strip is portal-rendered with viewport-aware positioning, so it stays pinned to the chip anywhere you mount it — including inside transformed or scrolling ancestors.",
     tags: ["gesture", "input", "touch", "a11y"],
     status: "stable",
     accent:
@@ -469,7 +477,13 @@ export const labComponents: LabComponent[] = [
     Stage: PressAndSlidePickerStage,
     source: pressAndSlidePickerSource,
     sourceFile: "PressAndSlidePicker.tsx",
-    dependencies: ["react", "clsx + tailwind-merge (cn)"],
+    dependencies: [
+      "react",
+      "react-dom (createPortal)",
+      "clsx + tailwind-merge (cn)",
+      "theme/theme.css (token contract)",
+      "theme/glass.css (.glass-overlay)",
+    ],
     showcase: {
       category: "interaction / gesture",
       blurb: "Press, slide, release — one gesture instead of three.",

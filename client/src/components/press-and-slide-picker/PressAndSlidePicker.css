@@ -1,0 +1,273 @@
+/* PressAndSlidePicker — self-contained styles. Reads the host app's theme
+   variables where present, with neutral fallbacks. The strip and fallback
+   surfaces additionally take the lab's `.glass-overlay` class (theme/glass.css)
+   so they share the same glass treatment as the NavigationBar overlays.
+
+   Design grammar (from the NavigationBar's filter strip): a fully-rounded
+   glass capsule holding one row of 34px pill chips — ghost at rest, and
+   the pill treatment reserved for state. The active option's pill is the
+   select-pill formula translated into the option's own hue: a color-mix
+   tint background, tinted border, and label ink mixed with --gray-900
+   (which inverts per theme, so the same mix reads in light and dark).
+
+   Motion durations/easings arrive as --psp-* custom properties stamped by
+   the component (TS constants are the single source — see DUR/TEMPO). */
+
+.psp-chip {
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.psp-chip:focus-visible {
+  outline: 2px solid
+    color-mix(in oklab, var(--iris-700, #6d28d9) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+/* ── Default chip (trigger pill) ──────────────────────── */
+
+.psp-chip-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 2.125rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  border: 1px solid
+    color-mix(in oklab, var(--psp-option-color) 18%, transparent);
+  background: color-mix(in oklab, var(--psp-option-color) 9%, transparent);
+  color: color-mix(
+    in oklab,
+    var(--psp-option-color) 58%,
+    var(--gray-900, #18141f)
+  );
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  transition:
+    background var(--psp-dur-item, 0.18s)
+      var(--psp-ease, cubic-bezier(0.2, 0, 0, 1)),
+    border-color var(--psp-dur-item, 0.18s)
+      var(--psp-ease, cubic-bezier(0.2, 0, 0, 1)),
+    box-shadow var(--psp-dur-item, 0.18s)
+      var(--psp-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+/* Engaged (strip open) — the pill firms up, same move as
+   .nav-action-chip--active. */
+.psp-chip-pill--engaged {
+  border-color: color-mix(in oklab, var(--psp-option-color) 34%, transparent);
+  background: color-mix(in oklab, var(--psp-option-color) 16%, transparent);
+  box-shadow: inset 0 1px 2px rgb(49 36 72 / 0.08);
+}
+
+.psp-chip-pill__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: var(--psp-option-color);
+}
+
+/* ── Strip (gesture mode) ─────────────────────────────── */
+
+.psp-strip {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  border-radius: 999px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  animation: psp-in var(--psp-dur-in, 0.26s)
+    var(--psp-ease-out, cubic-bezier(0, 0, 0.2, 1)) both;
+}
+
+.psp-strip--out {
+  animation: psp-out var(--psp-dur-out, 0.18s)
+    var(--psp-ease-in, cubic-bezier(0.4, 0, 1, 1)) both;
+  pointer-events: none;
+}
+
+.psp-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  transition:
+    background var(--psp-dur-item, 0.18s)
+      var(--psp-ease, cubic-bezier(0.2, 0, 0, 1)),
+    border-color var(--psp-dur-item, 0.18s)
+      var(--psp-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+/* Pill = state: the under-finger option carries the tinted pill, in its
+   own hue. As the finger slides, the pill hops chips — the gesture-layer
+   echo of the filter strip's sliding highlight. */
+.psp-item--active {
+  border-color: color-mix(in oklab, var(--psp-option-color) 28%, transparent);
+  background: color-mix(in oklab, var(--psp-option-color) 16%, transparent);
+}
+
+.psp-item__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: var(--psp-option-color);
+}
+
+.psp-item__label {
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--text-secondary, #625a6d);
+  transition: color var(--psp-dur-item, 0.18s)
+    var(--psp-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.psp-item--compact .psp-item__label {
+  font-size: 12px;
+}
+
+/* The committed value stays typographically present while the pill is
+   elsewhere — labels trade colors, the NavigationBar move. */
+.psp-item--current .psp-item__label {
+  color: var(--text-primary, #241c33);
+  font-weight: 600;
+}
+
+.psp-item--active .psp-item__label {
+  color: color-mix(
+    in oklab,
+    var(--psp-option-color) 58%,
+    var(--gray-900, #18141f)
+  );
+  font-weight: 600;
+}
+
+/* ── Fallback (tap mode) ──────────────────────────────── */
+
+.psp-fallback {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  min-width: max-content;
+  padding: 0.25rem;
+  border-radius: 999px;
+  animation: psp-in var(--psp-dur-in, 0.26s)
+    var(--psp-ease-out, cubic-bezier(0, 0, 0.2, 1)) both;
+}
+
+.psp-fallback__option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 2.125rem;
+  padding: 0 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  color: var(--text-secondary, #625a6d);
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  transition:
+    background var(--psp-dur-item, 0.18s)
+      var(--psp-ease, cubic-bezier(0.2, 0, 0, 1)),
+    border-color var(--psp-dur-item, 0.18s)
+      var(--psp-ease, cubic-bezier(0.2, 0, 0, 1)),
+    color var(--psp-dur-item, 0.18s) var(--psp-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.psp-fallback__option:hover {
+  background: var(--action-ghost-bg-hover, rgb(109 40 217 / 0.07));
+}
+
+/* Inset surface — ring inside its own radius (site focus convention). */
+.psp-fallback__option:focus-visible {
+  outline: 2px solid
+    color-mix(in oklab, var(--iris-700, #6d28d9) 34%, transparent);
+  outline-offset: -2px;
+}
+
+.psp-fallback__option[aria-selected="true"] {
+  border-color: color-mix(in oklab, var(--psp-option-color) 28%, transparent);
+  background: color-mix(in oklab, var(--psp-option-color) 16%, transparent);
+  color: color-mix(
+    in oklab,
+    var(--psp-option-color) 58%,
+    var(--gray-900, #18141f)
+  );
+  font-weight: 600;
+}
+
+.psp-fallback__option[aria-selected="true"]:hover {
+  background: color-mix(in oklab, var(--psp-option-color) 16%, transparent);
+}
+
+.psp-fallback__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: var(--psp-option-color);
+}
+
+/* ── Motion ───────────────────────────────────────────── */
+
+@keyframes psp-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes psp-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98) translateY(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .psp-strip,
+  .psp-strip--out,
+  .psp-fallback {
+    animation: none !important;
+  }
+  .psp-item,
+  .psp-item__dot,
+  .psp-item__label,
+  .psp-chip-pill,
+  .psp-fallback__option {
+    transition: none !important;
+  }
+}
