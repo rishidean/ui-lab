@@ -58,6 +58,16 @@ export type ShowcaseMeta = {
   beats?: PresentationBeat[];
 };
 
+/** Served install artifacts for a component (see scripts/registry/build.mjs). */
+export type LabInstall = {
+  /** Site-relative manifest path, e.g. "/r/navigation-bar.json". */
+  manifest: string;
+  /** Site-relative zip path for the no-CLI route. */
+  zip: string;
+  /** npm packages the copied files import. */
+  npm: string[];
+};
+
 export type LabComponent = {
   slug: string;
   name: string;
@@ -73,6 +83,9 @@ export type LabComponent = {
   usage: string;
   /** Runnable host pages, shown on the Code tab and at ?example=<id>. */
   examples?: LabExample[];
+  /** One-command install: a registry manifest + zip served from /r/,
+   *  built by scripts/registry/build.mjs. Omit to hide the panel. */
+  install?: LabInstall;
   tryIt: string[];
   showcase: ShowcaseMeta;
   aliases?: string[];
@@ -416,6 +429,11 @@ export const labComponents: LabComponent[] = [
     },
     usage: navigationBarUsage,
     examples: navigationBarExamples,
+    install: {
+      manifest: "/r/navigation-bar.json",
+      zip: "/r/navigation-bar.zip",
+      npm: ["motion", "lucide-react", "clsx", "tailwind-merge"],
+    },
     tryIt: [
       "Leave the bar alone — it desaturates and the tab icon goes neutral; touch any surface (menu, filter, search, assistant, sheet, or a pressed action) and colour returns",
       "Scroll the canvas down to collapse the bar, up to expand it",

@@ -548,10 +548,15 @@ the two morph components in the stage (raw seconds, no TEMPO).
 the CSS split (`glass.css` / `navigation-bar.css` / tokens-only
 `theme.css`), the self-contained `lib.ts`, the variable collector +
 drift test, `size` presets, `useCollapseOnScroll`, five runnable
-examples, and the component README. One item stayed open: the optional
-shadcn registry manifest (spec §7 of
-`docs/superpowers/specs/2026-09-14-navigation-bar-drop-in-design.md`) —
-decide now that the folder is clean.
+examples, and the component README. The optional manifest (spec §7)
+landed the same day: `scripts/registry/build.mjs` writes
+`client/public/r/navigation-bar.{json,zip}` before every `dev`/`build`
+(gitignored), the Code tab opens with an Install panel (one-command
+`npx shadcn add <origin>/r/navigation-bar.json`, or the zip), the
+Desktop/Mobile switch moved from the tab row to an icon toggle on the
+demo canvas (Demo tab only), and `.lab-main` got `min-width: 0` so the
+Code tab no longer stretches past the viewport. `a11y-site.mjs` covers
+all of it. Suite: 203 / 0.
 
 0. ~~**NavigationBar drop-in pass**~~ — DONE 2026-09-15 (see the latest
    recap). The plan below is kept as the record of what was decided.
