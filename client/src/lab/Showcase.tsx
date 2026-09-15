@@ -22,10 +22,12 @@ import {
   type ComponentType,
 } from "react";
 import { Link } from "wouter";
+import { Monitor, Smartphone } from "lucide-react";
 import {
   AUTHOR_URL,
   labComponents,
   type LabComponent,
+  type LabInstall,
   type PresentationBeat,
   type PropRow,
 } from "@/lab/registry";
@@ -96,10 +98,71 @@ function CopyChip({ text }: { text: string }) {
   );
 }
 
-/** Code tab body — the component source and its usage snippet. */
+/** Desktop / phone viewport toggle, pinned to the demo canvas. */
+function ViewToggle({
+  view,
+  onChange,
+}: {
+  view: ViewId;
+  onChange: (v: ViewId) => void;
+}) {
+  return (
+    <div className="lab-view-toggle" role="group" aria-label="Demo viewport">
+      {VIEWS.map(v => {
+        const Icon = v.id === "mobile" ? Smartphone : Monitor;
+        return (
+          <button
+            key={v.id}
+            type="button"
+            aria-pressed={view === v.id}
+            aria-label={`${v.label} viewport`}
+            title={`${v.label} viewport`}
+            className={`lab-btn lab-view-toggle__btn ${
+              view === v.id ? "lab-view-toggle__btn--active" : ""
+            }`}
+            onClick={() => onChange(v.id)}
+          >
+            <Icon aria-hidden="true" />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** One-command install: the served registry manifest, or the zip. */
+function InstallPanel({ install, name }: { install: LabInstall; name: string }) {
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  const command = `npx shadcn@latest add ${origin}${install.manifest}`;
+  return (
+    <div className="lab-code lab-install">
+      <div className="lab-code__head">
+        <span>install</span>
+        <CopyChip text={command} />
+      </div>
+      <pre className="lab-code__pre lab-install__cmd" data-install-command>
+        {command}
+      </pre>
+      <p className="lab-install__note">
+        One command copies the {name} folder into your project, adds{" "}
+        <code>{install.npm.join(", ")}</code>, and injects its CSS variables.
+        Needs Tailwind v4. No CLI?{" "}
+        <a className="lab-install__zip" href={install.zip} download>
+          download the folder as a zip
+        </a>{" "}
+        — the same files plus a <code>tokens.css</code>.
+      </p>
+    </div>
+  );
+}
+
+/** Code tab body — the install panel, the component source, examples, usage. */
 function CodePanels({ component }: { component: LabComponent }) {
   return (
     <div className="lab-code-stack">
+      {component.install && (
+        <InstallPanel install={component.install} name={component.name} />
+      )}
       <div className="lab-code">
         <div className="lab-code__head">
           <span>{component.sourceFile}</span>
@@ -428,25 +491,13 @@ export function Showcase({ component }: { component: LabComponent }) {
                     </button>
                   ))}
                 </div>
-                <div className="lab-tabs__group lab-tabs__group--views">
-                  {VIEWS.map(v => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      aria-pressed={view === v.id}
-                      className={`lab-btn lab-tab ${
-                        view === v.id ? "lab-tab--active" : ""
-                      }`}
-                      onClick={() => setView(v.id)}
-                    >
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <div className="lab-canvas-wrap">
                 <div className="lab-canvas">
+                  {tab === "demo" && (
+                    <ViewToggle view={view} onChange={setView} />
+                  )}
                   {/* Demo stays mounted across tab switches. */}
                   <div
                     className={`lab-canvas__keep ${

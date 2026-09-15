@@ -8,8 +8,21 @@ transition is choreographed; nothing pops.
 
 ## Install
 
-Copy these files into your project (paths are the lab's; put them
-wherever you keep components):
+One command, from the lab site's Code tab (the URL is the site you are
+reading this on):
+
+```bash
+npx shadcn@latest add <site>/r/navigation-bar.json
+```
+
+That copies the folder below into your components directory, adds the
+four npm dependencies, and injects the CSS variables. No CLI? The same
+Code tab offers `/r/navigation-bar.zip` — the folder plus `glass.css`
+and a generated `tokens.css`. Both artifacts are built from this source
+by `scripts/registry/build.mjs` on every build.
+
+Or copy these files by hand (paths are the lab's; put them wherever you
+keep components):
 
 - `components/navigation-bar/` — the whole folder (`NavigationBar.tsx`,
   `navigation-bar.css`, `useCollapseOnScroll.ts`, `lib.ts`, `index.ts`)
