@@ -125,22 +125,25 @@ dependencies (declared in the manifest), as shadcn does.
 ### 4. Sizing
 
 **Prop.** `size?: "compact" | "default" | "large"` (default
-`"default"`). It sets four custom properties on the bar's root
+`"default"`). It sets five custom properties on the bar's root
 element via an inline style:
 
-| preset | `--nav-circle` | `--nav-chip-h` | `--nav-label` | `--nav-max-w` |
-| --- | --- | --- | --- | --- |
-| compact | 48px | 30px | 13px | 28rem |
-| default | 56px | 34px | 14px | 32rem |
-| large | 60px | 38px | 14px | 36rem |
+| preset | `--nav-circle` | `--nav-chip-h` | `--nav-label` | `--nav-chip-px` | `--nav-max-w` |
+| --- | --- | --- | --- | --- | --- |
+| compact | 48px | 30px | 13px | 16px | 28rem |
+| default | 56px | 34px | 14px | 16px | 32rem |
+| large | 60px | 38px | 14px | 12px | 36rem |
 
 **Classes.** The literals that define the cluster's scale read the
 variables through Tailwind arbitrary values: `w-[var(--nav-circle)]
 h-[var(--nav-circle)]`, `h-[var(--nav-chip-h)]`,
-`text-[length:var(--nav-label)]`, `max-w-[var(--nav-max-w)]`. The
-13px secondary label becomes `calc(var(--nav-label) - 1px)`. Padding,
-gaps, and radii stay literal — they are not what a consumer means by
-"bigger".
+`text-[length:var(--nav-label)]`, `max-w-[var(--nav-max-w)]`, and the
+circle SLOTS (the wrappers whose framer width target was a literal 56)
+read `sizeSpec.circle`. The 13px secondary label becomes
+`calc(var(--nav-label) - 1px)`. Chip horizontal padding reads
+`--nav-chip-px` because the pill narrows when the circles grow on a
+390px phone (row 212 / 196 / 188px across the presets) and large needs
+12px to keep two actions inside the pill. Gaps and radii stay literal.
 
 **Literal audit.** Rect-driven motion (sheet origins, pill stretch,
 menu absorb) measures with `getBoundingClientRect` and needs no change.
