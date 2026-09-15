@@ -165,12 +165,13 @@ const DEFAULT_TEMPO = 1.3;
 export type NavigationBarSize = "compact" | "default" | "large";
 export const NAV_SIZE_SPECS: Record<
   NavigationBarSize,
-  { circle: number; chip: number; label: number; maxW: string }
+  { circle: number; chip: number; label: number; chipPx: number; maxW: string }
 > = {
   // large keeps the default label: the pill's row does not widen with the circles, so 15px overflowed two actions at 390px.
-  compact: { circle: 48, chip: 30, label: 13, maxW: "28rem" },
-  default: { circle: 56, chip: 34, label: 14, maxW: "32rem" },
-  large: { circle: 60, chip: 38, label: 14, maxW: "36rem" },
+  // large also tightens the chip padding: its bigger circle slots leave the action row 8px narrower at 390px.
+  compact: { circle: 48, chip: 30, label: 13, chipPx: 16, maxW: "28rem" },
+  default: { circle: 56, chip: 34, label: 14, chipPx: 16, maxW: "32rem" },
+  large: { circle: 60, chip: 38, label: 14, chipPx: 12, maxW: "36rem" },
 };
 
 const DUR = {
@@ -421,6 +422,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     "--nav-circle": `${sizeSpec.circle}px`,
     "--nav-chip-h": `${sizeSpec.chip}px`,
     "--nav-label": `${sizeSpec.label}px`,
+    "--nav-chip-px": `${sizeSpec.chipPx}px`,
     "--nav-max-w": sizeSpec.maxW,
   } as React.CSSProperties;
 
@@ -1633,12 +1635,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           {/* LEFT: Tab Switcher / Logo */}
           <motion.div
             ref={navigationMenuContainerRef}
-            className="relative h-14 flex items-center"
+            className="relative h-[var(--nav-circle)] flex items-center"
             style={{
               pointerEvents: isBarSurrendered ? "none" : "auto",
             }}
             animate={{
-              width: isBarSurrendered ? 0 : 56,
+              width: isBarSurrendered ? 0 : sizeSpec.circle,
               // Sheets and takeovers now recede the circle exactly like
               // search/assistant — width and opacity together, not a
               // fade-in-place. Filter expansion leaves it FIXED — the strip
@@ -2305,7 +2307,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                             prefersReducedMotion ? undefined : { scale: 0.96 }
                           }
                           className={cn(
-                            "nav-filter-option relative z-10 flex-[1_1_0%] min-w-fit h-[var(--nav-chip-h)] px-4 rounded-full text-[length:calc(var(--nav-label)-1px)] font-medium whitespace-nowrap",
+                            "nav-filter-option relative z-10 flex-[1_1_0%] min-w-fit h-[var(--nav-chip-h)] px-[var(--nav-chip-px)] rounded-full text-[length:calc(var(--nav-label)-1px)] font-medium whitespace-nowrap",
                             "transition-colors duration-200",
                             isVisuallyActive
                               ? "text-[color:var(--select-fg)]"
@@ -2403,7 +2405,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                               /* min-w-fit: with few actions chips stretch to
                                  fill; with many the row scrolls horizontally
                                  instead of squishing labels. */
-                              "nav-action-chip group/action flex-[1_1_0%] min-w-fit h-[var(--nav-chip-h)] px-4 rounded-full flex items-center justify-center text-center",
+                              "nav-action-chip group/action flex-[1_1_0%] min-w-fit h-[var(--nav-chip-h)] px-[var(--nav-chip-px)] rounded-full flex items-center justify-center text-center",
                               isEngaged && "nav-action-chip--active"
                             )}
                             whileTap={
@@ -2472,7 +2474,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           {/* RIGHT: Action button (Chat/AI) */}
           {showUtilityButton && utilityAction && (
             <motion.div
-              className="relative h-14 flex items-center"
+              className="relative h-[var(--nav-circle)] flex items-center"
               style={{
                 // Disabled the moment a utility transition begins — the
                 // surface owns the interaction until it closes.
@@ -2489,7 +2491,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 // the strip widens into it (width collapses only after the
                 // undot fade; see utilityButtonTransition).
                 width:
-                  isCollapsed || isBarSurrendered || isFilterExpanded ? 0 : 56,
+                  isCollapsed || isBarSurrendered || isFilterExpanded
+                    ? 0
+                    : sizeSpec.circle,
                 // Hidden states shrink it slightly as it fades, so every
                 // return reads as a pop-in — dotting the horizontal "i".
                 scale:

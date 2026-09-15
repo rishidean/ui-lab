@@ -6,8 +6,10 @@
  * this — it has no equivalent in the component itself.
  */
 import type { ChangeEvent } from "react";
-import { NAV_SIZE_SPECS } from "@/components/navigation-bar";
-import type { NavigationBarSize } from "@/components/navigation-bar";
+import {
+  NAV_SIZE_SPECS,
+  type NavigationBarSize,
+} from "@/components/navigation-bar";
 import "./DemoControls.css";
 
 interface DemoControlsProps {

@@ -170,7 +170,9 @@ export default function NavigationBarStage() {
   );
   const [size, setSize] = useState<NavigationBarSize>(() => {
     const raw = new URLSearchParams(window.location.search).get("size");
-    return raw && raw in NAV_SIZE_SPECS ? (raw as NavigationBarSize) : "default";
+    return raw && Object.hasOwn(NAV_SIZE_SPECS, raw)
+      ? (raw as NavigationBarSize)
+      : "default";
   });
   // Read once at mount — never on every render — so the panel starts
   // open on wide viewports and collapsed on narrow ones.

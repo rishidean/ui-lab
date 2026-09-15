@@ -35,6 +35,16 @@ for (const size of ["compact", "default", "large"]) {
     [...document.querySelectorAll('[class*="w-[var(--nav-circle)]"]')]
       .map(el => Math.round(el.getBoundingClientRect().width)));
   push(`${size}: both circles are the same width`, circles.length >= 2 && circles.every(w => w === circles[0]), circles);
+
+  // The two flex slots that HOLD the circles (left tab switcher, right utility
+  // button). They are the only elements carrying h-[var(--nav-circle)] without
+  // w-[var(--nav-circle)] — their width is the framer animate target, which is
+  // exactly what used to be hardcoded to 56 and pinned the action row.
+  const slots = await page.evaluate(() =>
+    [...document.querySelectorAll(
+      '[class*="h-[var(--nav-circle)]"]:not([class*="w-[var(--nav-circle)]"])'
+    )].map(el => Math.round(el.getBoundingClientRect().width)));
+  push(`${size}: circle slots match the circle`, slots.length === 2 && slots.every(w => w === expected), slots);
   const rowOverflow = await page.evaluate(() => {
     const row = document.querySelector(".navigation-demo__nav-shell .overflow-x-auto");
     return row ? row.scrollWidth - row.clientWidth : -1;
