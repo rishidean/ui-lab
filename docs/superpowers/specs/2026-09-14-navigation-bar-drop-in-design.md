@@ -144,10 +144,11 @@ gaps, and radii stay literal — they are not what a consumer means by
 
 **Literal audit.** Rect-driven motion (sheet origins, pill stretch,
 menu absorb) measures with `getBoundingClientRect` and needs no change.
-Three constants are re-derived from the variables at render time:
-`ASSISTANT_INPUT_ROW_PX` (chip height + 2), menu `min-w` (circle × 3.75,
-rounded), `EDGE_FADE_PX` (circle / 2). Everything else in the timing
-block is time, not size, and is untouched.
+Two constants are re-derived from the variables at render time:
+`ASSISTANT_INPUT_ROW_PX` (chip height + 2) and the menu `min-w`
+(circle × 3.75). `EDGE_FADE_PX` stays literal: the fade on the scroll
+row is a visual constant, not part of the scale. Everything else in the
+timing block is time, not size, and is untouched.
 
 **Guidance** (README): designed for a 360–512px cluster, centred on
 wider screens; the consumer owns the fixed shell, the safe-area inset,
