@@ -17,10 +17,11 @@ wherever you keep components):
   component's CSS
 
 `theme/theme.css` is the lab's full token contract, and it is where the
-generated variable block below comes from — you don't need to copy the
-whole file. Paste the block from "CSS variables" into your global CSS
-instead and adjust it, or remap the variable names to your own design
-tokens.
+generated variable block below comes from. Two ways to bring it in: copy
+`theme/theme.css` whole if you want the lab's full Bench (light) / Bench
+(dark) presets and a file to edit directly, or paste just the generated
+block from "CSS variables" into your own globals if you are remapping to
+your own design tokens — both give the bar the same variable names.
 
 npm dependencies: `motion`, `lucide-react`, `clsx`, `tailwind-merge`.
 Tailwind v4 is required (the bar uses utilities inline).
@@ -196,6 +197,10 @@ that grows out of the bar lands in the wrong place.
 
 ## Styling contract
 
+Two ways to satisfy this: copy `theme.css` whole (below), or paste the
+generated block from the CSS variables section — the same names either
+way.
+
 The component reads the token contract in `client/src/theme/theme.css`
 (accent family, text scale, select pill, glass classes, scrims — with
 Bench (light) and Bench (dark) presets). Copy `theme.css` alongside the
@@ -240,9 +245,10 @@ routing decision inside `onUtilityClick`:
   (`@/components/utility-modal`) from the `UtilityButton`'s CENTER
   point — a full-screen circle-reveal takeover.
 
-`BottomSheet` and `UtilityModal` are optional companions with their own
-pages; the lab's demo stage (`client/src/stages/NavigationBarStage.tsx`)
-wires all three surfaces above one bar.
+`BottomSheet` and `UtilityModal` are optional companions, each with its
+own page with API and usage; the lab's demo stage
+(`client/src/stages/NavigationBarStage.tsx`) wires all three surfaces
+above one bar.
 
 ## What you own
 
