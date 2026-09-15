@@ -35,6 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { focusWhenClear } from "@/lib/a11y";
 import { ChevronDown, Search as SearchGlyph, Sparkles, X } from "lucide-react";
+import "./navigation-bar.css";
 
 // Default collapsed-state glyph: a small brand dot. A brand mark, not a
 // placeholder icon — consumers pass `logo` to supply their own.
