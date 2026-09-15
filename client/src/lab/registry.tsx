@@ -66,6 +66,8 @@ export type LabInstall = {
   zip: string;
   /** npm packages the copied files import. */
   npm: string[];
+  /** The copied files use Tailwind utilities inline (v4 required). */
+  tailwind?: boolean;
 };
 
 export type LabComponent = {
@@ -444,6 +446,7 @@ export const labComponents: LabComponent[] = [
       manifest: "/r/navigation-bar.json",
       zip: "/r/navigation-bar.zip",
       npm: ["motion", "lucide-react", "clsx", "tailwind-merge"],
+      tailwind: true,
     },
     tryIt: [
       "Leave the bar alone — it desaturates and the tab icon goes neutral; touch any surface (menu, filter, search, assistant, sheet, or a pressed action) and colour returns",
@@ -476,6 +479,11 @@ export const labComponents: LabComponent[] = [
       "linear-gradient(135deg, #93c5fd 0%, #fcd34d 40%, #86efac 75%, #fca5a5 100%)",
     Stage: PressAndSlidePickerStage,
     demoControls: true,
+    install: {
+      manifest: "/r/press-and-slide-picker.json",
+      zip: "/r/press-and-slide-picker.zip",
+      npm: ["clsx", "tailwind-merge"],
+    },
     source: pressAndSlidePickerSource,
     sourceFile: "PressAndSlidePicker.tsx",
     dependencies: [
@@ -580,6 +588,7 @@ export const labComponents: LabComponent[] = [
       "Long-press any row's status chip, keep holding, slide across the strip, release — each row is its own picker",
       "Plain-click the chip for the keyboard-friendly fallback picker",
       "Try it on a phone — haptics fire as you cross options",
+      "Watch the hairline ring sweep the chip while you hold — it fills over exactly the long-press duration",
       "Press Escape mid-gesture to bail out without committing",
       'Open "controls" above the canvas to swap the option set (status / priority / t-shirt size), the long-press hold, and the option width',
     ],

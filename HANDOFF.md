@@ -23,10 +23,21 @@ Railway via the Dockerfile). Owner: Rishi (rishidean).
    set switch, hold timing) and `a11y-site.mjs` extended to the picker
    page.
 
-Next for the picker, in order (Rishi's call): make it drop-in #2 through
-the registry pipeline (folder is already self-contained; needs the
-`install` entry + build script generalised to a second component), then
-a discoverability affordance for the hold.
+5. **Picker is drop-in #2** — `build.mjs` iterates a `COMPONENTS` list,
+   `collect-vars` takes a slug (`VAR_INPUTS`) and treats fallback reads
+   as optional, the picker folder gained `lib.ts` + `README.md`, and the
+   Code tab shows its Install panel. `a11y-tokens.mjs` guards both
+   READMEs.
+6. **Hold affordance** — a hairline ring sweeps the chip over the
+   long-press duration (`data-priming` on the wrapper, `--psp-hold`
+   stamped by the component). Reduced motion: static ring.
+7. Dropbox: `.claude/worktrees` and every `node_modules` are now
+   `com.dropbox.ignored` (the repo lives in Dropbox; see the memory note
+   on git stalls).
+
+Next for the picker: usage examples on the Code tab like the bar's
+(`client/src/examples/press-and-slide-picker/`), then a shared-strip
+`PressAndSlideGroup` if the list use case wants one.
 
 ## Latest session (2026-09-15) — recap
 

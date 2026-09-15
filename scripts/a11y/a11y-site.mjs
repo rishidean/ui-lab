@@ -3,13 +3,14 @@
 // viewport toggle lives on the demo canvas only.
 import { chromium } from "playwright";
 import { readdirSync, readFileSync } from "node:fs";
-import { buildNavBarRegistry } from "../registry/build.mjs";
+import { buildNavBarRegistry, buildComponentRegistry, COMPONENTS } from "../registry/build.mjs";
 
 const results = [];
 const push = (name, pass, detail) => results.push([name, pass, detail]);
 
 // 1. Build artifacts and check them against the source folder.
 const { manifest, zipEntries } = buildNavBarRegistry();
+for (const c of COMPONENTS.slice(1)) buildComponentRegistry(c);
 const folder = readdirSync("client/src/components/navigation-bar")
   .filter(f => !f.startsWith("."))
   .map(f => `components/navigation-bar/${f}`)
@@ -131,6 +132,14 @@ push("picker: stage shows the task list", (await pframe.locator(".picker-demo__r
 await page.locator(".lab-tool-pill").click();
 await page.waitForTimeout(300);
 push("picker: controls pill opens its panel", (await pframe.locator(".demo-controls--headless:not([hidden])").count()) === 1, null);
+await page.locator('[role="tab"]', { hasText: "Code" }).click();
+await page.waitForTimeout(300);
+const pcmd = (await page.locator("[data-install-command]").textContent()) ?? "";
+push("picker: install command points at its manifest", pcmd === "npx shadcn@latest add http://localhost:4999/r/press-and-slide-picker.json", pcmd);
+for (const path of ["/r/press-and-slide-picker.json", "/r/press-and-slide-picker.zip"]) {
+  const res = await page.request.get(`http://localhost:4999${path}`);
+  push(`picker: ${path} is served (200)`, res.status() === 200, res.status());
+}
 push("no page errors", errors.length === 0, errors);
 
 for (const [name, pass, detail] of results)

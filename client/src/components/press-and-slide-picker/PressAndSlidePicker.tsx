@@ -28,7 +28,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@/lib/utils";
+import { cn } from "./lib";
 import "./PressAndSlidePicker.css";
 
 // ═══════════════════════════════════════════
@@ -266,6 +266,12 @@ export function PressAndSlidePicker({
   const stripRef = useRef<HTMLDivElement>(null);
   const fallbackRefs = useRef<(HTMLElement | null)[]>([]);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Hold affordance: while the long-press timer runs, the chip carries
+  // data-priming and a ring sweeps around it over exactly the hold time,
+  // so a first-time user sees the hold registering (the honest weakness
+  // of press-and-slide is that nothing says "hold"). Cleared whenever the
+  // timer is — move, lift, cancel — and when the strip opens.
+  const hold = useRef({ arm: () => {}, disarm: () => {} });
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeIdx = useRef(currentIndex);
   const anchorRect = useRef<DOMRect | null>(null);
@@ -307,7 +313,7 @@ export function PressAndSlidePicker({
   }, [sliding]);
   useEffect(
     () => () => {
-      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      hold.current.disarm();
       if (dismissTimer.current) clearTimeout(dismissTimer.current);
       // Clean up any dangling window-level mouse listeners (unmount mid-drag)
       if (windowMouseMove.current)
@@ -389,6 +395,21 @@ export function PressAndSlidePicker({
     setStripState({ anchorRect: rect, activeIndex: idx, currentIndex: idx });
     setDismissing(false);
   }, [optionIndexMap, disabled]);
+  hold.current = {
+    arm: () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      chipRef.current?.setAttribute("data-priming", "");
+      longPressTimer.current = setTimeout(() => {
+        chipRef.current?.removeAttribute("data-priming");
+        openStrip();
+      }, longPressDuration);
+    },
+    disarm: () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+      chipRef.current?.removeAttribute("data-priming");
+    },
+  };
 
   const updateActive = useCallback((idx: number | null) => {
     if (idx === null || idx === activeIdx.current) return;
@@ -453,7 +474,7 @@ export function PressAndSlidePicker({
       startY.current = t.clientY;
       enteredStrip.current = false;
       suppressClick.current = false;
-      longPressTimer.current = setTimeout(() => openStrip(), longPressDuration);
+      hold.current.arm();
     };
     const onTouchMove = (e: TouchEvent) => {
       let t: Touch | null = null;
@@ -469,7 +490,7 @@ export function PressAndSlidePicker({
           Math.abs(t.clientX - startX.current) > 10 ||
           Math.abs(t.clientY - startY.current) > 10
         ) {
-          if (longPressTimer.current) clearTimeout(longPressTimer.current);
+          hold.current.disarm();
           touchId.current = null;
         }
         return;
@@ -499,7 +520,7 @@ export function PressAndSlidePicker({
         }
       }
       if (!t) return;
-      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      hold.current.disarm();
       touchId.current = null;
       if (isOpenRef.current) dismissStrip(true);
     };
@@ -512,7 +533,7 @@ export function PressAndSlidePicker({
       chip.removeEventListener("touchmove", onTouchMove);
       chip.removeEventListener("touchend", onTouchEnd);
       chip.removeEventListener("touchcancel", onTouchEnd);
-      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      hold.current.disarm();
     };
   }, [
     openStrip,
@@ -534,14 +555,14 @@ export function PressAndSlidePicker({
       startY.current = e.clientY;
       suppressClick.current = false;
       enteredStrip.current = false;
-      longPressTimer.current = setTimeout(() => openStrip(), longPressDuration);
+      hold.current.arm();
       const onMouseMove = (me: MouseEvent) => {
         if (!isOpenRef.current) {
           if (
             Math.abs(me.clientX - startX.current) > 8 ||
             Math.abs(me.clientY - startY.current) > 8
           ) {
-            if (longPressTimer.current) clearTimeout(longPressTimer.current);
+            hold.current.disarm();
           }
           return;
         }
@@ -560,7 +581,7 @@ export function PressAndSlidePicker({
         updateActive(indexAtX(me.clientX));
       };
       const onMouseUp = () => {
-        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+        hold.current.disarm();
         window.removeEventListener("mousemove", onMouseMove);
         window.removeEventListener("mouseup", onMouseUp);
         windowMouseMove.current = null;
@@ -598,7 +619,7 @@ export function PressAndSlidePicker({
       suppressClick.current = false;
       return;
     }
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    hold.current.disarm();
     setFallbackFocusIdx(optionIndexMap[valueRef.current] ?? 0);
     setFallbackOpen(prev => !prev);
   }, [optionIndexMap, disabled]);
@@ -670,10 +691,13 @@ export function PressAndSlidePicker({
           aria-expanded={fallbackOpen || sliding}
           aria-label={`${currentOption.label}. Long press or click to change.`}
           aria-disabled={disabled}
-          style={{
-            opacity: disabled ? 0.5 : 1,
-            cursor: disabled ? "default" : "pointer",
-          }}
+          style={
+            {
+              opacity: disabled ? 0.5 : 1,
+              cursor: disabled ? "default" : "pointer",
+              "--psp-hold": `${longPressDuration}ms`,
+            } as CSSProperties
+          }
           onKeyDown={e => {
             if (disabled) return;
             if (e.key === "Enter" || e.key === " ") {

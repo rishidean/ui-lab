@@ -21,6 +21,24 @@ all URL-pinnable as `?set=&hold=&item=` for recordings), embedded in
 the site's demo canvas like the bar, with the panel hung from the left
 so it never covers the chips. Covered by `scripts/a11y/a11y-picker-stage.mjs`.
 
+## Hold affordance and drop-in packaging (2026-09-15)
+
+- **Hold ring.** While the long-press timer runs, the chip wrapper
+  carries `data-priming` and a hairline conic ring (`.psp-chip::after`,
+  `--psp-prime` animated 0→360deg over `--psp-hold`, which the component
+  stamps from `longPressDuration`) sweeps around it — the hold reads as
+  registering before the strip appears. Cleared on move/lift/cancel and
+  the moment the strip opens; reduced motion shows a static faint ring.
+  Custom `renderChip` triggers get it for free (the ring is on the
+  wrapper). Covered by `a11y-picker-stage.mjs`.
+- **Drop-in #2.** The folder is self-contained (`lib.ts` copies `cn`;
+  `README.md` carries install, the generated variable block, usage,
+  contracts). `scripts/registry/build.mjs` builds
+  `/r/press-and-slide-picker.{json,zip}` alongside the bar's; the Code
+  tab shows the Install panel. The collector now treats reads with an
+  inline fallback as optional (listed under a comment in the block, never
+  a drift failure) — the picker reads every theme token that way.
+
 ## Purpose
 
 The most frequent operation in a task tool is changing status, and in most

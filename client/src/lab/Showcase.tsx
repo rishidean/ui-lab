@@ -141,7 +141,7 @@ function InstallPanel({ install, name }: { install: LabInstall; name: string }) 
       <p className="lab-install__note">
         One command copies the {name} folder into your project, adds{" "}
         <code>{install.npm.join(", ")}</code>, and injects its CSS variables.
-        Needs Tailwind v4. No CLI?{" "}
+        {install.tailwind ? " Needs Tailwind v4." : " No Tailwind needed."} No CLI?{" "}
         <a className="lab-install__zip" href={install.zip} download>
           download the folder as a zip
         </a>{" "}

@@ -1,72 +1,96 @@
-// Builds the NavigationBar's install artifacts into client/public/r/:
-//   navigation-bar.json — a registry item in the shadcn item format, so
-//                         `npx shadcn@latest add <url>` copies the folder,
-//                         adds the npm deps, and injects the CSS variables
-//   navigation-bar.zip  — the same files plus tokens.css, for people who
-//                         will not run a CLI
+// Builds each component's install artifacts into client/public/r/:
+//   <slug>.json — a registry item in the shadcn item format, so
+//                 `npx shadcn@latest add <url>` copies the folder, adds
+//                 the npm deps, and injects the CSS variables
+//   <slug>.zip  — the same files plus a generated tokens.css, for people
+//                 who will not run a CLI
 // Runs before `vite build` and `vite dev` (package.json scripts) so the
 // served artifacts can never lag the source. No dependencies: the zip is
-// written by hand in STORE mode (no compression — ~120 KB of text).
+// written by hand in STORE mode (a few hundred KB of text at most).
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { collectVars, NAV_BAR_VAR_INPUTS, renderVarBlock } from "./collect-vars.mjs";
+import { collectVars, renderVarBlock, VAR_INPUTS } from "./collect-vars.mjs";
 
-const FOLDER = "client/src/components/navigation-bar";
 const OUT_DIR = "client/public/r";
-const NPM_DEPS = ["motion", "lucide-react", "clsx", "tailwind-merge"];
+
+/** One entry per component that ships an install panel. */
+export const COMPONENTS = [
+  {
+    slug: "navigation-bar",
+    title: "Navigation Bar",
+    folder: "client/src/components/navigation-bar",
+    description:
+      "A glass bottom bar where navigation, actions, and filters share one surface — a tab switcher that blooms into a menu, a centre pill of per-tab actions, an in-place filter, and one utility button that morphs into search or an assistant chat.",
+    npm: ["motion", "lucide-react", "clsx", "tailwind-merge"],
+  },
+  {
+    slug: "press-and-slide-picker",
+    title: "Press & Slide Picker",
+    folder: "client/src/components/press-and-slide-picker",
+    description:
+      "A one-gesture picker for small option sets: long-press the chip, slide to the option, release to commit — with haptic ticks, a keyboard-friendly fallback listbox, and viewport-aware positioning.",
+    npm: ["clsx", "tailwind-merge"],
+  },
+];
 
 /** The files a consumer needs, with the path they land at in their app. */
-export function navBarFiles() {
-  const folder = readdirSync(FOLDER).filter(f => !f.startsWith(".")).sort();
+export function componentFiles(component) {
+  const dir = component.folder;
+  const base = dir.split("/").pop();
+  const folder = readdirSync(dir).filter(f => !f.startsWith(".")).sort();
   const entries = folder.map(name => ({
-    src: join(FOLDER, name),
-    path: `components/navigation-bar/${name}`,
+    src: join(dir, name),
+    path: `components/${base}/${name}`,
     type: name.endsWith(".md") || name.endsWith(".css") ? "registry:file" : "registry:component",
   }));
   entries.push({ src: "client/src/theme/glass.css", path: "styles/glass.css", type: "registry:file" });
   return entries;
 }
 
-export function buildNavBarRegistry({ outDir = OUT_DIR } = {}) {
-  const vars = collectVars(NAV_BAR_VAR_INPUTS);
+export function buildComponentRegistry(component, { outDir = OUT_DIR } = {}) {
+  const vars = collectVars(VAR_INPUTS[component.slug]);
   if (vars.unresolved.length)
-    throw new Error(`unresolved CSS variables: ${vars.unresolved.join(" ")}`);
+    throw new Error(`${component.slug}: unresolved CSS variables: ${vars.unresolved.join(" ")}`);
   const strip = obj =>
     Object.fromEntries(Object.entries(obj).map(([k, v]) => [k.replace(/^--/, ""), v]));
-  const files = navBarFiles().map(f => ({
+  const files = componentFiles(component).map(f => ({
     path: f.path,
     type: f.type,
     // registry:file entries need an explicit target inside the consumer's app.
     ...(f.type === "registry:file" ? { target: `~/${f.path}` } : {}),
     content: readFileSync(f.src, "utf8"),
   }));
-  const readme = readFileSync(join(FOLDER, "README.md"), "utf8");
+  const readme = readFileSync(join(component.folder, "README.md"), "utf8");
   const manifest = {
     $schema: "https://ui.shadcn.com/schema/registry-item.json",
-    name: "navigation-bar",
+    name: component.slug,
     type: "registry:component",
-    title: "Navigation Bar",
-    description:
-      "A glass bottom bar where navigation, actions, and filters share one surface — a tab switcher that blooms into a menu, a centre pill of per-tab actions, an in-place filter, and one utility button that morphs into search or an assistant chat.",
+    title: component.title,
+    description: component.description,
     author: "Rishi Dean <rishidean.com>",
-    dependencies: NPM_DEPS,
+    dependencies: component.npm,
     registryDependencies: [],
     files,
     cssVars: { light: strip(vars.light), dark: strip(vars.dark) },
     docs: readme.split("\n## ")[1] ? "## " + readme.split("\n## ")[1] : readme,
   };
 
-  const tokens = `/* NavigationBar tokens — generated by scripts/registry/build.mjs from
+  const tokens = `/* ${component.title} tokens — generated by scripts/registry/build.mjs from
    client/src/theme/theme.css. Paste into your global CSS or remap. */\n${renderVarBlock(vars)}\n`;
   const zipEntries = [
-    ...navBarFiles().map(f => ({ name: f.path, data: readFileSync(f.src) })),
-    { name: "styles/navigation-bar.tokens.css", data: Buffer.from(tokens) },
+    ...componentFiles(component).map(f => ({ name: f.path, data: readFileSync(f.src) })),
+    { name: `styles/${component.slug}.tokens.css`, data: Buffer.from(tokens) },
   ];
 
   mkdirSync(outDir, { recursive: true });
-  writeFileSync(join(outDir, "navigation-bar.json"), JSON.stringify(manifest, null, 2) + "\n");
-  writeFileSync(join(outDir, "navigation-bar.zip"), zipStore(zipEntries));
+  writeFileSync(join(outDir, `${component.slug}.json`), JSON.stringify(manifest, null, 2) + "\n");
+  writeFileSync(join(outDir, `${component.slug}.zip`), zipStore(zipEntries));
   return { manifest, zipEntries: zipEntries.map(e => e.name) };
+}
+
+/** Back-compat name used by a11y-site.mjs. */
+export function buildNavBarRegistry(opts) {
+  return buildComponentRegistry(COMPONENTS[0], opts);
 }
 
 // ── Minimal ZIP writer (STORE method) ─────────────────────────────────
@@ -140,6 +164,8 @@ export function zipStore(entries) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { manifest, zipEntries } = buildNavBarRegistry();
-  console.log(`wrote ${OUT_DIR}/navigation-bar.json (${manifest.files.length} files) and navigation-bar.zip (${zipEntries.length} entries)`);
+  for (const component of COMPONENTS) {
+    const { manifest, zipEntries } = buildComponentRegistry(component);
+    console.log(`wrote ${OUT_DIR}/${component.slug}.json (${manifest.files.length} files) and ${component.slug}.zip (${zipEntries.length} entries)`);
+  }
 }

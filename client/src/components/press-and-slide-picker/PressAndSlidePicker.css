@@ -14,10 +14,54 @@
    the component (TS constants are the single source — see DUR/TEMPO). */
 
 .psp-chip {
+  position: relative;
   touch-action: pan-y;
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Hold affordance: a hairline ring sweeps around the chip over the
+   long-press duration (--psp-hold, stamped by the component), so the
+   hold reads as "registering" before the strip appears. Only while the
+   timer runs (data-priming); gone the moment the strip opens. */
+@property --psp-prime {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.psp-chip::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  padding: 2px;
+  background: conic-gradient(
+    color-mix(in oklab, var(--text-secondary, #6b7280) 70%, transparent)
+      var(--psp-prime),
+    transparent 0
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.psp-chip[data-priming]::after {
+  opacity: 1;
+  animation: psp-prime var(--psp-hold, 275ms) linear forwards;
+}
+
+@keyframes psp-prime {
+  to {
+    --psp-prime: 360deg;
+  }
 }
 
 .psp-chip:focus-visible {
@@ -258,6 +302,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .psp-chip[data-priming]::after {
+    animation: none;
+    --psp-prime: 360deg;
+    opacity: 0.5;
+  }
   .psp-strip,
   .psp-strip--out,
   .psp-fallback {
