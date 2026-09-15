@@ -50,9 +50,19 @@ Railway via the Dockerfile). Owner: Rishi (rishidean).
    `PickerShowcase.tsx`, `beats` on the registry) is deleted — the
    embedded stage + toolbar is the recording surface now.
 
-Next for the picker: usage examples on the Code tab like the bar's
-(`client/src/examples/press-and-slide-picker/`), then a shared-strip
-`PressAndSlideGroup` if the list use case wants one.
+10. **Wrap-up pass:** picker examples on the Code tab
+    (`client/src/examples/press-and-slide-picker/01–03`, covered by
+    `a11y-examples.mjs`); vertical strips sized from the measured label
+    and radiused to match their pills; `.claude/` gitignored; the merged
+    `nav-glass-activation` branch and worktree deleted (local + remote);
+    root README gains an Install section and the recording-surface note.
+    Still open, Rishi's calls: a real-device pass on the new picker
+    gesture (pull 0.35, cross-axis escape 36px, haptics), and moving the
+    checkout out of Dropbox (see the memory note on git stalls). A stale
+    `origin/claude/ui-lab-design-impl-rblpj5` branch also remains.
+
+Next for the picker: a shared-strip `PressAndSlideGroup` if the list use
+case wants one.
 
 ## Latest session (2026-09-15) — recap
 

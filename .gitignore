@@ -118,3 +118,6 @@ scripts/a11y/shots/
 
 # Generated install artifacts (scripts/registry/build.mjs)
 client/public/r/
+
+# Claude Code session scaffolding (worktrees, settings)
+.claude/

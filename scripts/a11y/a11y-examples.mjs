@@ -80,6 +80,49 @@ async function done(id, { page, errors }) {
   await done("05-assistant", s);
 }
 
+// Picker examples: each mounts a chip; 01 opens the strip on a long press.
+async function openPicker(id) {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const errors = [];
+  page.on("console", m => m.type() === "error" && errors.push(m.text()));
+  page.on("pageerror", e => errors.push(String(e)));
+  await page.goto(`http://localhost:4999/press-and-slide-picker?example=${id}`);
+  await page.waitForTimeout(1000);
+  push(`picker ${id}: chip mounts`, (await page.locator(".psp-chip").count()) > 0, null);
+  return { page, errors };
+}
+{
+  const s = await openPicker("01-minimal");
+  const b = await s.page.locator(".psp-chip").first().boundingBox();
+  await s.page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await s.page.mouse.down();
+  await s.page.waitForTimeout(400);
+  push("picker 01-minimal: long press opens the strip", (await s.page.locator(".psp-strip").count()) === 1, null);
+  await s.page.mouse.up();
+  await s.page.waitForTimeout(300);
+  push("picker 01-minimal: no console errors", s.errors.length === 0, s.errors);
+  await s.page.close();
+}
+{
+  const s = await openPicker("02-list");
+  push("picker 02-list: four rows, four pickers", (await s.page.locator(".psp-chip").count()) === 4, null);
+  push("picker 02-list: no console errors", s.errors.length === 0, s.errors);
+  await s.page.close();
+}
+{
+  const s = await openPicker("03-custom-chip");
+  push("picker 03-custom-chip: custom trigger renders", (await s.page.locator(".psp-chip-pill").count()) === 0, null);
+  const b = await s.page.locator(".psp-chip").first().boundingBox();
+  await s.page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await s.page.mouse.down();
+  await s.page.waitForTimeout(400);
+  push("picker 03-custom-chip: forced 'down' opens a column", (await s.page.locator(".psp-strip--vertical").count()) === 1, null);
+  await s.page.mouse.up();
+  await s.page.waitForTimeout(300);
+  push("picker 03-custom-chip: no console errors", s.errors.length === 0, s.errors);
+  await s.page.close();
+}
+
 for (const [name, pass, detail] of results)
   console.log(pass ? "PASS" : "FAIL", name, pass ? "" : JSON.stringify(detail));
 await browser.close();

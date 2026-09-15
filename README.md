@@ -11,6 +11,23 @@ Each component here was invented for a real product, then extracted into a singl
 | **Navigation Bar**       | A glass bottom bar where navigation, actions, and filters share one morphing surface. Collapses on scroll down, expands on scroll up, with fully choreographed transitions.         |
 | **Press & Slide Picker** | Facebook-Reactions-style selection: long-press a chip, slide to an option, release to commit — with haptics, viewport-aware positioning, and an accessible click/keyboard fallback. |
 
+## Install
+
+Live at [ui-lab.r7n.co](https://ui-lab.r7n.co). Each component's **Code**
+tab opens with an install panel — one command, or a zip:
+
+```bash
+npx shadcn@latest add https://ui-lab.r7n.co/r/navigation-bar.json
+npx shadcn@latest add https://ui-lab.r7n.co/r/press-and-slide-picker.json
+```
+
+The command copies the component folder into your project, adds its npm
+dependencies, and injects the CSS variables it reads. Without the CLI,
+`/r/<component>.zip` holds the same files plus a generated `tokens.css`.
+Both are built from source on every deploy by `scripts/registry/build.mjs`;
+each folder's `README.md` carries the install steps, the variable block,
+minimal usage, and the interaction contracts.
+
 ## Breaking changes
 
 **`SHEET_CLEAROUT_MS` → `sheetClearoutMs(tempo)`.** The Navigation Bar's
@@ -61,6 +78,12 @@ server/index.ts                  # static file server for production
 ## Recording mode
 
 Press `H` on any page (or append `?recording=1`) to hide all site chrome for clean screen captures. Press `H` again to bring it back.
+
+The demo canvas is the recording surface: the toolbar above it switches
+desktop / phone viewports and opens the stage's demo controls (URL-pinnable
+for a repeatable take, e.g. `?depth=0.65&tempo=1.5` or `?set=size&open=up`).
+`scripts/record/nav-bar.mjs` drives a scripted take headlessly; the
+results live in `demos/`.
 
 ## License
 

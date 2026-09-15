@@ -266,7 +266,10 @@ function computeLayout(
   // Vertical: centred on the chip's x (clamped), growing down or up from it.
   const vertical = (dir: 1 | -1): StripLayout | null => {
     const len = stripLength(n, C.itemH);
-    const width = iw + C.padX * 2;
+    // A column is as wide as its longest label needs (dot + gap + air),
+    // never narrower than the requested item width.
+    const colItem = Math.max(iw, needFull + 8);
+    const width = colItem + C.padX * 2;
     const vtop = dir === 1 ? anchor.bottom + C.stripGap : anchor.top - C.stripGap - len;
     if (vtop < C.vpPad || vtop + len > vh - C.vpPad) return null;
     const left = Math.max(C.vpPad, Math.min(cx - width / 2, vw - width - C.vpPad));
@@ -281,7 +284,7 @@ function computeLayout(
       width,
       height: len,
       itemLen: C.itemH,
-      itemCross: iw,
+      itemCross: colItem,
       compact: false,
     };
   };

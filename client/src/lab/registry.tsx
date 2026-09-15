@@ -17,6 +17,7 @@ import {
   navigationBarExamples,
   type LabExample,
 } from "@/examples/navigation-bar";
+import { pressAndSlidePickerExamples } from "@/examples/press-and-slide-picker";
 
 export const LAB_NAME = "Rishi's UI Lab";
 export const LAB_TAGLINE =
@@ -465,6 +466,7 @@ export const labComponents: LabComponent[] = [
       "linear-gradient(135deg, #93c5fd 0%, #fcd34d 40%, #86efac 75%, #fca5a5 100%)",
     Stage: PressAndSlidePickerStage,
     demoControls: true,
+    examples: pressAndSlidePickerExamples,
     install: {
       manifest: "/r/press-and-slide-picker.json",
       zip: "/r/press-and-slide-picker.zip",

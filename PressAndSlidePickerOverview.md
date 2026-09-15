@@ -23,6 +23,11 @@ so it never covers the chips. Covered by `scripts/a11y/a11y-picker-stage.mjs`.
 
 ## Ordering and orientation (2026-09-15, Rishi's iterations #2–3)
 
+Vertical strips are as wide as their longest label needs (measured; dot
++ gap + air), never narrower than `itemWidth`, and use a corner radius of
+`itemH/2 + padY` so the end pills nest in the rounded ends exactly as
+they do in a row.
+
 `placement` prop (`auto | right | left | down | up`, default auto): a
 fixed direction is tried first at every width tier it has, then the
 auto order runs as the fallback — so a forced "right" on a right-edge
