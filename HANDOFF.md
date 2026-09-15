@@ -4,6 +4,41 @@ Working doc for continuing the lab's component work in a fresh session.
 Repo: `github.com/rishidean/ui-lab` (push to `main` auto-deploys on
 Railway via the Dockerfile). Owner: Rishi (rishidean).
 
+## Latest session (2026-09-15) — recap
+
+**NavigationBar drop-in pass, on branch `worktree-nav-bar-drop-in`.**
+Design in `docs/superpowers/specs/2026-09-14-navigation-bar-drop-in-design.md`.
+The component now stands on its own as something a stranger can copy
+out of the lab:
+
+1. **CSS split into three layers.** `theme/glass.css` holds the three
+   shared glass primitives, `navigation-bar.css` holds the component's
+   own rules, and `theme/theme.css` is tokens-only — no component-specific
+   CSS left behind in the shared theme file.
+2. **`lib.ts`** folds `cn` and `focusWhenClear` into the component
+   folder so it is self-contained; a consumer with an existing `cn` can
+   delete it and repoint one import.
+3. **A variable collector plus a drift test.** `scripts/registry/collect-vars.mjs`
+   prints the exact `:root` / `.dark` block the component reads;
+   `a11y-tokens.mjs` uses it to catch the README's pasted block drifting
+   from the real token contract.
+4. **`size="compact" | "default" | "large"` presets**, each writing five
+   root variables (`--nav-circle`, `--nav-chip-h`, `--nav-label`,
+   `--nav-chip-px`, `--nav-max-w`). Covered by `a11y-sizes.mjs`.
+5. **`useCollapseOnScroll`** ships with the bar (scroll hysteresis,
+   overlay-aware, cooldown-gated). Covered by `a11y-collapse.mjs`.
+6. **Five runnable examples** (`client/src/examples/navigation-bar/01-minimal.tsx`
+   … `05-assistant.tsx`), each live at `/navigation-bar?example=<id>` and
+   listed on the Code tab. Covered by `a11y-examples.mjs`.
+7. **The component README** (`client/src/components/navigation-bar/README.md`):
+   install, the generated CSS variable block, minimal usage, sizing, the
+   styling/keyboard/utility contracts, and what the consumer still owns.
+   The registry's `navigationBarUsage` string shrank to prop wiring plus
+   a pointer at the README; its three long contract comments moved there
+   as prose.
+
+Suite: 179 PASS / 0 FAIL.
+
 ## Latest session (2026-08-13) — recap
 
 **Two fixes on `main`, then a long exploratory branch that is pushed but
@@ -471,11 +506,14 @@ the two morph components in the stage (raw seconds, no TEMPO).
 
 ## NEXT UP (the reason for this handoff)
 
-**Decide whether `nav-glass-activation` merges.** It is pushed and
-unmerged; `main` is untouched and still carries the uncommitted
-PressAndSlidePicker work. Merging is a deliberate call — it changes the
-flagship's resting appearance and ships a breaking export rename
-(`SHEET_CLEAROUT_MS` → `sheetClearoutMs(tempo)`).
+**The NavigationBar drop-in pass landed on branch `worktree-nav-bar-drop-in`**:
+the CSS split (`glass.css` / `navigation-bar.css` / tokens-only
+`theme.css`), the self-contained `lib.ts`, the variable collector +
+drift test, `size` presets, `useCollapseOnScroll`, five runnable
+examples, and the component README. One item stayed open: the optional
+shadcn registry manifest (spec §7 of
+`docs/superpowers/specs/2026-09-14-navigation-bar-drop-in-design.md`) —
+decide now that the folder is clean.
 
 Worth a look on device before merging: the shipped dormancy default
 (depth 1, drain 0.8 — full liquid-glass at rest) was never explicitly
