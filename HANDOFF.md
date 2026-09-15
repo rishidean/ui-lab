@@ -646,7 +646,7 @@ Recommended fix, in order:
    (`{ name, type: "registry:component", files[], dependencies[],
    registryDependencies[], cssVars }`) is exactly this inventory in
    JSON. Serve it as `/r/navigation-bar.json` and the drop-in becomes
-   `npx shadcn add https://lab.rishidean.com/r/navigation-bar.json`.
+   `npx shadcn add https://ui-lab.r7n.co/r/navigation-bar.json`.
    The site leftover "registry `dependencies` arrays should link to
    their file/source" folds into this — generate the prose list from the
    manifest instead of maintaining both. Stretch goal; 1–3 are the
@@ -749,7 +749,7 @@ measures backdrop effects at render level and will catch a lost rule.
   2026-08-04) — no revoke reminders needed. Credentials are stored, so a
   plain `git push origin main` works.
 - Commit trailer convention: `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`.
-- Custom domain (lab.rishidean.com) still pending in Railway → Networking.
+- Customer-facing URL: https://ui-lab.r7n.co/ (the old lab.rishidean.com plan is dropped).
 
 ## Gotchas learned the hard way
 

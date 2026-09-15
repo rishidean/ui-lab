@@ -8,11 +8,10 @@ transition is choreographed; nothing pops.
 
 ## Install
 
-One command, from the lab site's Code tab (the URL is the site you are
-reading this on):
+One command:
 
 ```bash
-npx shadcn@latest add <site>/r/navigation-bar.json
+npx shadcn@latest add https://ui-lab.r7n.co/r/navigation-bar.json
 ```
 
 That copies the folder below into your components directory, adds the

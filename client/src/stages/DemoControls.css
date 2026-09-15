@@ -65,6 +65,12 @@
   border: 0;
 }
 
+/* Headless (embedded in the lab site): no summary row, so the fieldset
+   carries the top padding the summary used to provide. */
+.demo-controls--headless > .demo-controls__fieldset {
+  padding-top: 0.85rem;
+}
+
 .demo-controls__legend {
   position: absolute;
   width: 1px;

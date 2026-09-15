@@ -21,9 +21,13 @@ interface DemoControlsProps {
   onReducedMotion: (value: boolean) => void;
   size: NavigationBarSize;
   onSize: (value: NavigationBarSize) => void;
-  /** Read once by the stage (e.g. from window.innerWidth) — this
-   *  component never touches `window` itself. */
-  defaultOpen: boolean;
+  /** Controlled: the stage owns open/closed (the lab site drives it
+   *  through postMessage when the stage is embedded). */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Embedded in the lab site: no summary row — the site's own toolbar
+   *  pill opens and closes the panel, so only the fieldset renders. */
+  headless?: boolean;
 }
 
 export default function DemoControls({
@@ -35,12 +39,11 @@ export default function DemoControls({
   onReducedMotion,
   size,
   onSize,
-  defaultOpen,
+  open,
+  onOpenChange,
+  headless = false,
 }: DemoControlsProps) {
-  return (
-    <details className="demo-controls" open={defaultOpen}>
-      <summary className="demo-controls__summary">Demo controls</summary>
-
+  const fieldset = (
       <fieldset className="demo-controls__fieldset">
         <legend className="demo-controls__legend">
           NavigationBar tunables
@@ -127,6 +130,30 @@ export default function DemoControls({
           </label>
         </div>
       </fieldset>
+  );
+  if (headless) {
+    // Stays in the DOM while closed (like a closed <details>), so the
+    // a11y scripts that drive these inputs on the embedded route keep
+    // working; `hidden` removes it from layout and the a11y tree.
+    return (
+      <div
+        className="demo-controls demo-controls--headless"
+        role="group"
+        aria-label="Demo controls"
+        hidden={!open}
+      >
+        {fieldset}
+      </div>
+    );
+  }
+  return (
+    <details
+      className="demo-controls"
+      open={open}
+      onToggle={event => onOpenChange(event.currentTarget.open)}
+    >
+      <summary className="demo-controls__summary">Demo controls</summary>
+      {fieldset}
     </details>
   );
 }
