@@ -86,6 +86,8 @@ export type LabComponent = {
   /** One-command install: a registry manifest + zip served from /r/,
    *  built by scripts/registry/build.mjs. Omit to hide the panel. */
   install?: LabInstall;
+  /** The stage has a DemoControls panel the site's toolbar can open. */
+  demoControls?: boolean;
   tryIt: string[];
   showcase: ShowcaseMeta;
   aliases?: string[];
@@ -429,6 +431,7 @@ export const labComponents: LabComponent[] = [
     },
     usage: navigationBarUsage,
     examples: navigationBarExamples,
+    demoControls: true,
     install: {
       manifest: "/r/navigation-bar.json",
       zip: "/r/navigation-bar.zip",

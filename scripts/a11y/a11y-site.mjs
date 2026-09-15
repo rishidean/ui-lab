@@ -62,8 +62,27 @@ for (const path of ["/r/navigation-bar.json", "/r/navigation-bar.zip"]) {
   push(`${path} is served (200)`, res.status() === 200, res.status());
 }
 
-const toggleOnDemo = await page.locator(".lab-view-toggle").count();
-push("viewport toggle is on the demo canvas", toggleOnDemo === 1, toggleOnDemo);
+const toggleOnDemo = await page.locator(".lab-canvas-tools .lab-view-toggle").count();
+push("viewport toggle is in the toolbar above the canvas", toggleOnDemo === 1, toggleOnDemo);
+const gap = await page.evaluate(() => {
+  const tools = document.querySelector(".lab-canvas-tools").getBoundingClientRect();
+  const canvas = document.querySelector(".lab-canvas").getBoundingClientRect();
+  return Math.round(canvas.top - tools.bottom);
+});
+push("toolbar sits clear of the canvas (≥ 12px)", gap >= 12, gap);
+
+// Demo-controls pill drives the panel inside the embedded stage.
+const frame = page.frameLocator("iframe.lab-frame");
+await page.waitForTimeout(800);
+push("embedded stage starts with the panel closed", (await frame.locator(".demo-controls:not([hidden])").count()) === 0, null);
+push("embedded stage shows no summary row", (await frame.locator(".demo-controls__summary").count()) === 0, null);
+await page.locator(".lab-tool-pill").click();
+await page.waitForTimeout(300);
+push("controls pill opens the panel in the iframe", (await frame.locator(".demo-controls--headless:not([hidden])").count()) === 1, null);
+push("controls pill reads aria-pressed", (await page.locator(".lab-tool-pill").getAttribute("aria-pressed")) === "true", null);
+await page.locator(".lab-tool-pill").click();
+await page.waitForTimeout(300);
+push("controls pill closes the panel again", (await frame.locator(".demo-controls:not([hidden])").count()) === 0, null);
 push(
   "no viewport buttons in the tab row",
   (await page.locator('.lab-tabs [aria-pressed]').count()) === 0,
@@ -84,7 +103,7 @@ push(
 
 await page.locator('[role="tab"]', { hasText: "Code" }).click();
 await page.waitForTimeout(300);
-push("toggle is gone on the Code tab", (await page.locator(".lab-view-toggle").count()) === 0, null);
+push("toolbar is gone on the Code tab", (await page.locator(".lab-canvas-tools").count()) === 0, null);
 const mainW = await page.evaluate(() => Math.round(document.querySelector(".lab-main").getBoundingClientRect().width));
 push("Code tab does not stretch the page past the viewport", mainW <= 1280, mainW);
 const cmd = (await page.locator("[data-install-command]").textContent()) ?? "";
@@ -98,7 +117,7 @@ push("zip link points at the served zip", zipHref === "/r/navigation-bar.zip", z
 
 await page.locator('[role="tab"]', { hasText: "Props" }).click();
 await page.waitForTimeout(300);
-push("toggle is gone on the Props tab", (await page.locator(".lab-view-toggle").count()) === 0, null);
+push("toolbar is gone on the Props tab", (await page.locator(".lab-canvas-tools").count()) === 0, null);
 push("no page errors", errors.length === 0, errors);
 
 for (const [name, pass, detail] of results)

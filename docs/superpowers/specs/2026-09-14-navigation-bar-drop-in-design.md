@@ -259,7 +259,7 @@ following shadcn's `registry-item.json` schema
 
 The build runs as part of `npm run build` (before Vite), so the served
 file cannot lag the source. The README's install line is
-`npx shadcn@latest add https://lab.rishidean.com/r/navigation-bar.json`.
+`npx shadcn@latest add https://ui-lab.r7n.co/r/navigation-bar.json`.
 Validation: the build script fetches nothing; a unit check asserts the
 output has every required top-level key and that every file listed
 exists. A manual `npx shadcn add` into a scratch Vite app is the

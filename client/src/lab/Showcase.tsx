@@ -22,7 +22,7 @@ import {
   type ComponentType,
 } from "react";
 import { Link } from "wouter";
-import { Monitor, Smartphone } from "lucide-react";
+import { Monitor, SlidersHorizontal, Smartphone } from "lucide-react";
 import {
   AUTHOR_URL,
   labComponents,
@@ -233,6 +233,21 @@ export function Showcase({ component }: { component: LabComponent }) {
 
   const [tab, setTab] = useState<TabId>("demo");
   const [view, setView] = useState<ViewId>("desktop");
+
+  // The stage's DemoControls panel lives inside the embedded iframe; the
+  // toolbar pill above the canvas drives it over postMessage (same
+  // origin). Re-sent on iframe load, since the theme toggle re-keys it.
+  const frameRef = useRef<HTMLIFrameElement | null>(null);
+  const [controlsOpen, setControlsOpen] = useState(false);
+  const postControls = useCallback((open: boolean) => {
+    frameRef.current?.contentWindow?.postMessage(
+      { type: "lab:demo-controls", open },
+      window.location.origin
+    );
+  }, []);
+  useEffect(() => {
+    postControls(controlsOpen);
+  }, [controlsOpen, postControls]);
 
   // Presentation mode.
   const beats = component.showcase.beats;
@@ -494,10 +509,27 @@ export function Showcase({ component }: { component: LabComponent }) {
               </div>
 
               <div className="lab-canvas-wrap">
-                <div className="lab-canvas">
-                  {tab === "demo" && (
+                {tab === "demo" && (
+                  <div className="lab-canvas-tools">
                     <ViewToggle view={view} onChange={setView} />
-                  )}
+                    {component.demoControls && (
+                      <button
+                        type="button"
+                        aria-pressed={controlsOpen}
+                        aria-label="Demo controls"
+                        title="Demo controls"
+                        className={`lab-btn lab-tool-pill ${
+                          controlsOpen ? "lab-tool-pill--active" : ""
+                        }`}
+                        onClick={() => setControlsOpen(o => !o)}
+                      >
+                        <SlidersHorizontal aria-hidden="true" />
+                        <span>controls</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div className="lab-canvas">
                   {/* Demo stays mounted across tab switches. */}
                   <div
                     className={`lab-canvas__keep ${
@@ -509,6 +541,8 @@ export function Showcase({ component }: { component: LabComponent }) {
                     ) : (
                       <iframe
                         key={theme}
+                        ref={frameRef}
+                        onLoad={() => postControls(controlsOpen)}
                         src={`/${component.slug}?embed=1`}
                         title={`${component.name} demo`}
                         className={`lab-frame ${

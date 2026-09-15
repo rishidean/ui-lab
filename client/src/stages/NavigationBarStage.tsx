@@ -162,9 +162,27 @@ export default function NavigationBarStage() {
       ? (raw as NavigationBarSize)
       : "default";
   });
-  // Read once at mount — never on every render — so the panel starts
-  // open on wide viewports and collapsed on narrow ones.
-  const [controlsDefaultOpen] = useState(() => window.innerWidth >= 640);
+  // Embedded in the lab site's demo canvas (?embed=1): the site's own
+  // toolbar pill opens and closes the panel via postMessage, and the
+  // panel renders headless (no summary row). Standalone (phones, the
+  // bare route): a <details> that starts open on wide viewports.
+  const [embedded] = useState(() =>
+    new URLSearchParams(window.location.search).has("embed")
+  );
+  const [controlsOpen, setControlsOpen] = useState(
+    () => !embedded && window.innerWidth >= 640
+  );
+  useEffect(() => {
+    if (!embedded) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as { type?: string; open?: unknown };
+      if (data?.type === "lab:demo-controls" && typeof data.open === "boolean")
+        setControlsOpen(data.open);
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [embedded]);
 
   // ── Assistant mode (in-bar chat) ──
   // The stage owns the transcript so it survives close/reopen; replies
@@ -388,7 +406,9 @@ export default function NavigationBarStage() {
           onReducedMotion={setReducedMotionOverride}
           size={size}
           onSize={setSize}
-          defaultOpen={controlsDefaultOpen}
+          open={controlsOpen}
+          onOpenChange={setControlsOpen}
+          headless={embedded}
         />
       )}
       <div
