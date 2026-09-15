@@ -107,6 +107,25 @@ function CodePanels({ component }: { component: LabComponent }) {
         </div>
         <pre className="lab-code__pre">{component.source}</pre>
       </div>
+      {component.examples?.map(ex => (
+        <div className="lab-code" key={ex.id}>
+          <div className="lab-code__head">
+            <span>
+              {ex.title}
+              <a
+                className="lab-code__open"
+                href={`/${component.slug}?example=${ex.id}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                open ↗
+              </a>
+            </span>
+            <CopyChip text={ex.source} />
+          </div>
+          <pre className="lab-code__pre">{ex.source}</pre>
+        </div>
+      ))}
       <div className="lab-code">
         <div className="lab-code__head">
           <span>usage</span>
@@ -203,8 +222,20 @@ export function Showcase({ component }: { component: LabComponent }) {
   }, [isDesktop, embedded, chromeHidden, beats]);
 
   const { Stage } = component;
+  const exampleId = useMemo(
+    () => new URLSearchParams(window.location.search).get("example"),
+    []
+  );
+  const Example = component.examples?.find(e => e.id === exampleId)?.Component;
 
-  // Truly bare stage: iframe embeds and recording mode (H).
+  // Truly bare: example routes, iframe embeds, and recording mode (H).
+  if (Example) {
+    return (
+      <div className="lab-bare">
+        <Example />
+      </div>
+    );
+  }
   if (embedded || chromeHidden) {
     return (
       <div className="lab-bare">

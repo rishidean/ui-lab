@@ -13,6 +13,10 @@ import navigationBarSource from "@/components/navigation-bar/NavigationBar.tsx?r
 import pressAndSlidePickerSource from "@/components/press-and-slide-picker/PressAndSlidePicker.tsx?raw";
 import bottomSheetSource from "@/components/bottom-sheet/BottomSheet.tsx?raw";
 import utilityModalSource from "@/components/utility-modal/UtilityModal.tsx?raw";
+import {
+  navigationBarExamples,
+  type LabExample,
+} from "@/examples/navigation-bar";
 
 export const LAB_NAME = "Rishi's UI Lab";
 export const LAB_TAGLINE =
@@ -67,6 +71,8 @@ export type LabComponent = {
   sourceFile: string;
   dependencies: string[];
   usage: string;
+  /** Runnable host pages, shown on the Code tab and at ?example=<id>. */
+  examples?: LabExample[];
   tryIt: string[];
   showcase: ShowcaseMeta;
   aliases?: string[];
@@ -451,6 +457,7 @@ export const labComponents: LabComponent[] = [
       ],
     },
     usage: navigationBarUsage,
+    examples: navigationBarExamples,
     tryIt: [
       "Leave the bar alone — it desaturates and the tab icon goes neutral; touch any surface (menu, filter, search, assistant, sheet, or a pressed action) and colour returns",
       "Scroll the canvas down to collapse the bar, up to expand it",
