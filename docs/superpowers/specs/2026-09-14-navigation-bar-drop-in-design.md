@@ -132,7 +132,7 @@ element via an inline style:
 | --- | --- | --- | --- | --- |
 | compact | 48px | 30px | 13px | 28rem |
 | default | 56px | 34px | 14px | 32rem |
-| large | 64px | 38px | 15px | 36rem |
+| large | 60px | 38px | 14px | 36rem |
 
 **Classes.** The literals that define the cluster's scale read the
 variables through Tailwind arbitrary values: `w-[var(--nav-circle)]
@@ -310,7 +310,10 @@ Each of 1–4 is one session; 5 and 6 are an afternoon each. Work happens on the
   v4 needs the `length:` hint for font-size; the size test catches a
   silently ignored class.
 - **A preset that the choreography was not tuned for.** The presets
-  are deliberately close to the current scale (±8px on the circle); the
+  are deliberately close to the current scale (−8 / +4px on the circle — 64px
+  overflowed a two-action row at 390px during implementation, so large is 60,
+  and its label stays 14px — the pill's row does not widen with the circles,
+  so a 15px label overflowed by 7px regardless of circle size); the
   size test screenshots make any wobble visible before merge.
 - **The manifest schema drifting.** The build script pins the `$schema`
   URL; the manual `shadcn add` step is the real check.
