@@ -42,6 +42,13 @@ Railway via the Dockerfile). Owner: Rishi (rishidean).
    whichever direction has room — horizontal (full, then compact without
    dots) before vertical, with the longest label canvas-measured. The
    stage's "Workflow (5, long labels)" set shows vertical at phone width.
+9. **Picker demo defaults + orientation control + presentation mode
+   removed:** the demo opens on the t-shirt size set; the controls panel
+   has an "Opens" select (`auto | right | left | down | up`, backed by a
+   new `placement` prop on the component, `?open=` in the URL). The old
+   presentation stage (1920×1080 beats, the "present" button,
+   `PickerShowcase.tsx`, `beats` on the registry) is deleted — the
+   embedded stage + toolbar is the recording surface now.
 
 Next for the picker: usage examples on the Code tab like the bar's
 (`client/src/examples/press-and-slide-picker/`), then a shared-strip
@@ -782,9 +789,9 @@ measures backdrop effects at render level and will catch a lost rule.
 
 - ~~**Mobile/desktop toggle**~~ — the showcase's Desktop/Mobile views
   (device-framed iframe for stage-hosted components).
-- ~~**Record mode**~~ — presentation mode with narrated beats (picker
-  has the first beat script; add `beats` + a beat visual to give other
-  components one). The old H-key recording mode also still works.
+- ~~**Record mode**~~ — shipped as presentation mode, then removed on
+  2026-09-15 in favour of the embedded stage + toolbar; the H-key
+  recording mode and `scripts/record/` are the recording path.
 
 ## Housekeeping
 

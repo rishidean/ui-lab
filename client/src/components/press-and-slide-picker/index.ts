@@ -2,5 +2,6 @@
 export { PressAndSlidePicker } from "./PressAndSlidePicker";
 export type {
   PickerOption,
+  PickerPlacement,
   PressAndSlidePickerProps,
 } from "./PressAndSlidePicker";

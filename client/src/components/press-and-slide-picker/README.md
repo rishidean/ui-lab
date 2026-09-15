@@ -78,8 +78,10 @@ export function Task() {
 
 Props: `options` (3–6 items; `key`, `label`, `color`, optional `bg`),
 `value`, `onChange(key)`, `itemWidth` (px per option, default 92),
-`longPressDuration` (ms, default 275), `renderChip(option, isActive)`
-to supply your own trigger, `disabled`.
+`longPressDuration` (ms, default 275), `placement` (`"auto"` picks the
+first direction with room — right, left, down, up; a fixed value is
+honoured when it fits and falls back to auto), `renderChip(option,
+isActive)` to supply your own trigger, `disabled`.
 
 ## Interaction contract
 

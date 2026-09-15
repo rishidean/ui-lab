@@ -125,6 +125,7 @@ await page.goto("http://localhost:4999/press-and-slide-picker");
 await page.waitForTimeout(1200);
 push("picker: toolbar with viewport toggle", (await page.locator(".lab-canvas-tools .lab-view-toggle").count()) === 1, null);
 push("picker: controls pill present", (await page.locator(".lab-tool-pill").count()) === 1, null);
+push("picker: no presentation stage or present button", (await page.locator(".lab-stage-outer, .lab-header__present").count()) === 0, null);
 push("picker: demo embeds the stage iframe", (await page.locator("iframe.lab-frame").count()) === 1, null);
 const pframe = page.frameLocator("iframe.lab-frame");
 await page.waitForTimeout(800);

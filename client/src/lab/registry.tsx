@@ -31,18 +31,6 @@ export type PropRow = {
   note: string;
 };
 
-/** One narrated step of a component's presentation-mode walkthrough. */
-export type PresentationBeat = {
-  title: string;
-  sub: string;
-  /** Whether the option strip is out during this beat. */
-  open: boolean;
-  /** Committed option index shown on the trigger. */
-  sel: number;
-  /** Option index under the thumb (highlighted in the strip). */
-  active: number;
-};
-
 /** Content for the showcase page (lab/Showcase.tsx). */
 export type ShowcaseMeta = {
   /** Breadcrumb after the number, e.g. "interaction / gesture". */
@@ -54,8 +42,6 @@ export type ShowcaseMeta = {
   problem: string;
   solution: string;
   propRows: PropRow[];
-  /** Presentation-mode beats; omit to hide the presentation stage. */
-  beats?: PresentationBeat[];
 };
 
 /** Served install artifacts for a component (see scripts/registry/build.mjs). */
@@ -545,43 +531,6 @@ export const labComponents: LabComponent[] = [
           note: "Ignores the gesture and the fallback alike.",
         },
       ],
-      beats: [
-        {
-          title: "Three gestures.",
-          sub: "Tap the select. Read the menu. Tap again. Hope you hit the right row.",
-          open: false,
-          sel: 3,
-          active: 3,
-        },
-        {
-          title: "Press.",
-          sub: "Hold the chip. The options come to your thumb.",
-          open: true,
-          sel: 3,
-          active: 3,
-        },
-        {
-          title: "Slide.",
-          sub: "The value under your thumb is always the one you are about to get.",
-          open: true,
-          sel: 3,
-          active: 1,
-        },
-        {
-          title: "Release.",
-          sub: "One commit, on lift. Nothing fires mid-slide.",
-          open: true,
-          sel: 3,
-          active: 1,
-        },
-        {
-          title: "One gesture.",
-          sub: "Same control. A third of the work. Free to steal.",
-          open: false,
-          sel: 1,
-          active: 1,
-        },
-      ],
     },
     usage: pressAndSlidePickerUsage,
     tryIt: [
@@ -590,7 +539,7 @@ export const labComponents: LabComponent[] = [
       "Try it on a phone — haptics fire as you cross options",
       "Watch the hairline ring sweep the chip while you hold — it fills over exactly the long-press duration",
       "Press Escape mid-gesture to bail out without committing",
-      'Open "controls" above the canvas to swap the option set (status / priority / t-shirt size), the long-press hold, and the option width',
+      'Open "controls" above the canvas to swap the option set (status / priority / t-shirt size / long-label workflow), force which way the strip opens, and tune the long-press hold and option width',
     ],
     aliases: ["picker"],
   },

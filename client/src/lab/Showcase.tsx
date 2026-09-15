@@ -4,9 +4,7 @@
  *
  * Desktop (≥1024px) renders the full lab bench: framed card with header,
  * index sidebar, Demo/Code/Props tabs, a Desktop/Mobile viewport toggle,
- * problem/solution copy, the lab grid, and — where a component defines
- * presentation beats — a 1920×1080 presentation stage for recording
- * walkthroughs (click it or hit Present, then ← / → to step beats).
+ * problem/solution copy, and the lab grid.
  *
  * Below 1024px, with ?embed=1, ?example=<id>, or in recording mode (H) the route renders
  * the bare Stage full-viewport — phones get the component itself, and the
@@ -19,7 +17,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ComponentType,
 } from "react";
 import { Link } from "wouter";
 import { Monitor, SlidersHorizontal, Smartphone } from "lucide-react";
@@ -28,25 +25,13 @@ import {
   labComponents,
   type LabComponent,
   type LabInstall,
-  type PresentationBeat,
   type PropRow,
 } from "@/lab/registry";
 import { useRecordingMode } from "@/lab/recording";
 import { useTheme } from "@/contexts/ThemeContext";
 import { ThemeToggle } from "@/lab/ThemeToggle";
-import { PickerBeatVisual } from "@/lab/PickerShowcase";
 import { pad2, PALETTES } from "@/lab/labTheme";
 import "./Showcase.css";
-
-const BEAT_MS = 2600;
-
-/** Per-slug presentation visuals (scripted, beat-driven). */
-const BEAT_VISUALS: Record<
-  string,
-  ComponentType<{ beat: PresentationBeat }>
-> = {
-  "press-and-slide-picker": PickerBeatVisual,
-};
 
 const TABS = [
   { id: "demo", label: "Demo" },
@@ -244,55 +229,6 @@ export function Showcase({ component }: { component: LabComponent }) {
     postControls(controlsOpen);
   }, [controlsOpen, postControls]);
 
-  // Presentation mode.
-  const beats = component.showcase.beats;
-  const [beat, setBeat] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [stageLive, setStageLive] = useState(false);
-  const stageOuterRef = useRef<HTMLDivElement | null>(null);
-  const [stageScale, setStageScale] = useState(0.75);
-
-  const stepBeat = useCallback(
-    (dir: number) => {
-      const n = beats?.length ?? 0;
-      if (n) setBeat(b => (b + dir + n) % n);
-    },
-    [beats]
-  );
-
-  useEffect(() => {
-    if (!stageLive || !beats) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight" || e.key === " ") {
-        e.preventDefault();
-        stepBeat(1);
-      } else if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        stepBeat(-1);
-      } else if (e.key === "Escape") {
-        setStageLive(false);
-        setPlaying(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [stageLive, beats, stepBeat]);
-
-  useEffect(() => {
-    if (!playing) return;
-    const t = window.setInterval(() => stepBeat(1), BEAT_MS);
-    return () => window.clearInterval(t);
-  }, [playing, stepBeat]);
-
-  useEffect(() => {
-    const el = stageOuterRef.current;
-    if (!el) return;
-    const measure = () => setStageScale(el.clientWidth / 1920);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [isDesktop, embedded, chromeHidden, beats]);
 
   const { Stage } = component;
   const exampleId = useMemo(
@@ -402,20 +338,9 @@ export function Showcase({ component }: { component: LabComponent }) {
     labComponents.findIndex(c => c.slug === component.slug) + 1
   );
   const meta = component.showcase;
-  const BeatVisual = BEAT_VISUALS[component.slug];
-  const currentBeat = beats?.[beat];
-
-  const present = () => {
-    setStageLive(true);
-    stageOuterRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  };
-
   return (
     <div className="lab" style={PALETTES[theme] as React.CSSProperties}>
-      <div className={`lab__wrap ${beats ? "" : "lab__wrap--plain"}`}>
+      <div className="lab__wrap lab__wrap--plain">
         <div className="lab__card">
           {/* Header */}
           <div className="lab-header">
@@ -427,15 +352,6 @@ export function Showcase({ component }: { component: LabComponent }) {
             </div>
             <div className="lab-header__right">
               <ThemeToggle />
-              {beats && (
-                <button
-                  type="button"
-                  className="lab-btn lab-header__present"
-                  onClick={present}
-                >
-                  present
-                </button>
-              )}
             </div>
           </div>
 
@@ -597,103 +513,6 @@ export function Showcase({ component }: { component: LabComponent }) {
           </div>
         </div>
 
-        {/* Presentation mode */}
-        {beats && currentBeat && (
-          <>
-            <div className="lab-present-label">
-              <span>Presentation mode · 1920 × 1080</span>
-            </div>
-            <div
-              ref={stageOuterRef}
-              className="lab-stage-outer"
-              style={{ height: Math.round(1080 * stageScale) }}
-              onClick={() => setStageLive(true)}
-            >
-              <div
-                className="lab-stage"
-                style={{ transform: `scale(${stageScale})` }}
-              >
-                <div className="lab-stage__brand">
-                  <span aria-hidden="true" className="lab-stage__brand-logo" />
-                  <span>rishi's ui lab / component {number}</span>
-                </div>
-                <div
-                  className={`lab-stage__live ${
-                    stageLive ? "lab-stage__live--on" : ""
-                  }`}
-                >
-                  {stageLive ? "live · ← → to step" : "click to take control"}
-                </div>
-
-                <div>
-                  <div aria-hidden="true" className="lab-stage__rule" />
-                  <div className="lab-stage__beatbox">
-                    <h2 key={beat} className="lab-stage__beat-title">
-                      {currentBeat.title}
-                    </h2>
-                    <p className="lab-stage__beat-sub">{currentBeat.sub}</p>
-                  </div>
-                </div>
-
-                <div className="lab-stage__visual">
-                  {BeatVisual && <BeatVisual beat={currentBeat} />}
-                </div>
-
-                <div className="lab-stage__dots">
-                  {beats.map((b, i) => (
-                    <button
-                      key={b.title}
-                      type="button"
-                      aria-label={`Beat ${i + 1}: ${b.title}`}
-                      aria-current={i === beat}
-                      className={`lab-btn lab-stage__dot ${
-                        i === beat ? "lab-stage__dot--active" : ""
-                      }`}
-                      onClick={() => {
-                        setStageLive(true);
-                        setBeat(i);
-                      }}
-                    />
-                  ))}
-                </div>
-
-                <div className="lab-stage__ctrl">
-                  <button
-                    type="button"
-                    className="lab-btn lab-stage__play"
-                    onClick={e => {
-                      e.stopPropagation();
-                      setStageLive(true);
-                      setPlaying(p => !p);
-                    }}
-                  >
-                    {playing ? "pause" : "play"}
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Previous beat"
-                    className="lab-btn lab-stage__prev"
-                    onClick={() => stepBeat(-1)}
-                  >
-                    ←
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Next beat"
-                    className="lab-btn lab-stage__next"
-                    onClick={() => stepBeat(1)}
-                  >
-                    →
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="lab-stage-caption">
-              Click the stage, then use ← / → to step beats. Play runs it
-              hands-free for recording.
-            </div>
-          </>
-        )}
       </div>
     </div>
   );

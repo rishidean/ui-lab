@@ -9,7 +9,11 @@
  * picker — a transformed ancestor becomes the containing block for its
  * fixed-position strip.
  */
-import { PressAndSlidePicker, type PickerOption } from "@/components/press-and-slide-picker";
+import {
+  PressAndSlidePicker,
+  type PickerOption,
+  type PickerPlacement,
+} from "@/components/press-and-slide-picker";
 import {
   priorityPickerOptions,
   sizePickerOptions,
@@ -23,6 +27,7 @@ import { demoParam, demoParamEnum, useDemoControls } from "./useDemoControls";
 import "./PressAndSlidePickerStage.css";
 
 type OptionSet = "status" | "priority" | "size" | "workflow";
+const PLACEMENTS: readonly PickerPlacement[] = ["auto", "right", "left", "down", "up"];
 const OPTION_SETS: Record<OptionSet, { label: string; options: PickerOption[] }> = {
   status: { label: "Status (4)", options: statusPickerOptions },
   priority: { label: "Priority (3)", options: priorityPickerOptions },
@@ -47,10 +52,13 @@ export default function PressAndSlidePickerStage() {
   const chromeHidden = useRecordingMode();
   const controls = useDemoControls();
   const [optionSet, setOptionSet] = useState<OptionSet>(() =>
-    demoParamEnum("set", "status", Object.keys(OPTION_SETS) as OptionSet[])
+    demoParamEnum("set", "size", Object.keys(OPTION_SETS) as OptionSet[])
   );
   const [holdMs, setHoldMs] = useState(() => demoParam("hold", 275, 150, 600));
   const [itemWidth, setItemWidth] = useState(() => demoParam("item", 92, 64, 120));
+  const [placement, setPlacement] = useState<PickerPlacement>(() =>
+    demoParamEnum("open", "auto", PLACEMENTS)
+  );
 
   const { options } = OPTION_SETS[optionSet];
   // Values keyed by row and option set, so switching sets does not
@@ -79,6 +87,13 @@ export default function PressAndSlidePickerStage() {
               label: OPTION_SETS[k].label,
             }))}
             onChange={setOptionSet}
+          />
+          <SelectRow
+            id="demo-controls-open"
+            label="Opens"
+            value={placement}
+            options={PLACEMENTS.map(p => ({ value: p, label: p }))}
+            onChange={setPlacement}
           />
           <RangeRow
             id="demo-controls-hold"
@@ -126,6 +141,7 @@ export default function PressAndSlidePickerStage() {
                   }
                   itemWidth={itemWidth}
                   longPressDuration={holdMs}
+                  placement={placement}
                 />
               </li>
             ))}

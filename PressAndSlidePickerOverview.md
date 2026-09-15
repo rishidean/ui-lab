@@ -23,6 +23,12 @@ so it never covers the chips. Covered by `scripts/a11y/a11y-picker-stage.mjs`.
 
 ## Ordering and orientation (2026-09-15, Rishi's iterations #2–3)
 
+`placement` prop (`auto | right | left | down | up`, default auto): a
+fixed direction is tried first at every width tier it has, then the
+auto order runs as the fallback — so a forced "right" on a right-edge
+chip still opens somewhere sensible. The stage exposes it as the
+"Opens" select (`?open=`); the demo defaults to the t-shirt size set.
+
 The selected option always sits at the end of the strip nearest the
 chip (the finger), then a hairline divider, then the rest in their
 natural order. The strip grows away from the chip in whichever

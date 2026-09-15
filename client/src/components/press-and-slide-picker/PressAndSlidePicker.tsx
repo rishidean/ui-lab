@@ -59,11 +59,18 @@ export interface PressAndSlidePickerProps {
   itemWidth?: number;
   /** Long-press threshold in ms before gesture activates (default: 275) */
   longPressDuration?: number;
+  /** Which way the strip opens from the chip. "auto" (default) picks the
+   *  first direction with room: right, left, down, up. A fixed value is
+   *  honoured when it fits (compressing labels if needed) and falls back
+   *  to auto when it cannot. */
+  placement?: PickerPlacement;
   /** Custom chip renderer. Receives the current option and whether the strip is active */
   renderChip?: (option: PickerOption, isActive: boolean) => ReactNode;
   /** Whether the picker is disabled */
   disabled?: boolean;
 }
+
+export type PickerPlacement = "auto" | "right" | "left" | "down" | "up";
 
 interface StripState {
   anchorRect: DOMRect;
@@ -212,7 +219,8 @@ function computeLayout(
   anchor: DOMRect,
   options: PickerOption[],
   currentIndex: number,
-  iw: number
+  iw: number,
+  placement: PickerPlacement = "auto"
 ): StripLayout {
   const n = options.length;
   const vw = window.innerWidth;
@@ -287,6 +295,24 @@ function computeLayout(
     return Math.floor((room + C.padX - fixed) / (n - 0.5));
   };
 
+  // A requested direction is tried first, at every width tier it has;
+  // then the auto order runs as the fallback.
+  const tryHorizontal = (dir: 1 | -1): StripLayout | null => {
+    const full = horizontal(dir, iw);
+    if (full) return full;
+    const w = Math.min(iw, fitIw(dir));
+    if (w >= needFull) return horizontal(dir, w);
+    if (w >= needCompact) return horizontal(dir, w, true);
+    return null;
+  };
+  if (placement !== "auto") {
+    const forced =
+      placement === "right" ? tryHorizontal(1)
+      : placement === "left" ? tryHorizontal(-1)
+      : placement === "down" ? vertical(1)
+      : vertical(-1);
+    if (forced) return forced;
+  }
   for (const dir of [1, -1] as const) {
     const h = horizontal(dir, iw);
     if (h) return h;
@@ -479,6 +505,7 @@ export function PressAndSlidePicker({
   onChange,
   itemWidth = 80,
   longPressDuration = 275,
+  placement = "auto",
   renderChip,
   disabled = false,
 }: PressAndSlidePickerProps) {
@@ -627,7 +654,7 @@ export function PressAndSlidePicker({
     const rect = chipRef.current.getBoundingClientRect();
     const idx = optionIndexMap[valueRef.current] ?? 0;
     anchorRect.current = rect;
-    layoutRef.current = computeLayout(rect, options, idx, itemWidth);
+    layoutRef.current = computeLayout(rect, options, idx, itemWidth, placement);
     activeIdx.current = idx;
     isOpenRef.current = true;
     enteredStrip.current = false;
@@ -641,7 +668,7 @@ export function PressAndSlidePicker({
       layout: layoutRef.current,
     });
     setDismissing(false);
-  }, [optionIndexMap, disabled, options, itemWidth]);
+  }, [optionIndexMap, disabled, options, itemWidth, placement]);
   hold.current = {
     arm: () => {
       if (longPressTimer.current) clearTimeout(longPressTimer.current);
