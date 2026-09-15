@@ -228,7 +228,12 @@ asserts the bar mounts, the example's headline interaction works (tap
 Deposit → dialog appears; type in search → value echoes; etc.), and no
 console errors were logged.
 
-### 7. Registry manifest
+### 7. Registry manifest (optional — decided after sections 1–6 land)
+
+Rishi's call, 2026-09-14: the shadcn CLI is a distribution convenience,
+not the substance. Sections 1–6 deliver the drop-in on their own
+("copy these files, paste this block"). Build this section only if,
+once the folder is clean, it is as small as it looks.
 
 `scripts/registry/build.mjs` writes `client/public/r/navigation-bar.json`
 following shadcn's `registry-item.json` schema
@@ -290,9 +295,10 @@ what you own (fixed shell, safe-area, page padding, scroll wiring).
 2. Section 2 (collector + drift test).
 3. Section 4 (size prop, literal audit, demo select, size test).
 4. Section 5 (hook) then 6 (examples, site wiring, example test).
-5. Section 7 (manifest build) and 8 (README, usage shrink, handoff).
+5. Section 8 (README, usage shrink, handoff).
+6. Section 7 (manifest) — optional, decided at this point.
 
-Each of 1–4 is one session; 5 is an afternoon. Work happens on the
+Each of 1–4 is one session; 5 and 6 are an afternoon each. Work happens on the
 `worktree-nav-bar-drop-in` branch; merge to `main` deploys.
 
 ## Risks
