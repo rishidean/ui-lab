@@ -21,6 +21,20 @@ all URL-pinnable as `?set=&hold=&item=` for recordings), embedded in
 the site's demo canvas like the bar, with the panel hung from the left
 so it never covers the chips. Covered by `scripts/a11y/a11y-picker-stage.mjs`.
 
+## Sliding thumb (2026-09-15, Rishi's iteration #1)
+
+The strip's highlight is one pill (`.psp-thumb`) that glides under the
+labels instead of hopping item to item. The pointer handlers write its
+`transform` straight to the DOM (never through React, so it cannot
+fight a re-render); while tracking it is magnetised toward the nearest
+slot centre (`C.thumbPull` = 0.35 of the finger's offset, 70ms linear so
+it stays glued) and it locks into a slot with a 240ms ease on lift, on
+leaving the zone, and as the strip dismisses. Only its hue is
+React-driven, crossfading as the active option changes. Items no longer
+paint their own pill; they keep the label tint. Reduced motion drops the
+transform transitions. Covered by the "glides between slots" / "locks
+onto the nearest slot" assertions in `a11y-picker-stage.mjs`.
+
 ## Hold affordance and drop-in packaging (2026-09-15)
 
 - **Hold ring.** While the long-press timer runs, the chip wrapper

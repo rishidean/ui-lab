@@ -32,6 +32,36 @@ push("long-press opens the strip", stripOpen, null);
 const items = page.locator(".psp-strip .psp-item");
 const n = await items.count();
 push("strip lists the option set (4)", n === 4, n);
+// Sliding pill: between two slot centres the thumb sits strictly between
+// the two slot lefts — continuous, not a discrete hop — and it settles
+// onto a slot once the pointer leaves the zone.
+const tx = () => page.evaluate(() => {
+  const el = document.querySelector(".psp-thumb");
+  return el ? new DOMMatrix(getComputedStyle(el).transform).m41 : NaN;
+});
+const slots = [];
+for (let i = 0; i < n; i++) {
+  const r = await items.nth(i).boundingBox();
+  const s = await page.locator(".psp-strip").boundingBox();
+  slots.push(r.x - s.x);
+}
+const s1 = await items.nth(1).boundingBox();
+const s2 = await items.nth(2).boundingBox();
+const midX = (s1.x + s1.width / 2) * 0.6 + (s2.x + s2.width / 2) * 0.4;
+await page.mouse.move(midX, s1.y + s1.height / 2, { steps: 6 });
+await page.waitForTimeout(140);
+const between = await tx();
+push("thumb glides between slots while sliding", between > slots[1] + 2 && between < slots[2] - 2, { between, slots });
+// Leave the zone straight up from the same x: past the strip's 16px halo
+// but inside the 36px vertical escape band, so it settles rather than
+// cancels (and crosses no other option on the way).
+const sbox = await page.locator(".psp-strip").boundingBox();
+await page.mouse.move(midX, sbox.y - 22, { steps: 3 });
+await page.waitForTimeout(320);
+const settled = await tx();
+push("thumb locks onto the nearest slot on leaving", Math.abs(settled - slots[1]) < 1, { settled, slot: slots[1] });
+await page.mouse.move(midX, s1.y + s1.height / 2, { steps: 4 }); // back in
+await page.waitForTimeout(140);
 const last = await items.nth(n - 1).boundingBox();
 await page.mouse.move(last.x + last.width / 2, last.y + last.height / 2, { steps: 12 });
 await page.waitForTimeout(150);

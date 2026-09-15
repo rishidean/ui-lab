@@ -23,6 +23,7 @@ import {
   useRef,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   type CSSProperties,
   type ReactNode,
@@ -119,6 +120,10 @@ const C = {
   haloX: 8,
   haloY: 16,
   escY: 36,
+  // Thumb magnetism: while sliding, the pill follows the finger but is
+  // pulled toward the nearest slot's centre — 0 would be a free slider,
+  // 1 would be the old discrete hop. It locks fully on lift or leave.
+  thumbPull: 0.35,
   // JS unmount timer must match the CSS exit animation, or the exit gets
   // clipped/overrun whenever TEMPO is retuned.
   dismissMs: Math.round(DUR.stripOut * TEMPO * 1000),
@@ -127,6 +132,11 @@ const C = {
 // ═══════════════════════════════════════════
 // Viewport-aware positioning
 // ═══════════════════════════════════════════
+
+/** Left edge of slot `i` inside the strip's border box. */
+function slotLeft(i: number, iw: number) {
+  return C.padX + i * (iw + C.stripGap);
+}
 
 function metrics(anchor: DOMRect, n: number, iw: number) {
   const vw = window.innerWidth;
@@ -176,8 +186,17 @@ function Strip({
   iw,
   dismissing,
 }: StripProps) {
-  if (!anchor) return null;
-  const { left, top, effectiveIw } = metrics(anchor, options.length, iw);
+  const thumbRef = useRef<HTMLDivElement | null>(null);
+  const n = options.length;
+  const m = anchor ? metrics(anchor, n, iw) : null;
+  const restX = m ? slotLeft(activeIndex, m.effectiveIw) : 0;
+  // Mount only: after that the pointer handlers own the transform.
+  useLayoutEffect(() => {
+    if (thumbRef.current) thumbRef.current.style.transform = `translateX(${restX}px)`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  if (!anchor || !m) return null;
+  const { left, top, effectiveIw } = m;
   return (
     <div
       ref={stripRef}
@@ -190,6 +209,22 @@ function Strip({
         padding: `${C.padY}px ${C.padX}px`,
       }}
     >
+      {/* One pill slides under the labels (transform is written straight
+          to the DOM by the pointer handlers, so it never fights React);
+          only its hue is React-driven, crossfading as the finger crosses
+          an option. Its resting slot is set once on mount. */}
+      <div
+        ref={thumbRef}
+        className="psp-thumb"
+        style={
+          {
+            width: effectiveIw,
+            height: C.itemH,
+            top: C.padY,
+            "--psp-option-color": options[activeIndex]?.color,
+          } as CSSProperties
+        }
+      />
       {options.map((o, i) => {
         const act = i === activeIndex;
         const cur = i === currentIndex;
@@ -381,6 +416,42 @@ export function PressAndSlidePicker({
     [options.length, itemWidth]
   );
 
+  // The sliding pill. trackThumb follows the finger (magnetised toward
+  // the nearest slot); settleThumb locks it into a slot with the longer
+  // ease — on lift, on leaving the zone, and while the strip dismisses.
+  const thumbEl = () =>
+    stripRef.current?.querySelector<HTMLElement>(".psp-thumb") ?? null;
+  const trackThumb = useCallback(
+    (x: number) => {
+      const strip = stripRef.current;
+      const el = thumbEl();
+      const anchor = anchorRect.current;
+      if (!strip || !el || !anchor || prefersReducedMotion()) return;
+      const n = options.length;
+      const { effectiveIw: iw } = metrics(anchor, n, itemWidth);
+      const pitch = iw + C.stripGap;
+      const lx = x - strip.getBoundingClientRect().left;
+      const i = Math.max(0, Math.min(n - 1, Math.round((lx - C.padX - iw / 2) / pitch)));
+      const center = slotLeft(i, iw) + iw / 2;
+      const pulled = center + (lx - center) * C.thumbPull;
+      const left = Math.max(C.padX, Math.min(slotLeft(n - 1, iw), pulled - iw / 2));
+      el.classList.remove("psp-thumb--settle");
+      el.style.transform = `translateX(${left}px)`;
+    },
+    [options.length, itemWidth]
+  );
+  const settleThumb = useCallback(
+    (idx: number) => {
+      const el = thumbEl();
+      const anchor = anchorRect.current;
+      if (!el || !anchor) return;
+      const { effectiveIw: iw } = metrics(anchor, options.length, itemWidth);
+      el.classList.add("psp-thumb--settle");
+      el.style.transform = `translateX(${slotLeft(idx, iw)}px)`;
+    },
+    [options.length, itemWidth]
+  );
+
   const openStrip = useCallback(() => {
     if (!chipRef.current || disabled) return;
     const rect = chipRef.current.getBoundingClientRect();
@@ -419,6 +490,7 @@ export function PressAndSlidePicker({
   }, []);
 
   const dismissStrip = useCallback((commit: boolean) => {
+    settleThumb(activeIdx.current);
     if (!isOpenRef.current) return;
     isOpenRef.current = false;
     if (commit) {
@@ -441,7 +513,7 @@ export function PressAndSlidePicker({
       setStripState(null);
       setDismissing(false);
     }, C.dismissMs);
-  }, []);
+  }, [settleThumb]);
 
   // Any ancestor scroll or a resize invalidates the captured anchor rect —
   // dismiss rather than chase it. Capture phase is required because the lab
@@ -508,7 +580,11 @@ export function PressAndSlidePicker({
         if (isInZone(t.clientX, t.clientY)) enteredStrip.current = true;
         else return;
       }
-      if (!isInZone(t.clientX, t.clientY)) return;
+      if (!isInZone(t.clientX, t.clientY)) {
+        settleThumb(activeIdx.current);
+        return;
+      }
+      trackThumb(t.clientX);
       updateActive(indexAtX(t.clientX));
     };
     const onTouchEnd = (e: TouchEvent) => {
@@ -539,6 +615,8 @@ export function PressAndSlidePicker({
     openStrip,
     dismissStrip,
     updateActive,
+    trackThumb,
+    settleThumb,
     isInZone,
     indexAtX,
     longPressDuration,
@@ -577,7 +655,11 @@ export function PressAndSlidePicker({
           if (isInZone(me.clientX, me.clientY)) enteredStrip.current = true;
           else return;
         }
-        if (!isInZone(me.clientX, me.clientY)) return;
+        if (!isInZone(me.clientX, me.clientY)) {
+          settleThumb(activeIdx.current);
+          return;
+        }
+        trackThumb(me.clientX);
         updateActive(indexAtX(me.clientX));
       };
       const onMouseUp = () => {
@@ -607,6 +689,8 @@ export function PressAndSlidePicker({
     openStrip,
     dismissStrip,
     updateActive,
+    trackThumb,
+    settleThumb,
     isInZone,
     indexAtX,
     longPressDuration,
