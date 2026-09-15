@@ -406,6 +406,10 @@ function Strip({
         width: layout.width,
         height: layout.height,
         padding: `${C.padY}px ${C.padX}px`,
+        // A row is a capsule (its height is one item + padding, so 999px
+        // already reads as item-radius + padding). A column must say so
+        // explicitly, or its full-width pills poke out of the rounded ends.
+        borderRadius: vertical ? C.itemH / 2 + C.padY : 999,
       }}
     >
       {/* One pill slides under the labels (transform is written straight
