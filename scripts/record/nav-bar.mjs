@@ -5,18 +5,18 @@
  *   overrides. Pauses scale with tempo so the beats stay in step.
  * Writes <outDir>/nav-bar.webm. A tap indicator is drawn at every click.
  *
- * Post-processing used for demos/navigation-bar (all ffmpeg):
- *   mp4:    -i nav-bar.webm -c:v libx264 -pix_fmt yuv420p -crf 17 -movflags +faststart -an full.mp4
- *   1.25×:  -i full.mp4 -vf "setpts=PTS/1.25" -r 30 … full-1.25x.mp4
- *   bar crop (bottom 360px; sheets top out at y≈600 so 540 leaves headroom):
- *           -i full-1.25x.mp4 -vf "crop=430:360:0:540" … bar-1.25x.mp4
- *   then trim the Scan beat (full-screen, clips in the crop) with trim/concat.
+ * RAISE=<px> lifts the bar off the viewport edge (RAISE=88 for the
+ * bar-focused demo crop). Post-processing lives in post-nav-bar.sh.
  */
 import { chromium } from "playwright";
 import { rename } from "node:fs/promises";
 
 const outDir = process.argv[2] ?? ".";
 const query = process.argv[3] ?? "depth=0.65&tempo=1.5&rm=0";
+// RAISE=<px> lifts the bar off the viewport edge so a bar-focused crop
+// has canvas under it — posted players draw their controls over the
+// bottom edge otherwise.
+const RAISE = Number(process.env.RAISE ?? 0);
 const tempo = Number(new URLSearchParams(query).get("tempo") ?? 1.3);
 // Pauses were tuned at tempo 1.3; stretch them with the bar's own clock.
 const SCALE = tempo / 1.3;
@@ -36,6 +36,7 @@ await page.goto(`http://localhost:4999/navigation-bar?recording=1&${query}`);
 // Tap indicator: a soft ring that blooms and fades at the click point.
 await page.addStyleTag({
   content: `
+    .navigation-demo__nav-shell { bottom: ${RAISE}px; }
     .rec-tap {
       position: fixed; z-index: 2147483647; pointer-events: none;
       width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%;
