@@ -13,6 +13,8 @@
  * Feed it your scroll container's onScroll, or adapt window scroll:
  *   window.addEventListener("scroll", () =>
  *     onScroll({ currentTarget: { scrollTop: window.scrollY } }));
+ *
+ * `expand()` re-anchors at the last scroll position seen.
  */
 import { useCallback, useRef, useState } from "react";
 
@@ -35,6 +37,7 @@ export function useCollapseOnScroll({
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const anchorRef = useRef(0);
+  const lastScrollTopRef = useRef(0);
   const collapsedRef = useRef(false);
   const lastToggleAtRef = useRef(0);
   const overlayRef = useRef(overlayOpen);
@@ -53,6 +56,7 @@ export function useCollapseOnScroll({
   const onScroll = useCallback(
     (event: CollapseScrollEvent) => {
       const scrollTop = event.currentTarget.scrollTop;
+      lastScrollTopRef.current = scrollTop;
 
       if (scrollTop < ALWAYS_EXPANDED_ABOVE) {
         if (collapsedRef.current) set(false, scrollTop);
@@ -80,7 +84,7 @@ export function useCollapseOnScroll({
     [set]
   );
 
-  const expand = useCallback(() => set(false, anchorRef.current), [set]);
+  const expand = useCallback(() => set(false, lastScrollTopRef.current), [set]);
 
   return { isCollapsed, onScroll, expand };
 }

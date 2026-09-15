@@ -167,8 +167,11 @@ param pattern (`?size=large`) is added alongside `depth`/`tempo`/`rm`.
 and walks Deposit → scrim close, menu → Trade, filter expand → pick,
 Search → Cancel, asserting after each: no horizontal overflow on the
 root except the Trade action row; the pill's labels are fully inside
-the pill's box; the dialog's top is below the viewport's top;
-screenshots of the resting bar per preset into `scripts/a11y/shots/`.
+the pill's box; the dialog's top is below the viewport's top; both
+circles equal width and their slots match; the Home two-action row
+fits at rest; computed chip height and label font-size match the
+preset; screenshots of the resting bar per preset into
+`scripts/a11y/shots/`.
 
 ### 5. `useCollapseOnScroll`
 

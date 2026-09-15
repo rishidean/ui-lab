@@ -160,7 +160,7 @@ const DEFAULT_TEMPO = 1.3;
 
 /** Three tuned scales. Not a free number: the choreography (pill
  *  stretch, menu absorb, assistant stretch) was verified at these three
- *  and nowhere else. Each preset writes four custom properties on the
+ *  and nowhere else. Each preset writes five custom properties on the
  *  bar's root; every size-bearing class reads them. */
 export type NavigationBarSize = "compact" | "default" | "large";
 export const NAV_SIZE_SPECS: Record<

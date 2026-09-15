@@ -7,6 +7,10 @@
  * does this; a consumer copying a component copies this file too.
  */
 
+/* Static glass surfaces (menu, sheets) get the same lit edge, always on.
+   Surfaces using this keep their border a QUIET hairline and drop any
+   `inset 0 1px 0` highlight — the rim replaces both, and stacking them is
+   exactly what makes a top edge look too thick. */
 /* NOTE: this deliberately does NOT set `position`. The rim's ::before is
    absolutely positioned, so the host must already establish a containing
    block — every current user does (the menu is absolute, the sheet is

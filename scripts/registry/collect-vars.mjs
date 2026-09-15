@@ -44,19 +44,31 @@ export function collectVars({ files, themeFile }) {
   return { required, defined: [...defined].sort(), light, dark, unresolved };
 }
 
-// CLI: node scripts/registry/collect-vars.mjs → prints the README block.
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const FOLDER = "client/src/components/navigation-bar";
-  const out = collectVars({
-    files: [`${FOLDER}/NavigationBar.tsx`, `${FOLDER}/navigation-bar.css`, "client/src/theme/glass.css"],
-    themeFile: "client/src/theme/theme.css",
-  });
+// The NavigationBar folder's inputs to the collector, shared by the CLI
+// below and the drift test (a11y-tokens.mjs) so neither keeps its own
+// copy of the file list.
+const FOLDER = "client/src/components/navigation-bar";
+export const NAV_BAR_VAR_INPUTS = {
+  files: [`${FOLDER}/NavigationBar.tsx`, `${FOLDER}/navigation-bar.css`, "client/src/theme/glass.css"],
+  themeFile: "client/src/theme/theme.css",
+};
+
+/** Renders the exact `:root { … }` / `.dark { … }` block the CLI prints
+ *  and the README documents — the drift test asserts the README's fenced
+ *  block equals this, trimmed. */
+export function renderVarBlock(out) {
   const lines = [":root {"];
   for (const n of out.required) lines.push(`  ${n}: ${out.light[n]};`);
   lines.push("}", "", ".dark {");
   for (const n of out.required) if (out.dark[n] !== out.light[n]) lines.push(`  ${n}: ${out.dark[n]};`);
   lines.push("}");
-  console.log(lines.join("\n"));
+  return lines.join("\n");
+}
+
+// CLI: node scripts/registry/collect-vars.mjs → prints the README block.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const out = collectVars(NAV_BAR_VAR_INPUTS);
+  console.log(renderVarBlock(out));
   if (out.unresolved.length) {
     console.error("UNRESOLVED:", out.unresolved.join(" "));
     process.exit(1);

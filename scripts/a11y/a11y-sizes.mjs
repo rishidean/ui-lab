@@ -62,6 +62,20 @@ for (const size of ["compact", "default", "large"]) {
   });
   push(`${size}: action labels sit inside their chips`, labelsInside, null);
 
+  // .nav-action-chip's direct span is a flex wrapper (icon + label) with no
+  // font-size of its own; the label lives on the nested span carrying
+  // `text-[length:var(--nav-label)]`, so target that one specifically.
+  const computed = await page.evaluate(() => {
+    const chip = document.querySelector(".nav-action-chip");
+    const label = chip?.querySelector('span[class*="nav-label"]');
+    return chip && label
+      ? { chipH: Math.round(parseFloat(getComputedStyle(chip).height)), label: Math.round(parseFloat(getComputedStyle(label).fontSize)) }
+      : null;
+  });
+  const spec = { compact: { chipH: 30, label: 13 }, default: { chipH: 34, label: 14 }, large: { chipH: 38, label: 14 } }[size];
+  push(`${size}: chip height is ${spec.chipH}px`, computed?.chipH === spec.chipH, computed);
+  push(`${size}: label font-size is ${spec.label}px`, computed?.label === spec.label, computed);
+
   await page.screenshot({ path: `scripts/a11y/shots/size-${size}-rest.png` });
 
   // Deposit → sheet on screen → scrim close.

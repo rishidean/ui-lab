@@ -8,7 +8,7 @@
  * presentation beats — a 1920×1080 presentation stage for recording
  * walkthroughs (click it or hit Present, then ← / → to step beats).
  *
- * Below 1024px, with ?embed=1, or in recording mode (H) the route renders
+ * Below 1024px, with ?embed=1, ?example=<id>, or in recording mode (H) the route renders
  * the bare Stage full-viewport — phones get the component itself, and the
  * desktop demo canvas embeds that same bare route in an iframe so the
  * stages' fixed-position choreography runs in a true nested viewport.

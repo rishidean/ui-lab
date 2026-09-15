@@ -567,6 +567,7 @@ export const labComponents: LabComponent[] = [
       "lucide-react",
       "clsx + tailwind-merge (cn)",
       "theme/theme.css (token contract)",
+      "theme/glass.css (.glass-rim — the lit edge)",
       "@/lib/a11y (useInertOutside — dialog containment)",
     ],
     showcase: {

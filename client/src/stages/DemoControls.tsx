@@ -1,7 +1,7 @@
 /**
  * DemoControls — a LAB affordance for this stage only, not part of the
  * NavigationBar component. It lets the demo page tune dormancy depth,
- * tempo, and a reduced-motion override live. Someone copying
+ * tempo, size, and a reduced-motion override live. Someone copying
  * NavigationBar.tsx (and theme.css) into their own app gets none of
  * this — it has no equivalent in the component itself.
  */
